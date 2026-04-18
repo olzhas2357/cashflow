@@ -1,0 +1,41 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: cashflow_postgres
+    environment:
+      POSTGRES_USER: olzhas
+      POSTGRES_PASSWORD: 2357 
+      POSTGRES_DB: cashflow_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - cashflow_pgdata:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cashflow_backend
+    environment:
+      PORT: "8080"
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: olzhas
+      DB_PASSWORD: 2357
+      DB_NAME: cashflow_db
+      DB_SSLMODE: "disable"
+      JWT_SECRET: "change-me-super-secret"
+      JWT_ISSUER: "cashflow-api"
+      JWT_EXPIRES_HOURS: "24"
+      # Optional seed users; set these to enable auditor/admin accounts.
+      SEED_ADMIN_EMAIL: "cashflow@gmail.com"
+      SEED_ADMIN_PASSWORD: "olzhas2357"
+      SEED_AUDITOR_EMAIL: "cashflow@gmail.com"
+      SEED_AUDITOR_PASSWORD: "olzhas2357"
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+
+volumes:
+  cashflow_pgdata:
