@@ -1,0 +1,13 @@
+[
+    {
+    "symbol": "OK4U",
+    "name": "OK4U Drug Co.",
+    "current_price": 10,
+    "price_range": [5, 40],
+    "dividend": 0,
+    "description": "Фармацевтическая компания. Цена акций колеблется, но сейчас они на минимуме.",
+    "yield": 0
+    },
+    
+
+]

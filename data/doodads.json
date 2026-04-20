@@ -1,0 +1,43 @@
+[
+  {
+    "id": "d_001",
+    "type": "simple_payment",
+    "title": "Потек водонагреватель",
+    "description": "Срочный ремонт. Заплатите 450$.",
+    "cash_cost": 450
+  },
+  {
+    "id": "d_002",
+    "type": "simple_payment",
+    "title": "Налоговая проверка",
+    "description": "Заплатите 250$.",
+    "cash_cost": 250
+  },
+  {
+    "id": "d_003",
+    "type": "child_payment",
+    "title": "Поход в зоопарк",
+    "description": "Заплатите по 50$ за каждого ребенка.",
+    "cost_per_child": 50
+  },
+  {
+    "id": "d_004",
+    "type": "financed_purchase",
+    "title": "Купите телевизор с большим экраном",
+    "description": "Можно оплатить кредитной карточкой.",
+    "cash_cost": 4000,
+    "liability_type": "credit_card",
+    "liability_amount": 4000,
+    "monthly_expense_increase": 120
+  },
+  {
+    "id": "d_005",
+    "type": "liability_purchase",
+    "title": "Новый катер",
+    "description": "Заплатите первый взнос и оформите кредит.",
+    "cash_cost": 1000,
+    "liability_type": "boat_loan",
+    "liability_amount": 17000,
+    "monthly_expense_increase": 340
+  }
+]

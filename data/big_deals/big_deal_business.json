@@ -1,0 +1,11 @@
+[
+  {
+    "type_of_home": "Duplex",
+    "price": 45000,
+    "mortgage": 37000,
+    "down_payment": 8000,
+    "cashflow": 320,
+    "roi": 48,
+    "comment": "Can later be sold for 50000 to 80000"
+  }
+]
