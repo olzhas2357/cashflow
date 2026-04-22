@@ -1,0 +1,24 @@
+[
+  {
+    "name": "Car Parts Startup",
+    "title": "Automotive parts startup",
+    "symbol": "CAR_PARTS_CO",
+    "description": "Build and sell custom automotive parts.",
+    "price": 3000,
+    "down_payment": 3000,
+    "mortgage": 0,
+    "cashflow": 0,
+    "roi": 0
+  },
+  {
+    "name": "Software Studio",
+    "title": "Software development company",
+    "symbol": "SOFTWARE_CO",
+    "description": "Develop and sell software products.",
+    "price": 5000,
+    "down_payment": 5000,
+    "mortgage": 0,
+    "cashflow": 0,
+    "roi": 0
+  }
+]

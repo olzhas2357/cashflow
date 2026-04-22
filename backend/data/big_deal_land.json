@@ -1,0 +1,22 @@
+[
+  {
+    "name": "10-acre land",
+    "title": "10-acre residential land",
+    "description": "Speculative land purchase.",
+    "price": 5000,
+    "down_payment": 5000,
+    "mortgage": 0,
+    "cashflow": 0,
+    "roi": 0
+  },
+  {
+    "name": "20-acre land",
+    "title": "20-acre development land",
+    "description": "Land package with upside on market event.",
+    "price": 20000,
+    "down_payment": 20000,
+    "mortgage": 0,
+    "cashflow": 0,
+    "roi": 0
+  }
+]

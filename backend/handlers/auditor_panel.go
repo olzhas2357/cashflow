@@ -284,6 +284,132 @@ type ReferenceDataResponse struct {
 	Doodads     []models.Doodad     `json:"doodads"`
 }
 
+// ListProfessions returns all profession cards (global reference data).
+func (h *AuditorPanelHandler) ListProfessions(c *gin.Context) {
+	var professions []models.Profession
+	if err := h.db.Order("name asc").Find(&professions).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "list_professions_failed"})
+		return
+	}
+	c.JSON(http.StatusOK, professions)
+}
+
+// ListSmallDeals returns all small deal cards.
+func (h *AuditorPanelHandler) ListSmallDeals(c *gin.Context) {
+	var deals []models.SmallDeal
+	if err := h.db.Order("category asc, name asc").Find(&deals).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "list_small_deals_failed"})
+		return
+	}
+	c.JSON(http.StatusOK, deals)
+}
+
+// ListBigDeals returns all big deal cards.
+func (h *AuditorPanelHandler) ListBigDeals(c *gin.Context) {
+	var deals []models.BigDeal
+	if err := h.db.Order("deal_type asc, name asc").Find(&deals).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "list_big_deals_failed"})
+		return
+	}
+	c.JSON(http.StatusOK, deals)
+}
+
+// ListDoodads returns all doodad cards.
+func (h *AuditorPanelHandler) ListDoodads(c *gin.Context) {
+	var items []models.Doodad
+	if err := h.db.Order("name asc").Find(&items).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "list_doodads_failed"})
+		return
+	}
+	c.JSON(http.StatusOK, items)
+}
+
+// ListMarketEvents returns all market event cards.
+func (h *AuditorPanelHandler) ListMarketEvents(c *gin.Context) {
+	var events []models.MarketEvent
+	if err := h.db.Order("name asc").Find(&events).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "list_market_events_failed"})
+		return
+	}
+	c.JSON(http.StatusOK, events)
+}
+
+// RemovePlayer deletes a player row and dummy user, cleaning up related rows first.
+func (h *AuditorPanelHandler) RemovePlayer(c *gin.Context) {
+	gameID, ok := parseGameID(c)
+	if !ok {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "invalid_game_id"})
+		return
+	}
+	playerID, err := uuid.Parse(c.Param("playerId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "invalid_player_id"})
+		return
+	}
+
+	var p models.Player
+	if err := h.db.First(&p, "id = ? AND game_id = ?", playerID, gameID).Error; err != nil {
+		c.JSON(http.StatusNotFound, typ.ErrorResponse{Error: "player_not_found"})
+		return
+	}
+	userID := p.UserID
+
+	if err := h.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("player_id = ? AND game_id = ?", playerID, gameID).Delete(&models.FinancialLog{}).Error; err != nil {
+			return err
+		}
+
+		var buyerTx []models.Transaction
+		if err := tx.Where("buyer_id = ?", playerID).Find(&buyerTx).Error; err != nil {
+			return err
+		}
+		for _, t := range buyerTx {
+			if err := tx.Where("transaction_id = ?", t.ID).Delete(&models.AuditLog{}).Error; err != nil {
+				return err
+			}
+			if err := tx.Delete(&models.Transaction{}, "id = ?", t.ID).Error; err != nil {
+				return err
+			}
+		}
+
+		var offers []models.MarketOffer
+		if err := tx.Where("seller_id = ?", playerID).Find(&offers).Error; err != nil {
+			return err
+		}
+		for _, o := range offers {
+			var related []models.Transaction
+			if err := tx.Where("market_offer_id = ?", o.ID).Find(&related).Error; err != nil {
+				return err
+			}
+			for _, t := range related {
+				if err := tx.Where("transaction_id = ?", t.ID).Delete(&models.AuditLog{}).Error; err != nil {
+					return err
+				}
+				if err := tx.Delete(&models.Transaction{}, "id = ?", t.ID).Error; err != nil {
+					return err
+				}
+			}
+			if err := tx.Delete(&models.MarketOffer{}, "id = ?", o.ID).Error; err != nil {
+				return err
+			}
+		}
+
+		if err := tx.Where("owner_id = ? AND game_id = ?", playerID, gameID).Delete(&models.Asset{}).Error; err != nil {
+			return err
+		}
+
+		if err := tx.Delete(&models.Player{}, "id = ?", playerID).Error; err != nil {
+			return err
+		}
+		return tx.Delete(&models.User{}, "id = ?", userID).Error
+	}); err != nil {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "remove_player_failed"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
 func (h *AuditorPanelHandler) ReferenceData(c *gin.Context) {
 	var professions []models.Profession
 	var smallDeals []models.SmallDeal

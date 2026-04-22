@@ -1,0 +1,24 @@
+[
+  {
+    "name": "Condo 2/1",
+    "title": "Condo 2/1 cashflow deal",
+    "symbol": "CONDO_2_1",
+    "description": "Small real-estate deal.",
+    "price": 50000,
+    "down_payment": 5000,
+    "mortgage": 45000,
+    "cashflow": 100,
+    "roi": 24
+  },
+  {
+    "name": "House 3/2",
+    "title": "House 3/2 value deal",
+    "symbol": "HOUSE_3_2",
+    "description": "Small house with stable rent.",
+    "price": 65000,
+    "down_payment": 7000,
+    "mortgage": 58000,
+    "cashflow": 150,
+    "roi": 26
+  }
+]

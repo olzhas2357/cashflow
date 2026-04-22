@@ -1,10 +1,14 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useNavigate, useParams } from 'react-router-dom'
-import { useAuthStore } from '../../store/authStore'
-import { addPlayers, getGame, listPlayers } from '../../api/auditorPanel'
-import { GlassCard, GradientButton } from '../../components/ui'
-import type { UserPlayer } from '../../api/auditorPanel'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Trash2, ArrowLeft } from 'lucide-react'
+import { useAuthStore } from '@/store/authStore'
+import { addPlayers, getGame, listPlayers, removePlayer } from '@/api/auditorPanel'
+import type { UserPlayer } from '@/api/auditorPanel'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
 
 export default function AuditorAddPlayers() {
   const token = useAuthStore((s) => s.token)
@@ -27,94 +31,134 @@ export default function AuditorAddPlayers() {
   const [rawNames, setRawNames] = useState('')
   const [error, setError] = useState<string | null>(null)
 
-  const mutation = useMutation({
+  const addM = useMutation({
     mutationFn: () => addPlayers(token!, gameId!, { names: parseNames(rawNames) }),
     onSuccess: () => {
       setRawNames('')
       qc.invalidateQueries({ queryKey: ['auditor_players', gameId] })
+      qc.invalidateQueries({ queryKey: ['auditor_games'] })
+      qc.invalidateQueries({ queryKey: ['auditor_game_card', gameId] })
     },
-    onError: (e) => setError((e as Error).message),
+    onError: (e: Error) => setError(e.message),
+  })
+
+  const removeM = useMutation({
+    mutationFn: (playerId: string) => removePlayer(token!, gameId!, playerId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['auditor_players', gameId] })
+      qc.invalidateQueries({ queryKey: ['auditor_games'] })
+    },
   })
 
   const players = playersQ.data ?? []
   const maxPlayers = gameQ.data?.max_players ?? 6
-
-  const ready = players.length > 0 && players.length <= maxPlayers
-
-  const canGo = players.length >= maxPlayers || players.length === gameQ.data?.max_players
+  const atCapacity = players.length >= maxPlayers
 
   useEffect(() => {
     setError(null)
   }, [rawNames])
 
-  const subtitle = useMemo(() => (playersQ.data ? `${players.length}/${maxPlayers} players` : 'Loading...'), [players.length, playersQ.data, maxPlayers])
-
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">Add Players</h1>
-          <div className="text-sm text-slate-600">{subtitle}</div>
-        </div>
-        <div className="flex gap-2">
-          <GradientButton onClick={() => navigate(`/auditor/games/${gameId}/professions`)} disabled={!ready}>
-            Assign Professions
-          </GradientButton>
-        </div>
+    <div className="mx-auto max-w-3xl space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Button variant="ghost" size="sm" className="gap-2" asChild>
+          <Link to={`/auditor/games/${gameId}`}>
+            <ArrowLeft className="h-4 w-4" />
+            Game
+          </Link>
+        </Button>
+        <Button onClick={() => navigate(`/auditor/games/${gameId}/professions`)} disabled={players.length === 0}>
+          Next: professions
+        </Button>
       </div>
 
-      <GlassCard className="max-w-2xl">
-        <label className="block text-sm font-medium text-slate-700">
-          Enter player names
+      <div>
+        <h1 className="text-2xl font-bold">Players</h1>
+        <p className="text-muted-foreground">
+          {gameQ.data?.name ?? '…'} — {players.length}/{maxPlayers} seats
+        </p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Add player</CardTitle>
+          <CardDescription>One name per line (or comma-separated). Dummy login accounts are created for each seat.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
           <textarea
-            className="mt-2 h-28 w-full rounded-xl border px-3 py-2 font-mono text-sm"
-            placeholder={`Alex\nDana\nTimur\nAli`}
+            className="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-sm"
+            placeholder={'Alex\nSam\nJordan'}
             value={rawNames}
+            disabled={atCapacity}
             onChange={(e) => setRawNames(e.target.value)}
           />
-        </label>
+          {error ? <p className="text-sm text-destructive">{error}</p> : null}
+          <div className="flex flex-wrap gap-2">
+            <Button
+              onClick={() => addM.mutate()}
+              disabled={addM.isPending || parseNames(rawNames).length === 0 || atCapacity}
+            >
+              {atCapacity ? 'Table full' : addM.isPending ? 'Adding…' : 'Add players'}
+            </Button>
+            <Button type="button" variant="outline" onClick={() => setRawNames('')}>
+              Clear
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
-        {error ? <div className="mt-2 text-sm text-rose-600">{error}</div> : null}
-
-        <div className="mt-3 flex flex-wrap gap-2">
-          <GradientButton onClick={() => mutation.mutate()} disabled={mutation.isPending || parseNames(rawNames).length === 0}>
-            {mutation.isPending ? 'Adding...' : 'Add Players'}
-          </GradientButton>
-          <button className="rounded-xl border px-4 py-2 text-sm" onClick={() => setRawNames('')}>
-            Clear
-          </button>
-        </div>
-      </GlassCard>
-
-      <GlassCard className="max-w-2xl">
-        <h2 className="text-lg font-semibold">Current Players</h2>
-        <div className="mt-3 overflow-auto rounded-xl border">
-          <table className="min-w-full text-sm">
-            <thead className="bg-slate-50">
-              <tr>
-                <th className="p-2 text-left font-semibold">Name</th>
-                <th className="p-2 text-left font-semibold">Profession</th>
-              </tr>
-            </thead>
-            <tbody>
+      <Card>
+        <CardHeader>
+          <CardTitle>Roster</CardTitle>
+          <CardDescription>Remove a seat before professions if someone drops out.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Profession</TableHead>
+                <TableHead className="w-[100px]" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {players.length === 0 ? (
-                <tr>
-                  <td className="p-2 text-slate-500" colSpan={2}>
+                <TableRow>
+                  <TableCell colSpan={3} className="text-muted-foreground">
                     No players yet.
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ) : (
                 players.map((p: UserPlayer) => (
-                  <tr key={p.id} className="border-t border-slate-100">
-                    <td className="p-2 font-medium">{p.name}</td>
-                    <td className="p-2 text-slate-600">{p.profession_id ?? '—'}</td>
-                  </tr>
+                  <TableRow key={p.id}>
+                    <TableCell className="font-medium">{p.name}</TableCell>
+                    <TableCell>
+                      {p.profession_id ? (
+                        <Badge variant="success">Assigned</Badge>
+                      ) : (
+                        <Badge variant="warning">Pending</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:text-destructive"
+                        disabled={removeM.isPending}
+                        onClick={() => {
+                          if (confirm(`Remove ${p.name} from this game?`)) removeM.mutate(p.id)
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
                 ))
               )}
-            </tbody>
-          </table>
-        </div>
-      </GlassCard>
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   )
 }
@@ -125,4 +169,3 @@ function parseNames(raw: string): string[] {
     .map((s) => s.trim())
     .filter(Boolean)
 }
-

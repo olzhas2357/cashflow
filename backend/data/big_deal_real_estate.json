@@ -1,0 +1,22 @@
+[
+  {
+    "name": "8-plex",
+    "title": "Eight-unit apartment building",
+    "description": "High cashflow multi-family asset.",
+    "price": 200000,
+    "down_payment": 40000,
+    "mortgage": 160000,
+    "cashflow": 1600,
+    "roi": 48
+  },
+  {
+    "name": "12-unit building",
+    "title": "12-unit apartment building",
+    "description": "Big real-estate card with strong yield.",
+    "price": 350000,
+    "down_payment": 50000,
+    "mortgage": 300000,
+    "cashflow": 2400,
+    "roi": 58
+  }
+]

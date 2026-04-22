@@ -16,6 +16,7 @@ RUN apk add --no-cache ca-certificates
 
 COPY --from=builder /app/cashflow-api ./cashflow-api
 COPY --from=builder /app/database ./database
+COPY --from=builder /app/data ./data
 
 EXPOSE 8080
 CMD ["./cashflow-api"]

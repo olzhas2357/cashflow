@@ -1,0 +1,379 @@
+[
+  {
+    "id": "mkt_re_21_65k",
+    "type": "REAL_ESTATE_BUYER",
+    "sub_type": "CONDO_2_1",
+    "title": "Покупатель квартиры 2/1",
+    "offer_price": 65000,
+    "description": "Вам предлагают 65000$ за сдаваемую квартиру 2/1. Покупатель финансирует сделку сам.",
+    "is_global": true
+  },
+  {
+    "id": "mkt_re_21_55k_1",
+    "type": "REAL_ESTATE_BUYER",
+    "sub_type": "CONDO_2_1",
+    "title": "Покупатель квартиры 2/1",
+    "offer_price": 55000,
+    "description": "Вам предлагают 55000$ за сдаваемую квартиру 2/1. Любой игрок может продать свои собственные.",
+    "is_global": true
+  },
+  {
+    "id": "mkt_re_21_45k",
+    "type": "REAL_ESTATE_BUYER",
+    "sub_type": "CONDO_2_1",
+    "title": "Покупатель квартиры 2/1",
+    "offer_price": 45000,
+    "description": "Вам предлагают 45000$ за сдаваемую квартиру 2/1. Покупатель финансирует сделку сам.",
+    "is_global": true
+  },
+  {
+    "id": "mkt_re_21_55k_2",
+    "type": "REAL_ESTATE_BUYER",
+    "sub_type": "CONDO_2_1",
+    "title": "Покупатель квартиры 2/1",
+    "offer_price": 55000,
+    "description": "Вам предлагают 55000$ за сдаваемую квартиру 2/1.",
+    "is_global": true
+  },
+  {
+    "id": "mkt_re_32_100k_1",
+    "type": "REAL_ESTATE_BUYER",
+    "sub_type": "HOUSE_3_2",
+    "title": "Покупатель дома 3/2",
+    "offer_price": 100000,
+    "description": "Предложение 100000$ за доходный дом 3/2. Любой игрок может продать.",
+    "is_global": true
+  },
+  {
+    "id": "mkt_re_32_90k",
+    "type": "REAL_ESTATE_BUYER",
+    "sub_type": "HOUSE_3_2",
+    "title": "Покупатель дома 3/2",
+    "offer_price": 90000,
+    "description": "Вам предлагают 90000$ за доходный дом 3/2.",
+    "is_global": true
+  },
+  {
+    "id": "mkt_re_32_135k_1",
+    "type": "REAL_ESTATE_BUYER",
+    "sub_type": "HOUSE_3_2",
+    "title": "Покупатель дома 3/2",
+    "offer_price": 135000,
+    "description": "Вам предлагают 135000$ за доходный дом 3/2.",
+    "is_global": true
+  },
+  {
+    "id": "mkt_re_32_135k_2",
+    "type": "REAL_ESTATE_BUYER",
+    "sub_type": "HOUSE_3_2",
+    "title": "Покупатель дома 3/2",
+    "offer_price": 135000,
+    "description": "Вам предлагают 135000$ за доходный дом 3/2 (Пик рынка).",
+    "is_global": true
+  },
+  {
+    "id": "mkt_re_32_110k",
+    "type": "REAL_ESTATE_BUYER",
+    "sub_type": "HOUSE_3_2",
+    "title": "Покупатель дома 3/2",
+    "offer_price": 110000,
+    "description": "Вам предлагают 110000$ за доходный дом 3/2.",
+    "is_global": true
+  },
+  {
+    "id": "mkt_re_32_100k_2",
+    "type": "REAL_ESTATE_BUYER",
+    "sub_type": "HOUSE_3_2",
+    "title": "Покупатель дома 3/2",
+    "offer_price": 100000,
+    "description": "Вам предлагают 100000$ за доходный дом 3/2.",
+    "is_global": true
+  },
+  {
+    "id": "mkt_re_32_65k",
+    "type": "REAL_ESTATE_BUYER",
+    "sub_type": "HOUSE_3_2",
+    "title": "Покупатель дома 3/2",
+    "offer_price": 65000,
+    "description": "Вам предлагают 65000$ за доходный дом 3/2.",
+    "is_global": true
+  },
+  {
+    "id": "mkt_re_brother_law",
+    "type": "SPECIAL_LOAN",
+    "sub_type": "HOUSE_3_2",
+    "title": "Шурин потерял работу",
+    "offer_price": 100000,
+    "description": "Шурин обещает заплатить 100000$ через 4 года. Нет первого взноса. Доход уменьшится на 500$.",
+    "impact": { "cashflow_change": -500, "delay_turns": 48 }
+  },
+  {
+    "id": "mkt_multi_35k_1",
+    "type": "MULTI_UNIT_BUYER",
+    "sub_type": "APARTMENTS",
+    "price_per_unit": 35000,
+    "title": "Покупатель многоквартирных домов",
+    "description": "Предлагает по 35000$ за каждую квартиру (Дуплексы, 4-плексы, 8-плексы).",
+    "is_global": true
+  },
+  {
+    "id": "mkt_multi_35k_2",
+    "type": "MULTI_UNIT_BUYER",
+    "sub_type": "APARTMENTS",
+    "price_per_unit": 35000,
+    "title": "Покупатель многоквартирных домов",
+    "description": "Предлагает по 35000$ за каждую квартиру.",
+    "is_global": true
+  },
+  {
+    "id": "mkt_multi_40k_1",
+    "type": "MULTI_UNIT_BUYER",
+    "sub_type": "APARTMENTS",
+    "price_per_unit": 40000,
+    "title": "Покупатель многоквартирных домов",
+    "description": "Предлагает по 40000$ за каждую квартиру.",
+    "is_global": true
+  },
+  {
+    "id": "mkt_multi_25k_1",
+    "type": "MULTI_UNIT_BUYER",
+    "sub_type": "APARTMENTS",
+    "price_per_unit": 25000,
+    "title": "Покупатель многоквартирных домов",
+    "description": "Предлагает по 25000$ за каждую квартиру.",
+    "is_global": true
+  },
+  {
+    "id": "mkt_multi_30k_1",
+    "type": "MULTI_UNIT_BUYER",
+    "sub_type": "APARTMENTS",
+    "price_per_unit": 30000,
+    "title": "Покупатель многоквартирных домов",
+    "description": "Предлагает по 30000$ за каждую квартиру.",
+    "is_global": true
+  },
+  {
+    "id": "mkt_multi_40k_2",
+    "type": "MULTI_UNIT_BUYER",
+    "sub_type": "APARTMENTS",
+    "price_per_unit": 40000,
+    "title": "Покупатель многоквартирных домов",
+    "description": "Предлагает по 40000$ за каждую квартиру.",
+    "is_global": true
+  },
+  {
+    "id": "mkt_multi_25k_2",
+    "type": "MULTI_UNIT_BUYER",
+    "sub_type": "APARTMENTS",
+    "price_per_unit": 25000,
+    "title": "Покупатель многоквартирных домов",
+    "description": "Предлагает по 25000$ за каждую квартиру.",
+    "is_global": true
+  },
+  {
+    "id": "mkt_multi_30k_2",
+    "type": "MULTI_UNIT_BUYER",
+    "sub_type": "APARTMENTS",
+    "price_per_unit": 30000,
+    "title": "Покупатель многоквартирных домов",
+    "description": "Предлагает по 30000$ за каждую квартиру.",
+    "is_global": true
+  },
+  {
+    "id": "mkt_multi_30k_3",
+    "type": "MULTI_UNIT_BUYER",
+    "sub_type": "APARTMENTS",
+    "price_per_unit": 30000,
+    "title": "Покупатель многоквартирных домов",
+    "description": "Предлагает по 30000$ за каждую квартиру.",
+    "is_global": true
+  },
+  {
+    "id": "mkt_multi_35k_3",
+    "type": "MULTI_UNIT_BUYER",
+    "sub_type": "APARTMENTS",
+    "price_per_unit": 35000,
+    "title": "Покупатель многоквартирных домов",
+    "description": "Предлагает по 35000$ за каждую квартиру.",
+    "is_global": true
+  },
+  {
+    "id": "mkt_multi_45k_1031_1",
+    "type": "MULTI_UNIT_BUYER_1031",
+    "sub_type": "ALL_MULTI_FAMILY",
+    "price_per_unit": 45000,
+    "title": "Обмен по налогу 1031",
+    "description": "Покупатель предлагает 45000$ за каждую квартиру в любых многоквартирных домах.",
+    "is_global": true
+  },
+  {
+    "id": "mkt_multi_40k_1031_2",
+    "type": "MULTI_UNIT_BUYER_1031",
+    "sub_type": "ALL_MULTI_FAMILY",
+    "price_per_unit": 40000,
+    "title": "Обмен по налогу 1031",
+    "description": "Покупатель предлагает 40000$ за каждую квартиру.",
+    "is_global": true
+  },
+  {
+    "id": "mkt_multi_25k_1031_3",
+    "type": "MULTI_UNIT_BUYER_1031",
+    "sub_type": "ALL_MULTI_FAMILY",
+    "price_per_unit": 25000,
+    "title": "Обмен по налогу 1031",
+    "description": "Покупатель предлагает 25000$ за каждую квартиру.",
+    "is_global": true
+  },
+  {
+    "id": "mkt_multi_reit_12",
+    "type": "MULTI_UNIT_BUYER_REIT",
+    "sub_type": "APT_OVER_12",
+    "price_per_unit": 30000,
+    "title": "Траст покупает дома >12 квартир",
+    "description": "Инвестиционный траст покупает дома, в которых более 12 квартир, по 30 000$.",
+    "is_global": true
+  },
+  {
+    "id": "mkt_lp_x2_1",
+    "type": "BUSINESS_EXIT",
+    "sub_type": "LIMITED_PARTNERSHIP",
+    "multiplier": 2,
+    "title": "Продажа ограниченного партнерства",
+    "description": "Ваш бизнес продан за сумму вдвое превышающую стоимость доли.",
+    "is_forced": true
+  },
+  {
+    "id": "mkt_lp_x3",
+    "type": "BUSINESS_EXIT",
+    "sub_type": "LIMITED_PARTNERSHIP",
+    "multiplier": 3,
+    "title": "Продажа ограниченного партнерства",
+    "description": "Ваш бизнес продан за сумму втрое превышающую стоимость доли.",
+    "is_forced": true
+  },
+  {
+    "id": "mkt_lp_x2_2",
+    "type": "BUSINESS_EXIT",
+    "sub_type": "LIMITED_PARTNERSHIP",
+    "multiplier": 2,
+    "title": "Продажа ограниченного партнерства",
+    "description": "Ваш бизнес продан за сумму вдвое превышающую стоимость доли.",
+    "is_forced": true
+  },
+  {
+    "id": "mkt_inflation_32",
+    "type": "FORCED_LOSS",
+    "sub_type": "HOUSE_3_2",
+    "title": "Всплеск инфляции 10%",
+    "description": "Банки конфискуют все ваши дома 3/2 из-за плавающих ставок.",
+    "is_global": false
+  },
+  {
+    "id": "mkt_gold_coins",
+    "type": "ASSET_BUYER",
+    "sub_type": "GOLD_COINS",
+    "offer_price": 5000,
+    "title": "Коллекционеру нужны монеты",
+    "description": "Предлагает по 5000 за каждую золотую монету XVI века.",
+    "is_global": true
+  },
+  {
+    "id": "mkt_land_10ac",
+    "type": "ASSET_BUYER",
+    "sub_type": "LAND_10_ACRES",
+    "offer_price": 150000,
+    "title": "Застройщику необходима земля",
+    "description": "Предлагает 150 000 $ за участок 10 акров с ручьем.",
+    "is_global": true
+  },
+  {
+    "id": "mkt_land_20ac",
+    "type": "ASSET_BUYER",
+    "sub_type": "LAND_20_ACRES",
+    "offer_price": 200000,
+    "title": "Покупатель 20 акров земли",
+    "description": "Застройщик платит 200 000 $ за 20 акров земли в жилой зоне.",
+    "is_global": true
+  },
+  {
+    "id": "mkt_gold_ounce",
+    "type": "ASSET_BUYER",
+    "sub_type": "GOLD_KRUGERRAND",
+    "offer_price": 600,
+    "title": "Цена на золото растет",
+    "description": "Цена взлетает до 600 $ за унцию. Продайте свои крюгерранды.",
+    "is_global": true
+  },
+  {
+    "id": "mkt_car_wash",
+    "type": "BUSINESS_BUYER",
+    "sub_type": "CAR_WASH",
+    "offer_price": 250000,
+    "title": "Покупатель автомойки",
+    "description": "Готов заплатить за неё 250 000$ наличными.",
+    "is_global": true
+  },
+  {
+    "id": "mkt_car_parts",
+    "type": "BUSINESS_BUYER",
+    "sub_type": "CAR_PARTS_CO",
+    "offer_price": 50000,
+    "title": "Покупатель компании наворотов",
+    "description": "Предлагает 50 000$ за компанию автомобильных наворотов.",
+    "is_global": true
+  },
+  {
+    "id": "mkt_mall",
+    "type": "BUSINESS_BUYER",
+    "sub_type": "MALL",
+    "offer_price": 100000,
+    "title": "Покупатель торгового пассажа",
+    "description": "Готовы заплатить 100 000$ каждому владельцу пассажа.",
+    "is_global": true
+  },
+  {
+    "id": "mkt_bnb",
+    "type": "BUSINESS_BUYER",
+    "sub_type": "BED_BREAKFAST",
+    "offer_price": 250000,
+    "title": "Покупатели пансиона",
+    "description": "Готовы заплатить 250 000$ за доходный пансион.",
+    "is_global": true
+  },
+  {
+    "id": "mkt_software",
+    "type": "BUSINESS_BUYER",
+    "sub_type": "SOFTWARE_CO",
+    "offer_price": 100000,
+    "title": "Покупатель софт-компании",
+    "description": "Предлагает 100 000$ за компанию программных продуктов.",
+    "is_global": true
+  },
+  {
+    "id": "mkt_biz_boost_250",
+    "type": "BUSINESS_BOOST",
+    "sub_type": "SMALL_BIZ",
+    "cashflow_add": 250,
+    "title": "Улучшение малого бизнеса",
+    "description": "Награда за инновации. Чистая месячная прибыль растет на 250$.",
+    "is_global": true
+  },
+  {
+    "id": "mkt_biz_boost_400",
+    "type": "BUSINESS_BOOST",
+    "sub_type": "SMALL_BIZ",
+    "cashflow_add": 400,
+    "title": "Улучшение малого бизнеса",
+    "description": "Объем продаж вырос на 150%. Прибыль возрастает на 400$.",
+    "is_global": true
+  },
+  {
+    "id": "mkt_rates_drop_32",
+    "type": "MARKET_BOOST",
+    "sub_type": "HOUSE_3_2",
+    "extra_value": 50000,
+    "title": "Процентные ставки падают",
+    "description": "Ставки упали до 5%. Вы можете продать дома 3/2 на 50 000$ дороже.",
+    "is_global": false
+  }
+]

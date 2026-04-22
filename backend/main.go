@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"cashflow/database"
+	"cashflow/internal/seeds"
 	"cashflow/router"
 
 	"github.com/joho/godotenv"
@@ -77,8 +78,9 @@ func main() {
 		log.Printf("seed users warning: %v", err)
 	}
 
-	if err := database.SeedGameDataIfNeeded(db); err != nil {
-		log.Printf("seed game data warning: %v", err)
+	err = seeds.SeedAll(db)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	srv := router.NewServer(router.ServerConfig{

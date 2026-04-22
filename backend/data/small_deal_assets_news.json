@@ -1,0 +1,24 @@
+[
+  {
+    "name": "OK4U split",
+    "title": "OK4U stock split 2:1",
+    "symbol": "OK4U",
+    "description": "Split event card for OK4U holders.",
+    "price": 0,
+    "down_payment": 0,
+    "mortgage": 0,
+    "cashflow": 0,
+    "roi": 0
+  },
+  {
+    "name": "MYT4U reverse split",
+    "title": "MYT4U reverse split 1:2",
+    "symbol": "MYT4U",
+    "description": "Reverse split event card.",
+    "price": 0,
+    "down_payment": 0,
+    "mortgage": 0,
+    "cashflow": 0,
+    "roi": 0
+  }
+]

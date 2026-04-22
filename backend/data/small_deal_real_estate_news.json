@@ -1,0 +1,13 @@
+[
+  {
+    "name": "Property damage event",
+    "title": "Tenant damages property",
+    "symbol": "RE_NEWS_DAMAGE",
+    "description": "Pay 1000 for repair if you own rental real estate.",
+    "price": 1000,
+    "down_payment": 1000,
+    "mortgage": 0,
+    "cashflow": -1000,
+    "roi": -100
+  }
+]

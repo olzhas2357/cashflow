@@ -1,81 +1,63 @@
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
-import { useAuthStore } from './store/authStore'
-import { useNegotiationSocket } from './hooks/useNegotiationSocket'
-import { AppShell } from './components/AppShell'
-import Login from './pages/Login'
-import Register from './pages/Register'
-import Dashboard from './pages/Dashboard'
-import MarketDeals from './pages/MarketDeals'
-import AuditorDashboard from './pages/AuditorDashboard'
-import Landing from './pages/Landing'
-import LearnFinance from './pages/LearnFinance'
-import StartGame from './pages/StartGame'
-import AuditorCreateGame from './pages/auditor/CreateGame'
-import AuditorAddPlayers from './pages/auditor/AddPlayers'
-import AuditorAssignProfessions from './pages/auditor/AssignProfessions'
-import AuditorGameControlPanel from './pages/auditor/GameControlPanel'
-import type { AuthUser } from './api/auth'
+import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
+import { useAuthStore } from '@/store/authStore'
+import type { AuthUser } from '@/api/auth'
+import { AuditorLayout } from '@/components/auditor/AuditorLayout'
 
-function ProtectedRoute({ user, allowed, children }: { user: AuthUser | null; allowed: AuthUser['role'][]; children: React.ReactNode }) {
+import AuditorLogin from '@/pages/auditor/AuditorLogin'
+import AuditorDashboard from '@/pages/auditor/Dashboard'
+import AuditorCreateGame from '@/pages/auditor/CreateGame'
+import AuditorAddPlayers from '@/pages/auditor/AddPlayers'
+import AssignProfessions from '@/pages/auditor/AssignProfessions'
+import GameDashboard from '@/pages/auditor/GameDashboard'
+import PlayerDetail from '@/pages/auditor/PlayerDetail'
+import LogsPage from '@/pages/auditor/LogsPage'
+import TransactionsPage from '@/pages/auditor/TransactionsPage'
+import MarketPage from '@/pages/auditor/MarketPage'
+import PlayersDirectory from '@/pages/auditor/PlayersDirectory'
+import SettingsPage from '@/pages/auditor/SettingsPage'
+
+function RequireAuditor() {
+  const token = useAuthStore((s) => s.token)
+  const user = useAuthStore((s) => s.user)
+  if (!token) return <Navigate to="/login" replace />
+  const ok = user?.role === 'auditor' || user?.role === 'admin'
+  if (!ok) return <Navigate to="/login" replace />
+  return <Outlet />
+}
+
+function RootRedirect({ user }: { user: AuthUser | null }) {
   if (!user) return <Navigate to="/login" replace />
-  if (!allowed.includes(user.role)) return <Navigate to="/" replace />
-  return <>{children}</>
+  if (user.role === 'auditor' || user.role === 'admin') return <Navigate to="/auditor/dashboard" replace />
+  return <Navigate to="/login" replace />
 }
 
 export default function App() {
   const user = useAuthStore((s) => s.user)
-  const token = useAuthStore((s) => s.token)
-  // Only connect WS for player-facing live negotiations (not auditor pages).
-  // Also limit to routes where it matters to reduce noise.
-  const location = useLocation()
-  const enableWS =
-    !!token &&
-    user?.role === 'player' &&
-    (location.pathname.startsWith('/market') || location.pathname.startsWith('/dashboard'))
-  useNegotiationSocket(token, enableWS)
 
   return (
-    <AppShell>
-      <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/learn" element={<LearnFinance />} />
-        <Route
-          path="/start-game"
-          element={<ProtectedRoute user={user} allowed={['player']} children={<StartGame />} />}
-        />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route
-          path="/dashboard"
-          element={<ProtectedRoute user={user} allowed={['player', 'auditor', 'admin']} children={<Dashboard />} />}
-        />
-        <Route
-          path="/market"
-          element={<ProtectedRoute user={user} allowed={['player', 'auditor', 'admin']} children={<MarketDeals />} />}
-        />
-        <Route
-          path="/auditor"
-          element={<ProtectedRoute user={user} allowed={['auditor', 'admin']} children={<AuditorDashboard />} />}
-        />
-        <Route
-          path="/auditor/games/new"
-          element={<ProtectedRoute user={user} allowed={['auditor', 'admin']} children={<AuditorCreateGame />} />}
-        />
-        <Route
-          path="/auditor/games/:gameId/players"
-          element={<ProtectedRoute user={user} allowed={['auditor', 'admin']} children={<AuditorAddPlayers />} />}
-        />
-        <Route
-          path="/auditor/games/:gameId/professions"
-          element={<ProtectedRoute user={user} allowed={['auditor', 'admin']} children={<AuditorAssignProfessions />} />}
-        />
-        <Route
-          path="/auditor/games/:gameId"
-          element={<ProtectedRoute user={user} allowed={['auditor', 'admin']} children={<AuditorGameControlPanel />} />}
-        />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </AppShell>
+    <Routes>
+      <Route path="/login" element={<AuditorLogin />} />
+
+      <Route element={<RequireAuditor />}>
+        <Route element={<AuditorLayout />}>
+          <Route path="/auditor" element={<Navigate to="/auditor/dashboard" replace />} />
+          <Route path="/auditor/dashboard" element={<AuditorDashboard />} />
+          <Route path="/auditor/games" element={<AuditorDashboard />} />
+          <Route path="/auditor/games/new" element={<AuditorCreateGame />} />
+          <Route path="/auditor/games/:gameId/players" element={<AuditorAddPlayers />} />
+          <Route path="/auditor/games/:gameId/professions" element={<AssignProfessions />} />
+          <Route path="/auditor/games/:gameId/players/:playerId" element={<PlayerDetail />} />
+          <Route path="/auditor/games/:gameId" element={<GameDashboard />} />
+          <Route path="/auditor/transactions" element={<TransactionsPage />} />
+          <Route path="/auditor/market" element={<MarketPage />} />
+          <Route path="/auditor/logs" element={<LogsPage />} />
+          <Route path="/auditor/players" element={<PlayersDirectory />} />
+          <Route path="/auditor/settings" element={<SettingsPage />} />
+        </Route>
+      </Route>
+
+      <Route path="/" element={<RootRedirect user={user} />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   )
 }
-

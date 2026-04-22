@@ -152,7 +152,11 @@ type SmallDeal struct {
 	ID uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
 
 	DealType    string  `gorm:"type:varchar(30);not null;index" json:"deal_type"`
-	Name        string  `gorm:"type:varchar(255);not null" json:"name"`
+	Category    string  `gorm:"type:varchar(60);not null;default:'';index" json:"category"`
+	Name        string  `gorm:"type:varchar(255);not null;index" json:"name"`
+	Title       string  `gorm:"type:varchar(255);not null;default:''" json:"title"`
+	Symbol      string  `gorm:"type:varchar(64);not null;default:'';index" json:"symbol"`
+	Description string  `gorm:"type:text;not null;default:''" json:"description"`
 	Price       int64   `gorm:"not null" json:"price"`
 	DownPayment int64   `gorm:"not null;default:0" json:"down_payment"`
 	Mortgage    int64   `gorm:"not null;default:0" json:"mortgage"`
@@ -162,7 +166,10 @@ type SmallDeal struct {
 
 type BigDeal struct {
 	ID          uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
-	Name        string    `gorm:"type:varchar(255);not null" json:"name"`
+	DealType    string    `gorm:"type:varchar(30);not null;default:'';index" json:"deal_type"`
+	Name        string    `gorm:"type:varchar(255);not null;index" json:"name"`
+	Title       string    `gorm:"type:varchar(255);not null;default:''" json:"title"`
+	Description string    `gorm:"type:text;not null;default:''" json:"description"`
 	Price       int64     `gorm:"not null" json:"price"`
 	DownPayment int64     `gorm:"not null;default:0" json:"down_payment"`
 	Mortgage    int64     `gorm:"not null;default:0" json:"mortgage"`
@@ -172,14 +179,24 @@ type BigDeal struct {
 
 type MarketEvent struct {
 	ID          uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
-	Name        string    `gorm:"type:varchar(255);not null" json:"name"`
+	Name        string    `gorm:"type:varchar(255);not null;index" json:"name"`
+	EventType   string    `gorm:"type:varchar(60);not null;default:'';index" json:"event_type"`
+	SubType     string    `gorm:"type:varchar(80);not null;default:'';index" json:"sub_type"`
 	Description string    `gorm:"type:text;not null;default:''" json:"description"`
+	OfferPrice  int64     `gorm:"not null;default:0" json:"offer_price"`
+	IsGlobal    bool      `gorm:"not null;default:false" json:"is_global"`
 }
 
 type Doodad struct {
-	ID   uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
-	Name string    `gorm:"type:varchar(255);not null" json:"name"`
-	Cost int64     `gorm:"not null;default:0" json:"cost"`
+	ID                     uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+	DoodadType             string    `gorm:"type:varchar(40);not null;index" json:"doodad_type"`
+	Name                   string    `gorm:"type:varchar(255);not null;index" json:"name"`
+	Description            string    `gorm:"type:text;not null;default:''" json:"description"`
+	Cost                   int64     `gorm:"not null;default:0" json:"cost"`
+	CostPerChild           int64     `gorm:"not null;default:0" json:"cost_per_child"`
+	LiabilityType          string    `gorm:"type:varchar(80);not null;default:''" json:"liability_type"`
+	LiabilityAmount        int64     `gorm:"not null;default:0" json:"liability_amount"`
+	MonthlyExpenseIncrease int64     `gorm:"not null;default:0" json:"monthly_expense_increase"`
 }
 
 type FinancialLog struct {

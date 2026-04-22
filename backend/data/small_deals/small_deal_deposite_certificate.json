@@ -1,0 +1,61 @@
+[
+  {
+    "type": "CD",
+    "title": "Депозитный сертификат (CD)",
+    "description": "Один из ведущих банков предлагает своим клиентам этот депозитный сертификат. Каждый игрок может купить или продать любое количество.",
+    "financials": {
+      "cost": 5000,
+      "cashflow": 20,
+      "redemption_value": 5000
+    },
+    "rules": {
+      "multi_purchase": true,
+      "sellable_anytime": true
+    }
+  },
+  {
+    "type": "CD",
+    "title": "Депозитный сертификат (CD)",
+    "description": "Один из ведущих банков предлагает своим клиентам этот депозитный сертификат. Каждый игрок может купить или продать любое количество.",
+    "financials": {
+      "cost": 4000,
+      "cashflow": 20,
+      "redemption_value": 4000
+    },
+    "rules": {
+      "multi_purchase": true,
+      "sellable_anytime": true
+    }
+  },
+  {
+    "type": "PREFERRED_STOCK",
+    "symbol": "2Big",
+    "title": "Привилегированные акции (2Big)",
+    "description": "Высокодоходные привилегированные акции крупнейшей национальной электроэнергетической компании.",
+    "financials": {
+      "cost": 1200,
+      "cashflow": 10,
+      "redemption_value": 1200
+    },
+    "rules": {
+      "multi_purchase": true,
+      "sellable_anytime": true
+    }
+    },
+    {
+    "type": "PREFERRED_STOCK",
+    "symbol": "2Big",
+    "title": "Привилегированные акции (2Big)",
+    "description": "Высокодоходные привилегированные акции крупнейшей национальной электроэнергетической компании.",
+    "financials": {
+      "cost": 1200,
+      "cashflow": 10,
+      "redemption_value": 1200
+    },
+    "rules": {
+      "multi_purchase": true,
+      "sellable_anytime": true
+    }
+  }
+
+]

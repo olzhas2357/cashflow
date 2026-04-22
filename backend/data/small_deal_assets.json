@@ -1,0 +1,24 @@
+[
+  {
+    "name": "GRO4US",
+    "title": "GRO4US stock @ $10",
+    "symbol": "GRO4US",
+    "description": "Growth stock near lower range.",
+    "price": 1000,
+    "down_payment": 1000,
+    "mortgage": 0,
+    "cashflow": 0,
+    "roi": 0
+  },
+  {
+    "name": "OK4U",
+    "title": "OK4U stock @ $5",
+    "symbol": "OK4U",
+    "description": "Undervalued stock card.",
+    "price": 500,
+    "down_payment": 500,
+    "mortgage": 0,
+    "cashflow": 0,
+    "roi": 0
+  }
+]

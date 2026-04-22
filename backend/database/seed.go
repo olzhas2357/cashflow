@@ -2,16 +2,18 @@ package database
 
 import (
 	"cashflow/models"
+	"encoding/json"
 	"errors"
+	"os"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type SeedUsersConfig struct {
-	AdminEmail     string
-	AdminPassword  string
-	AuditorEmail   string
+	AdminEmail      string
+	AdminPassword   string
+	AuditorEmail    string
 	AuditorPassword string
 }
 
@@ -40,9 +42,9 @@ func ensurePlayerExists(db *gorm.DB, user models.User, cash int64) error {
 	}
 
 	player := models.Player{
-		ID:   uuid.New(),
+		ID:     uuid.New(),
 		UserID: user.ID,
-		Cash: cash,
+		Cash:   cash,
 	}
 	return db.Create(&player).Error
 }
@@ -61,10 +63,10 @@ func seedOne(db *gorm.DB, email, password, role string, cash int64) error {
 	}
 
 	user := models.User{
-		ID: uuid.New(),
-		Email: email,
+		ID:           uuid.New(),
+		Email:        email,
 		PasswordHash: pwdHash,
-		Role: role,
+		Role:         role,
 	}
 
 	if err := ensureCreateUserAndPlayer(db, user, cash); err != nil {
@@ -79,10 +81,30 @@ func ensureCreateUserAndPlayer(db *gorm.DB, user models.User, cash int64) error 
 		return err
 	}
 	player := models.Player{
-		ID: uuid.New(),
+		ID:     uuid.New(),
 		UserID: user.ID,
-		Cash: cash,
+		Cash:   cash,
 	}
 	return db.Create(&player).Error
 }
 
+func SeedProfessions(db *gorm.DB) error {
+	file, err := os.ReadFile("data/professions.json")
+	if err != nil {
+		return err
+	}
+
+	var professions []models.Profession
+
+	err = json.Unmarshal(file, &professions)
+	if err != nil {
+		return err
+	}
+
+	for _, profession := range professions {
+		db.Where(models.Profession{Name: profession.Name}).
+			FirstOrCreate(&profession)
+	}
+
+	return nil
+}

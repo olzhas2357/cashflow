@@ -1,0 +1,22 @@
+[
+  {
+    "name": "Car Wash",
+    "title": "Car wash business acquisition",
+    "description": "Operating business with stable demand.",
+    "price": 350000,
+    "down_payment": 50000,
+    "mortgage": 300000,
+    "cashflow": 1500,
+    "roi": 36
+  },
+  {
+    "name": "Shopping Mall",
+    "title": "Shopping mall distressed sale",
+    "description": "Large deal with upside after occupancy growth.",
+    "price": 50000,
+    "down_payment": 50000,
+    "mortgage": 0,
+    "cashflow": 800,
+    "roi": 19
+  }
+]

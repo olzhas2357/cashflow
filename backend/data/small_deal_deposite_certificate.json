@@ -1,0 +1,24 @@
+[
+  {
+    "name": "Deposit Certificate",
+    "title": "CD at 5,000",
+    "symbol": "CD",
+    "description": "Bank certificate with fixed monthly cashflow.",
+    "price": 5000,
+    "down_payment": 5000,
+    "mortgage": 0,
+    "cashflow": 20,
+    "roi": 4.8
+  },
+  {
+    "name": "2Big Preferred",
+    "title": "2Big preferred stock",
+    "symbol": "2BIG",
+    "description": "Preferred stock with steady dividend.",
+    "price": 1200,
+    "down_payment": 1200,
+    "mortgage": 0,
+    "cashflow": 10,
+    "roi": 10
+  }
+]

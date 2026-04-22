@@ -1,12 +1,25 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useNavigate, useParams } from 'react-router-dom'
-import { useAuthStore } from '../../store/authStore'
-import { assignProfession, getGame, listPlayers, referenceData, type Profession } from '../../api/auditorPanel'
-import { GlassCard, GradientButton } from '../../components/ui'
-import type { UserPlayer } from '../../api/auditorPanel'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { ArrowLeft, AlertCircle } from 'lucide-react'
+import { useAuthStore } from '@/store/authStore'
+import {
+  assignProfession,
+  getGame,
+  listPlayers,
+  listProfessions,
+  professionTotalExpenses,
+  referenceData,
+  type Profession,
+  type UserPlayer,
+} from '@/api/auditorPanel'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
-export default function AuditorAssignProfessions() {
+export default function AssignProfessions() {
   const token = useAuthStore((s) => s.token)
   const { gameId } = useParams()
   const navigate = useNavigate()
@@ -24,88 +37,194 @@ export default function AuditorAssignProfessions() {
     enabled: !!token && !!gameId,
   })
 
+  const profQ = useQuery({
+    queryKey: ['auditor_professions'],
+    queryFn: () => listProfessions(token!),
+    enabled: !!token,
+  })
+
+  /** Fallback: same professions as in game reference bundle (if global list endpoint fails or is empty). */
   const refQ = useQuery({
     queryKey: ['auditor_reference', gameId],
     queryFn: () => referenceData(token!, gameId!),
     enabled: !!token && !!gameId,
   })
 
-  const professions = refQ.data?.professions ?? []
   const players = playersQ.data ?? []
+  const professions = useMemo(() => {
+    const fromList = profQ.data ?? []
+    const fromRef = refQ.data?.professions ?? []
+    if (fromList.length > 0) return fromList
+    return fromRef
+  }, [profQ.data, refQ.data?.professions])
 
-  const initial = useMemo(() => {
-    const map: Record<string, string> = {}
-    for (const p of players) map[p.id] = p.profession_id ?? ''
-    return map
-  }, [players])
-
-  const [selected, setSelected] = useState<Record<string, string>>(initial)
+  const [selection, setSelection] = useState<Record<string, string>>({})
 
   useEffect(() => {
-    // Sync once when players are loaded or when the list changes significantly.
-    const hasAny = Object.keys(selected).length > 0
-    if (!hasAny) setSelected(initial)
-  }, [initial, selected])
+    setSelection((prev) => {
+      const fromServer: Record<string, string> = {}
+      for (const p of players) {
+        if (p.profession_id) fromServer[p.id] = p.profession_id
+      }
+      return { ...prev, ...fromServer }
+    })
+  }, [players])
 
-  const mutation = useMutation({
-    mutationFn: (payload: { playerId: string; professionId: string }) =>
-      assignProfession(token!, gameId!, payload.playerId, payload.professionId),
+  const assignM = useMutation({
+    mutationFn: async ({ playerId, professionId }: { playerId: string; professionId: string }) => {
+      await assignProfession(token!, gameId!, playerId, professionId)
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['auditor_players', gameId] })
       qc.invalidateQueries({ queryKey: ['auditor_finance', gameId] })
     },
   })
 
-  const allAssigned = players.length > 0 && players.every((p: UserPlayer) => (selected[p.id] ?? '') !== '')
-  const maxPlayers = gameQ.data?.max_players ?? 6
+  const allDone = useMemo(
+    () => players.length > 0 && players.every((p) => selection[p.id]),
+    [players, selection],
+  )
+
+  const loading = profQ.isLoading || refQ.isLoading
+  const loadError = profQ.isError && refQ.isError
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">Assign Professions</h1>
-          <div className="text-sm text-slate-600">
-            {players.length}/{maxPlayers} players • choose a profession for each player
-          </div>
-        </div>
-        <GradientButton onClick={() => navigate(`/auditor/games/${gameId}`)} disabled={!allAssigned}>
-          Open Control Panel
-        </GradientButton>
+        <Button variant="ghost" size="sm" className="gap-2" asChild>
+          <Link to={`/auditor/games/${gameId}/players`}>
+            <ArrowLeft className="h-4 w-4" />
+            Players
+          </Link>
+        </Button>
+        <Button onClick={() => navigate(`/auditor/games/${gameId}`)} disabled={!allDone}>
+          Open game dashboard
+        </Button>
       </div>
 
-      <GlassCard>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {players.map((p: UserPlayer) => (
-            <div key={p.id} className="rounded-2xl border border-slate-200 p-4">
-              <div className="font-semibold">{p.name}</div>
-              <div className="mt-3">
-                <label className="block text-xs font-medium text-slate-600">Profession</label>
-                <select
-                  className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
-                  value={selected[p.id] ?? ''}
-                  onChange={(e) => {
-                    const v = e.target.value
-                    setSelected((prev) => ({ ...prev, [p.id]: v }))
-                    if (v) mutation.mutate({ playerId: p.id, professionId: v })
-                  }}
-                >
-                  <option value="">Select...</option>
-                  {professions.map((prof: Profession) => (
-                    <option key={prof.id} value={prof.id}>
-                      {prof.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="mt-3 text-sm text-slate-600">
-                {mutation.isPending ? 'Saving...' : p.profession_id ? 'Assigned' : 'Not assigned'}
-              </div>
+      <div>
+        <h1 className="text-2xl font-bold">Professions</h1>
+        <p className="text-muted-foreground">
+          Pick a profession card for each player — starting salary, expenses, and savings apply automatically.
+        </p>
+      </div>
+
+      {loadError && (
+        <Card className="border-destructive/50 bg-destructive/5">
+          <CardContent className="flex items-start gap-3 pt-6">
+            <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
+            <div>
+              <p className="font-medium text-destructive">Не удалось загрузить профессии</p>
+              <p className="text-sm text-muted-foreground">
+                Проверьте, что бэкенд запущен и вы вошли как auditor. В БД должны быть сиды профессий (
+                <code className="rounded bg-muted px-1">seeds.SeedAll</code>).
+              </p>
             </div>
-          ))}
-          {players.length === 0 ? <div className="text-slate-500">No players. Add players first.</div> : null}
-        </div>
-      </GlassCard>
+          </CardContent>
+        </Card>
+      )}
+
+      {!loading && !loadError && professions.length === 0 && (
+        <Card className="border-amber-500/30 bg-amber-500/5">
+          <CardContent className="flex items-start gap-3 pt-6">
+            <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
+            <div>
+              <p className="font-medium">Список профессий пуст</p>
+              <p className="text-sm text-muted-foreground">
+                Запустите миграции и сиды на сервере, затем перезагрузите страницу.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        {players.map((p: UserPlayer) => {
+          const selectedProf = selection[p.id] ? professions.find((x) => x.id === selection[p.id]) : undefined
+          const currentValue = selection[p.id] ?? ''
+
+          return (
+            <Card key={p.id}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">{p.name}</CardTitle>
+                <CardDescription>Choose profession</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {loading ? (
+                  <div className="h-10 animate-pulse rounded-md bg-muted" />
+                ) : (
+                  <Select
+                    value={currentValue || undefined}
+                    onValueChange={(professionId) => {
+                      setSelection((s) => ({ ...s, [p.id]: professionId }))
+                      assignM.mutate({ playerId: p.id, professionId })
+                    }}
+                    disabled={professions.length === 0 || assignM.isPending}
+                  >
+                    <SelectTrigger className="w-full" aria-label={`Profession for ${p.name}`}>
+                      <SelectValue placeholder="— Выберите профессию —" />
+                    </SelectTrigger>
+                    <SelectContent position="popper" sideOffset={4}>
+                      {professions.map((pr: Profession) => (
+                        <SelectItem key={pr.id} value={pr.id}>
+                          {pr.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {assignM.isPending && <p className="text-xs text-muted-foreground">Сохранение…</p>}
+                {selectedProf ? <ProfessionCard profession={selectedProf} /> : null}
+              </CardContent>
+            </Card>
+          )
+        })}
+      </div>
+
+      {players.length === 0 && <p className="text-muted-foreground">Add players first.</p>}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Profession library</CardTitle>
+          <CardDescription>Reference: totals from the profession card (before children).</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ScrollArea className="h-[320px] pr-4">
+            {loading ? (
+              <p className="text-sm text-muted-foreground">Loading…</p>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {professions.map((pr) => (
+                  <ProfessionCard key={pr.id} profession={pr} />
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+        </CardContent>
+      </Card>
     </div>
   )
 }
 
+function ProfessionCard({ profession: pr }: { profession: Profession }) {
+  const totalEx = professionTotalExpenses(pr)
+  return (
+    <div className="rounded-lg border border-border bg-muted/20 p-3 text-sm">
+      <div className="font-semibold">{pr.name}</div>
+      <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 font-mono text-xs text-muted-foreground">
+        <span>Salary</span>
+        <span className="text-foreground">${pr.salary.toLocaleString()}</span>
+        <span>Total expenses</span>
+        <span className="text-amber-400/90">${totalEx.toLocaleString()}</span>
+        <span>Savings</span>
+        <span className="text-emerald-400/90">${pr.savings.toLocaleString()}</span>
+        <span>Child / baby</span>
+        <span>${pr.child_expense.toLocaleString()}</span>
+      </div>
+      <Badge variant="outline" className="mt-2">
+        Net {pr.salary - totalEx >= 0 ? '+' : ''}
+        {(pr.salary - totalEx).toLocaleString()}/mo
+      </Badge>
+    </div>
+  )
+}
