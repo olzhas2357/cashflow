@@ -13,6 +13,7 @@ import PlayerDetail from '@/pages/auditor/PlayerDetail'
 import LogsPage from '@/pages/auditor/LogsPage'
 import TransactionsPage from '@/pages/auditor/TransactionsPage'
 import MarketPage from '@/pages/auditor/MarketPage'
+import SmallDealsPage from '@/pages/auditor/SmallDealsPage'
 import PlayersDirectory from '@/pages/auditor/PlayersDirectory'
 import SettingsPage from '@/pages/auditor/SettingsPage'
 
@@ -50,6 +51,8 @@ export default function App() {
           <Route path="/auditor/games/:gameId" element={<GameDashboard />} />
           <Route path="/auditor/transactions" element={<TransactionsPage />} />
           <Route path="/auditor/market" element={<MarketPage />} />
+          <Route path="/auditor/market/small-deals" element={<SmallDealsPage />} />
+          <Route path="/market/small-deals" element={<SmallDealsPage />} />
           <Route path="/auditor/logs" element={<LogsPage />} />
           <Route path="/auditor/players" element={<PlayersDirectory />} />
           <Route path="/auditor/settings" element={<SettingsPage />} />

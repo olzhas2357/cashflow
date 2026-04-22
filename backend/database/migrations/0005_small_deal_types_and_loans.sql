@@ -1,0 +1,15 @@
+-- +goose Up
+ALTER TABLE players
+  ADD COLUMN IF NOT EXISTS loan_balance bigint NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS loan_expense bigint NOT NULL DEFAULT 0;
+
+ALTER TABLE assets
+  ADD COLUMN IF NOT EXISTS symbol varchar(64) NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS shares bigint NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS unit_price bigint NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS loan_amount bigint NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS loan_expense bigint NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS turns_left integer NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS payout bigint NOT NULL DEFAULT 0;
+
+CREATE INDEX IF NOT EXISTS idx_assets_symbol ON assets(symbol);

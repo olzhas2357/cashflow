@@ -25,7 +25,6 @@ import {
   listDoodads,
   listMarketEvents,
   listPendingTransactions,
-  listProfessions,
   listSmallDeals,
   postEventBaby,
   postEventBigDeal,
@@ -115,19 +114,8 @@ export default function GameDashboard() {
     queryFn: () => listMarketEvents(token!),
     enabled: !!token,
   })
-  const profQ = useQuery({
-    queryKey: ['auditor_professions'],
-    queryFn: () => listProfessions(token!),
-    enabled: !!token,
-  })
-
   const finance = financeQ.data ?? []
   const players = finance.map((f) => f.player)
-  const profById = useMemo(() => {
-    const m = new Map<string, string>()
-    for (const p of profQ.data ?? []) m.set(p.id, p.name)
-    return m
-  }, [profQ.data])
 
   const refresh = async () => {
     await qc.invalidateQueries({ queryKey: ['auditor_finance', gameId] })
@@ -142,8 +130,9 @@ export default function GameDashboard() {
   }, [players, targetId])
 
   const [dlg, setDlg] = useState<
-    'none' | 'small' | 'big' | 'doodad' | 'payday' | 'baby' | 'charity' | 'downsized' | 'market' | 'tx'
+    'none' | 'small' | 'big' | 'doodad' | 'payday' | 'baby' | 'charity' | 'downsized' | 'market' | 'tx' | 'player_finance'
   >('none')
+  const [financePlayerId, setFinancePlayerId] = useState('')
 
   const [smallCat, setSmallCat] = useState<string>(SMALL_CATS[0].value)
   const [smallDealId, setSmallDealId] = useState('')
@@ -152,6 +141,14 @@ export default function GameDashboard() {
 
   const smallDeals = smallQ.data ?? []
   const filteredSmall = useMemo(() => smallDeals.filter((d) => d.category === smallCat), [smallDeals, smallCat])
+  useEffect(() => {
+    const active = gameQ.data?.active_small_deal
+    if (!active) return
+    if (active.category) {
+      setSmallCat(active.category)
+    }
+    setSmallDealId(active.id)
+  }, [gameQ.data?.active_small_deal?.id])
   useEffect(() => {
     if (filteredSmall[0]?.id) setSmallDealId(filteredSmall[0].id)
     else setSmallDealId('')
@@ -237,6 +234,11 @@ export default function GameDashboard() {
       ? (selectedDoodad.cost_per_child ?? 0) * (players.find((p) => p.id === targetId)?.children_count ?? 0)
       : (selectedDoodad?.cost ?? 0)
 
+  const selectedFinance = useMemo(
+    () => finance.find((f) => f.player.id === financePlayerId) ?? null,
+    [finance, financePlayerId],
+  )
+
   return (
     <div className="space-y-6 lg:grid lg:grid-cols-[1fr_340px] lg:items-start lg:gap-8">
       <div className="min-w-0 space-y-6">
@@ -244,6 +246,11 @@ export default function GameDashboard() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">{gameQ.data?.name ?? 'Game'}</h1>
             <p className="text-sm text-muted-foreground">Session control — Rat Race finances & auditor events.</p>
+            {gameQ.data?.active_small_deal ? (
+              <p className="mt-1 text-xs text-primary">
+                Active small deal: {gameQ.data.active_small_deal.title || gameQ.data.active_small_deal.name}
+              </p>
+            ) : null}
           </div>
           <Button variant="outline" size="sm" asChild>
             <Link to={`/auditor/games/${gameId}/players`}>Manage players</Link>
@@ -273,13 +280,16 @@ export default function GameDashboard() {
                   <TableRow
                     key={row.player.id}
                     className="cursor-pointer"
-                    onClick={() => navigate(`/auditor/games/${gameId}/players/${row.player.id}`)}
+                    onClick={() => {
+                      setFinancePlayerId(row.player.id)
+                      setDlg('player_finance')
+                    }}
                   >
                     <TableCell className="font-medium text-primary underline-offset-4 hover:underline">
                       {row.player.name}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {row.player.profession_id ? profById.get(row.player.profession_id) ?? '—' : '—'}
+                      {row.profession_name || '—'}
                     </TableCell>
                     <TableCell className="text-right font-mono">{money(row.player.cash)}</TableCell>
                     <TableCell className="text-right font-mono">{money(row.player.passive_income)}</TableCell>
@@ -291,6 +301,17 @@ export default function GameDashboard() {
               </TableBody>
             </Table>
             {finance.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">No players in this session.</p>}
+            {finance.length > 0 && (
+              <div className="mt-3 flex justify-end">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => navigate(`/auditor/games/${gameId}/players/${finance[0].player.id}`)}
+                >
+                  Open full player page
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -668,6 +689,45 @@ export default function GameDashboard() {
             >
               Create pending deal
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={dlg === 'player_finance'} onOpenChange={(o) => !o && setDlg('none')}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{selectedFinance?.player.name ?? 'Player'} financial breakdown</DialogTitle>
+            <DialogDescription>Cashflow 101 formula with base and child expense split.</DialogDescription>
+          </DialogHeader>
+          {selectedFinance ? (
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between"><span className="text-muted-foreground">Profession</span><span>{selectedFinance.profession_name || '—'}</span></div>
+              <div className="flex justify-between font-mono"><span className="text-muted-foreground">Salary</span><span>{money(selectedFinance.player.salary)}</span></div>
+              <div className="flex justify-between font-mono"><span className="text-muted-foreground">Passive Income</span><span>{money(selectedFinance.player.passive_income)}</span></div>
+              <div className="flex justify-between font-mono"><span className="text-muted-foreground">Base Expenses</span><span>{money(selectedFinance.base_expenses)}</span></div>
+              <div className="flex justify-between font-mono"><span className="text-muted-foreground">Child Expense Each</span><span>{money(selectedFinance.child_expense_each)}</span></div>
+              <div className="flex justify-between font-mono"><span className="text-muted-foreground">Children Total Expense</span><span>{money(selectedFinance.children_expense_total)}</span></div>
+              <div className="flex justify-between font-mono"><span className="text-muted-foreground">Total Expenses</span><span>{money(selectedFinance.total_expenses)}</span></div>
+              <div className="mt-2 flex justify-between rounded-md border border-border bg-muted/30 px-3 py-2 font-mono text-base">
+                <span>Monthly Cashflow</span>
+                <span className="text-emerald-400/90">{money(selectedFinance.monthly_cashflow ?? selectedFinance.cashflow)}</span>
+              </div>
+              {gameQ.data?.active_small_deal ? (
+                <div className="mt-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs">
+                  Active deal in session: {gameQ.data.active_small_deal.title || gameQ.data.active_small_deal.name}
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No player selected.</p>
+          )}
+          <DialogFooter>
+            {selectedFinance && (
+              <Button variant="outline" onClick={() => navigate(`/auditor/games/${gameId}/players/${selectedFinance.player.id}`)}>
+                Open full details
+              </Button>
+            )}
+            <Button onClick={() => setDlg('none')}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

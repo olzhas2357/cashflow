@@ -1,24 +1,34 @@
 [
   {
-    "name": "Deposit Certificate",
+    "id": "deposit_cd_5000",
+    "category": "deposit",
+    "type": "deposit_certificate",
     "title": "CD at 5,000",
-    "symbol": "CD",
-    "description": "Bank certificate with fixed monthly cashflow.",
+    "description": "Certificate of deposit with fixed maturity payout.",
     "price": 5000,
     "down_payment": 5000,
     "mortgage": 0,
-    "cashflow": 20,
-    "roi": 4.8
+    "cashflow": 0,
+    "roi": 4.8,
+    "extra": {
+      "turns_left": 3,
+      "payout_formula": "price + price*roi/100"
+    }
   },
   {
-    "name": "2Big Preferred",
-    "title": "2Big preferred stock",
-    "symbol": "2BIG",
-    "description": "Preferred stock with steady dividend.",
+    "id": "deposit_pref_2big",
+    "category": "deposit",
+    "type": "deposit_certificate",
+    "title": "2Big Preferred",
+    "description": "Preferred instrument with maturity payout.",
     "price": 1200,
     "down_payment": 1200,
     "mortgage": 0,
-    "cashflow": 10,
-    "roi": 10
+    "cashflow": 0,
+    "roi": 10,
+    "extra": {
+      "turns_left": 3,
+      "symbol": "2BIG"
+    }
   }
 ]

@@ -37,6 +37,12 @@ export default function MarketPage() {
           <CardDescription>Jump into a session to record sales or use the transaction queue.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
+          <Link
+            to="/market/small-deals"
+            className="rounded-lg border border-primary/40 bg-primary/10 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/20"
+          >
+            Manage small deals
+          </Link>
           {games.map((g) => (
             <Link
               key={g.id}

@@ -1,13 +1,16 @@
 package seeds
 
 import (
-	"cashflow/models"
 	"fmt"
+	"path/filepath"
+
+	"cashflow/internal/utils"
+	"cashflow/models"
 
 	"gorm.io/gorm"
 )
 
-type bigDealRow struct {
+type bigDealSeedRow struct {
 	Name        string  `json:"name"`
 	Title       string  `json:"title"`
 	Description string  `json:"description"`
@@ -18,10 +21,22 @@ type bigDealRow struct {
 	ROI         float64 `json:"roi"`
 }
 
+func SeedBigDealBusiness(db *gorm.DB) error {
+	return seedBigDeals(db, "big_deal_business.json", "big_deal_business", "big deal business")
+}
+
+func SeedBigDealRealEstate(db *gorm.DB) error {
+	return seedBigDeals(db, "big_deal_real_estate.json", "big_deal_real_estate", "big deal real estate")
+}
+
+func SeedBigDealLand(db *gorm.DB) error {
+	return seedBigDeals(db, "big_deal_land.json", "big_deal_land", "big deal land")
+}
+
 func seedBigDeals(db *gorm.DB, fileName, dealType, logLabel string) error {
 	fmt.Printf("Loading %s...\n", logLabel)
-	var rows []bigDealRow
-	if err := readJSONFile(fileName, &rows); err != nil {
+	rows, err := utils.LoadJSON[bigDealSeedRow](filepath.Join("data", fileName))
+	if err != nil {
 		return err
 	}
 
@@ -34,8 +49,9 @@ func seedBigDeals(db *gorm.DB, fileName, dealType, logLabel string) error {
 		if unique == "" {
 			continue
 		}
+
 		var exists int64
-		if err := db.Model(&models.BigDeal{}).Where("name = ? OR title = ?", unique, unique).Count(&exists).Error; err != nil {
+		if err := db.Model(&models.BigDeal{}).Where("title = ? OR name = ?", unique, unique).Count(&exists).Error; err != nil {
 			return err
 		}
 		if exists > 0 {
@@ -58,6 +74,7 @@ func seedBigDeals(db *gorm.DB, fileName, dealType, logLabel string) error {
 		}
 		loaded++
 	}
+
 	fmt.Printf("Loaded %d %s\n", loaded, logLabel)
 	return nil
 }

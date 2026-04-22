@@ -1,24 +1,34 @@
 [
   {
-    "name": "GRO4US",
-    "title": "GRO4US stock @ $10",
-    "symbol": "GRO4US",
-    "description": "Growth stock near lower range.",
-    "price": 1000,
-    "down_payment": 1000,
+    "id": "stock_gro4us_10",
+    "category": "stock",
+    "type": "stock",
+    "title": "GRO4US at 10",
+    "description": "Growth stock near support level.",
+    "price": 10,
+    "down_payment": 10,
     "mortgage": 0,
     "cashflow": 0,
-    "roi": 0
+    "roi": 0,
+    "extra": {
+      "symbol": "GRO4US",
+      "price_range": { "min": 10, "max": 30 }
+    }
   },
   {
-    "name": "OK4U",
-    "title": "OK4U stock @ $5",
-    "symbol": "OK4U",
-    "description": "Undervalued stock card.",
-    "price": 500,
-    "down_payment": 500,
+    "id": "stock_ok4u_20",
+    "category": "stock",
+    "type": "stock",
+    "title": "OK4U at 20",
+    "description": "Stable entry price for OK4U.",
+    "price": 20,
+    "down_payment": 20,
     "mortgage": 0,
     "cashflow": 0,
-    "roi": 0
+    "roi": 0,
+    "extra": {
+      "symbol": "OK4U",
+      "price_range": { "min": 5, "max": 40 }
+    }
   }
 ]

@@ -2,9 +2,7 @@ package database
 
 import (
 	"cashflow/models"
-	"encoding/json"
 	"errors"
-	"os"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -86,25 +84,4 @@ func ensureCreateUserAndPlayer(db *gorm.DB, user models.User, cash int64) error 
 		Cash:   cash,
 	}
 	return db.Create(&player).Error
-}
-
-func SeedProfessions(db *gorm.DB) error {
-	file, err := os.ReadFile("data/professions.json")
-	if err != nil {
-		return err
-	}
-
-	var professions []models.Profession
-
-	err = json.Unmarshal(file, &professions)
-	if err != nil {
-		return err
-	}
-
-	for _, profession := range professions {
-		db.Where(models.Profession{Name: profession.Name}).
-			FirstOrCreate(&profession)
-	}
-
-	return nil
 }

@@ -1,13 +1,16 @@
 package seeds
 
 import (
-	"cashflow/models"
 	"fmt"
+	"path/filepath"
+
+	"cashflow/internal/utils"
+	"cashflow/models"
 
 	"gorm.io/gorm"
 )
 
-type marketEventRow struct {
+type marketSeedRow struct {
 	Name        string `json:"name"`
 	Title       string `json:"title"`
 	Type        string `json:"type"`
@@ -19,8 +22,8 @@ type marketEventRow struct {
 
 func SeedMarketEvents(db *gorm.DB) error {
 	fmt.Println("Loading market events...")
-	var rows []marketEventRow
-	if err := readJSONFile("market_events.json", &rows); err != nil {
+	rows, err := utils.LoadJSON[marketSeedRow](filepath.Join("data", "market_events.json"))
+	if err != nil {
 		return err
 	}
 
@@ -35,7 +38,7 @@ func SeedMarketEvents(db *gorm.DB) error {
 		}
 
 		var exists int64
-		if err := db.Model(&models.MarketEvent{}).Where("name = ?", name).Count(&exists).Error; err != nil {
+		if err := db.Model(&models.MarketEvent{}).Where("name = ? AND event_type = ? AND sub_type = ?", name, row.Type, row.SubType).Count(&exists).Error; err != nil {
 			return err
 		}
 		if exists > 0 {
@@ -55,6 +58,7 @@ func SeedMarketEvents(db *gorm.DB) error {
 		}
 		loaded++
 	}
+
 	fmt.Printf("Loaded %d market events\n", loaded)
 	return nil
 }

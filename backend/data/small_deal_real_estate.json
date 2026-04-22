@@ -1,24 +1,36 @@
 [
   {
-    "name": "Condo 2/1",
-    "title": "Condo 2/1 cashflow deal",
-    "symbol": "CONDO_2_1",
-    "description": "Small real-estate deal.",
+    "id": "re_3_2_65000",
+    "category": "real_estate",
+    "type": "real_estate",
+    "title": "House 3/2",
+    "description": "Classic rental property with stable demand.",
+    "price": 65000,
+    "down_payment": 5000,
+    "mortgage": 60000,
+    "cashflow": 160,
+    "roi": 38,
+    "extra": {
+      "resale_range": "65000-135000",
+      "beds": 3,
+      "baths": 2
+    }
+  },
+  {
+    "id": "re_condo_2_1_50000",
+    "category": "real_estate",
+    "type": "real_estate",
+    "title": "Condo 2/1",
+    "description": "Small apartment with good rent demand.",
     "price": 50000,
     "down_payment": 5000,
     "mortgage": 45000,
     "cashflow": 100,
-    "roi": 24
-  },
-  {
-    "name": "House 3/2",
-    "title": "House 3/2 value deal",
-    "symbol": "HOUSE_3_2",
-    "description": "Small house with stable rent.",
-    "price": 65000,
-    "down_payment": 7000,
-    "mortgage": 58000,
-    "cashflow": 150,
-    "roi": 26
+    "roi": 24,
+    "extra": {
+      "resale_range": "45000-65000",
+      "beds": 2,
+      "baths": 1
+    }
   }
 ]

@@ -1,8 +1,14 @@
 package seeds
 
-import "gorm.io/gorm"
+import (
+	"fmt"
+
+	"gorm.io/gorm"
+)
 
 func SeedAll(db *gorm.DB) error {
+	fmt.Println("Starting reference data seed...")
+
 	if err := SeedProfessions(db); err != nil {
 		return err
 	}
@@ -39,5 +45,7 @@ func SeedAll(db *gorm.DB) error {
 	if err := SeedDoodads(db); err != nil {
 		return err
 	}
+
+	fmt.Println("Reference data seed completed")
 	return nil
 }

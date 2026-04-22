@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/datatypes"
 )
 
 const (
@@ -29,7 +30,7 @@ type Player struct {
 	GameID *uuid.UUID `gorm:"type:uuid;index" json:"game_id,omitempty"`
 	Name   string     `gorm:"type:varchar(255);not null;default:''" json:"name"`
 
-	ProfessionID *uuid.UUID `gorm:"type:uuid;index" json:"profession_id,omitempty"`
+	ProfessionID *uuid.UUID  `gorm:"type:uuid;index" json:"profession_id,omitempty"`
 	Profession   *Profession `gorm:"foreignKey:ProfessionID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL" json:"profession,omitempty"`
 
 	Cash             int64 `gorm:"not null;default:0" json:"cash"`
@@ -38,6 +39,8 @@ type Player struct {
 	Expenses         int64 `gorm:"not null;default:0" json:"expenses"`
 	AssetsTotal      int64 `gorm:"not null;default:0" json:"assets_total"`
 	LiabilitiesTotal int64 `gorm:"not null;default:0" json:"liabilities_total"`
+	LoanBalance      int64 `gorm:"not null;default:0" json:"loan_balance"`
+	LoanExpense      int64 `gorm:"not null;default:0" json:"loan_expense"`
 
 	ChildrenCount int `gorm:"not null;default:0" json:"children_count"`
 	CharityTurns  int `gorm:"not null;default:0" json:"charity_turns"`
@@ -59,6 +62,13 @@ type Asset struct {
 	GameID      *uuid.UUID `gorm:"type:uuid;index" json:"game_id,omitempty"`
 	DownPayment int64      `gorm:"not null;default:0" json:"down_payment"`
 	Mortgage    int64      `gorm:"not null;default:0" json:"mortgage"`
+	Symbol      string     `gorm:"type:varchar(64);not null;default:'';index" json:"symbol"`
+	Shares      int64      `gorm:"not null;default:0" json:"shares"`
+	UnitPrice   int64      `gorm:"not null;default:0" json:"unit_price"`
+	LoanAmount  int64      `gorm:"not null;default:0" json:"loan_amount"`
+	LoanExpense int64      `gorm:"not null;default:0" json:"loan_expense"`
+	TurnsLeft   int        `gorm:"not null;default:0" json:"turns_left"`
+	Payout      int64      `gorm:"not null;default:0" json:"payout"`
 
 	OwnerID *uuid.UUID `gorm:"type:uuid;index" json:"owner_id"`
 	Owner   *Player    `gorm:"foreignKey:OwnerID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL" json:"owner,omitempty"`
@@ -121,9 +131,11 @@ type AuditLog struct {
 type GameSession struct {
 	ID uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
 	// In cashflow terms, the board session for up to 6 players.
-	Name       string    `gorm:"type:varchar(255);not null" json:"name"`
-	MaxPlayers int       `gorm:"not null" json:"max_players"`
-	CreatedBy  uuid.UUID `gorm:"type:uuid;not null;index" json:"created_by"`
+	Name              string     `gorm:"type:varchar(255);not null" json:"name"`
+	MaxPlayers        int        `gorm:"not null" json:"max_players"`
+	CreatedBy         uuid.UUID  `gorm:"type:uuid;not null;index" json:"created_by"`
+	ActiveSmallDealID *uuid.UUID `gorm:"type:uuid;index" json:"active_small_deal_id,omitempty"`
+	ActiveSmallDeal   *SmallDeal `gorm:"foreignKey:ActiveSmallDealID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL" json:"active_small_deal,omitempty"`
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -152,17 +164,19 @@ type Profession struct {
 type SmallDeal struct {
 	ID uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
 
-	DealType    string  `gorm:"type:varchar(30);not null;index" json:"deal_type"`
-	Category    string  `gorm:"type:varchar(60);not null;default:'';index" json:"category"`
-	Name        string  `gorm:"type:varchar(255);not null;index" json:"name"`
-	Title       string  `gorm:"type:varchar(255);not null;default:''" json:"title"`
-	Symbol      string  `gorm:"type:varchar(64);not null;default:'';index" json:"symbol"`
-	Description string  `gorm:"type:text;not null;default:''" json:"description"`
-	Price       int64   `gorm:"not null" json:"price"`
-	DownPayment int64   `gorm:"not null;default:0" json:"down_payment"`
-	Mortgage    int64   `gorm:"not null;default:0" json:"mortgage"`
-	Cashflow    int64   `gorm:"not null;default:0" json:"cashflow"`
-	ROI         float64 `gorm:"type:numeric(10,2);not null;default:0" json:"roi"`
+	ExternalID  string         `gorm:"type:varchar(128);not null;uniqueIndex" json:"external_id"`
+	DealType    string         `gorm:"type:varchar(30);not null;index" json:"type"`
+	Category    string         `gorm:"type:varchar(60);not null;default:'';index" json:"category"`
+	Name        string         `gorm:"type:varchar(255);not null;index" json:"name"`
+	Title       string         `gorm:"type:varchar(255);not null;default:''" json:"title"`
+	Symbol      string         `gorm:"type:varchar(64);not null;default:'';index" json:"symbol"`
+	Description string         `gorm:"type:text;not null;default:''" json:"description"`
+	Price       int64          `gorm:"not null" json:"price"`
+	DownPayment int64          `gorm:"not null;default:0" json:"down_payment"`
+	Mortgage    int64          `gorm:"not null;default:0" json:"mortgage"`
+	Cashflow    int64          `gorm:"not null;default:0" json:"cashflow"`
+	ROI         float64        `gorm:"type:numeric(10,2);not null;default:0" json:"roi"`
+	Extra       datatypes.JSON `gorm:"type:jsonb;not null;default:'{}'" json:"extra"`
 }
 
 type BigDeal struct {

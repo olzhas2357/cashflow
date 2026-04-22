@@ -70,6 +70,10 @@ func NewServer(cfg ServerConfig) *gin.Engine {
 	auditor.Use(middleware.RoleRequired(models.RoleAuditor, models.RoleAdmin))
 	auditor.GET("/professions", h.Auditor.ListProfessions)
 	auditor.GET("/small-deals", h.Auditor.ListSmallDeals)
+	auditor.POST("/small-deals", h.Auditor.CreateSmallDeal)
+	auditor.PUT("/small-deals/:dealId", h.Auditor.UpdateSmallDeal)
+	auditor.DELETE("/small-deals/:dealId", h.Auditor.DeleteSmallDeal)
+	auditor.POST("/game/open-small-deal", h.Auditor.OpenSmallDeal)
 	auditor.GET("/big-deals", h.Auditor.ListBigDeals)
 	auditor.GET("/doodads", h.Auditor.ListDoodads)
 	auditor.GET("/market-events", h.Auditor.ListMarketEvents)
@@ -104,9 +108,14 @@ func NewServer(cfg ServerConfig) *gin.Engine {
 	auth.GET("/assets", h.Assets.ListAssets)
 	auth.POST("/assets", h.Assets.CreateAsset)
 	auth.POST("/assets/:id/sell", h.Assets.SellAsset)
+	auth.GET("/small-deals", h.Auditor.ListSmallDeals)
 
 	auth.GET("/market", h.Market.ListMarket)
 	auth.POST("/market", h.Market.CreateMarketOrProposal)
+
+	game := auth.Group("/game")
+	game.Use(middleware.RoleRequired(models.RoleAuditor, models.RoleAdmin))
+	game.POST("/open-small-deal", h.Auditor.OpenSmallDeal)
 
 	auth.GET("/transactions/pending", h.Transactions.ListPendingTransactions)
 	auth.POST("/transactions/:id/approve", h.Transactions.ApproveTransaction)

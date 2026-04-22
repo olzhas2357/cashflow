@@ -4,6 +4,8 @@ export type GameSession = {
   id: string
   name: string
   max_players: number
+  active_small_deal_id?: string | null
+  active_small_deal?: SmallDeal | null
   created_at?: string
   updated_at?: string
   created_by?: string
@@ -57,7 +59,8 @@ export function professionTotalExpenses(p: Profession): number {
 
 export type SmallDeal = {
   id: string
-  deal_type: string
+  external_id?: string
+  type: string
   category: string
   name: string
   title: string
@@ -68,6 +71,7 @@ export type SmallDeal = {
   mortgage: number
   cashflow: number
   roi: number
+  extra?: Record<string, unknown>
 }
 
 export type BigDeal = {
@@ -107,8 +111,10 @@ export type MarketEvent = {
 
 export type PlayerFinanceDTO = {
   player: UserPlayer
+  profession_name: string
   total_income: number
   total_expenses: number
+  monthly_cashflow: number
   cashflow: number
   base_expenses: number
   child_expense_each: number
@@ -210,6 +216,66 @@ export async function listSmallDeals(token: string) {
   return apiFetch<SmallDeal[]>(`${A}/small-deals`, { token })
 }
 
+export async function createSmallDeal(
+  token: string,
+  payload: {
+    category: string
+    title: string
+    name?: string
+    symbol?: string
+    description?: string
+    price: number
+    down_payment: number
+    cashflow: number
+    mortgage: number
+    roi: number
+  },
+) {
+  return apiFetch<SmallDeal>(`${A}/small-deals`, {
+    token,
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function updateSmallDeal(
+  token: string,
+  dealId: string,
+  payload: {
+    category: string
+    title: string
+    name?: string
+    symbol?: string
+    description?: string
+    price: number
+    down_payment: number
+    cashflow: number
+    mortgage: number
+    roi: number
+  },
+) {
+  return apiFetch<SmallDeal>(`${A}/small-deals/${dealId}`, {
+    token,
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function deleteSmallDeal(token: string, dealId: string) {
+  return apiFetch<{ ok: boolean }>(`${A}/small-deals/${dealId}`, {
+    token,
+    method: 'DELETE',
+  })
+}
+
+export async function openSmallDeal(token: string, gameId: string, dealId: string) {
+  return apiFetch<GameSession>(`/api/game/open-small-deal`, {
+    token,
+    method: 'POST',
+    body: JSON.stringify({ game_id: gameId, deal_id: dealId }),
+  })
+}
+
 export async function listBigDeals(token: string) {
   return apiFetch<BigDeal[]>(`${A}/big-deals`, { token })
 }
@@ -291,11 +357,22 @@ export async function postEventDoodad(token: string, gameId: string, playerId: s
   })
 }
 
-export async function postEventSmallDeal(token: string, gameId: string, playerId: string, dealId: string) {
+export async function postEventSmallDeal(
+  token: string,
+  gameId: string,
+  playerId: string,
+  dealId: string,
+  options?: { shares?: number; allow_loan?: boolean },
+) {
   return apiFetch<{ ok: boolean }>(`${A}/games/${gameId}/events/small-deal`, {
     token,
     method: 'POST',
-    body: JSON.stringify({ player_id: playerId, deal_id: dealId }),
+    body: JSON.stringify({
+      player_id: playerId,
+      deal_id: dealId,
+      shares: options?.shares,
+      allow_loan: options?.allow_loan,
+    }),
   })
 }
 

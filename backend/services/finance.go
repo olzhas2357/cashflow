@@ -30,6 +30,46 @@ type Cashflow struct {
 	NetCashChange int64 `json:"net_cash_change"`
 }
 
+type MonthlyFinanceFields struct {
+	BaseExpenses         int64 `json:"base_expenses"`
+	ChildExpenseEach     int64 `json:"child_expense_each"`
+	ChildrenExpenseTotal int64 `json:"children_expense_total"`
+	TotalExpenses        int64 `json:"total_expenses"`
+	MonthlyCashflow      int64 `json:"monthly_cashflow"`
+	TotalIncome          int64 `json:"total_income"`
+}
+
+func ComputeMonthlyFinanceFields(player models.Player, profession *models.Profession) MonthlyFinanceFields {
+	baseExpenses := player.Expenses
+	childExpenseEach := int64(0)
+
+	if profession != nil {
+		baseExpenses = profession.Tax +
+			profession.MortgagePayment +
+			profession.SchoolLoanPayment +
+			profession.CarLoanPayment +
+			profession.CreditCardPayment +
+			profession.RetailPayment +
+			profession.OtherExpenses
+		childExpenseEach = profession.ChildExpense
+	}
+
+	childrenExpenseTotal := int64(player.ChildrenCount) * childExpenseEach
+
+	totalExpenses := baseExpenses + childrenExpenseTotal + player.LoanExpense
+	totalIncome := player.Salary + player.PassiveIncome
+	monthlyCashflow := totalIncome - totalExpenses
+
+	return MonthlyFinanceFields{
+		BaseExpenses:         baseExpenses,
+		ChildExpenseEach:     childExpenseEach,
+		ChildrenExpenseTotal: childrenExpenseTotal,
+		TotalExpenses:        totalExpenses,
+		MonthlyCashflow:      monthlyCashflow,
+		TotalIncome:          totalIncome,
+	}
+}
+
 func BuildFinanceReport(db *gorm.DB, playerID string) (FinanceReport, error) {
 	var player models.Player
 	if err := db.Preload("Profession").First(&player, "id = ?", playerID).Error; err != nil {
@@ -49,20 +89,10 @@ func BuildFinanceReport(db *gorm.DB, playerID string) (FinanceReport, error) {
 		assetIncome += a.Income
 	}
 
-	totalIncome := player.Salary + player.PassiveIncome + assetIncome
-	totalExpenses := player.Expenses
+	fields := ComputeMonthlyFinanceFields(player, player.Profession)
+	totalIncome := fields.TotalIncome + assetIncome
+	totalExpenses := fields.TotalExpenses
 	netIncome := totalIncome - totalExpenses
-
-	var baseExpenses, childExpenseEach, childrenExpenseTotal int64
-	if player.ProfessionID != nil && player.Profession != nil {
-		childExpenseEach = player.Profession.ChildExpense
-		childrenExpenseTotal = int64(player.ChildrenCount) * childExpenseEach
-		baseExpenses = player.Expenses - childrenExpenseTotal
-	} else {
-		baseExpenses = player.Expenses
-		childExpenseEach = 0
-		childrenExpenseTotal = 0
-	}
 
 	liabilities := player.LiabilitiesTotal
 	equity := assetsValue - liabilities
@@ -77,9 +107,9 @@ func BuildFinanceReport(db *gorm.DB, playerID string) (FinanceReport, error) {
 			TotalIncome:          totalIncome,
 			TotalExpenses:        totalExpenses,
 			NetIncome:            netIncome,
-			BaseExpenses:         baseExpenses,
-			ChildExpenseEach:     childExpenseEach,
-			ChildrenExpenseTotal: childrenExpenseTotal,
+			BaseExpenses:         fields.BaseExpenses,
+			ChildExpenseEach:     fields.ChildExpenseEach,
+			ChildrenExpenseTotal: fields.ChildrenExpenseTotal,
 		},
 		Cashflow: Cashflow{
 			NetCashChange: netIncome, // simplified starter calc

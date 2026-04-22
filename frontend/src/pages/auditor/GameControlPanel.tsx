@@ -542,7 +542,7 @@ export default function AuditorGameControlPanel() {
                       </GlassCard>
                       <GlassCard>
                         <div className="text-sm text-slate-500">Expenses</div>
-                        <div className="text-xl font-semibold">${f.player.expenses.toLocaleString()}</div>
+                        <div className="text-xl font-semibold">${f.total_expenses.toLocaleString()}</div>
                       </GlassCard>
                       <GlassCard className="sm:col-span-2">
                         <div className="text-sm text-slate-500">Cashflow formula</div>
@@ -568,7 +568,7 @@ export default function AuditorGameControlPanel() {
                           total expenses: ${f.total_expenses.toLocaleString()}
                         </div>
                         <div className="mt-2 text-lg font-semibold">
-                          Monthly cashflow: ${f.cashflow.toLocaleString()}
+                          Monthly cashflow: ${(f.monthly_cashflow ?? f.cashflow).toLocaleString()}
                         </div>
                       </GlassCard>
                     </div>
