@@ -442,10 +442,13 @@ func (h *AuditorPanelHandler) ReferenceData(c *gin.Context) {
 }
 
 type PlayerFinanceDTO struct {
-	Player        models.Player `json:"player"`
-	TotalIncome   int64         `json:"total_income"`
-	TotalExpenses int64         `json:"total_expenses"`
-	Cashflow      int64         `json:"cashflow"`
+	Player                models.Player `json:"player"`
+	TotalIncome           int64         `json:"total_income"`
+	TotalExpenses         int64         `json:"total_expenses"`
+	Cashflow              int64         `json:"cashflow"`
+	BaseExpenses          int64         `json:"base_expenses"`
+	ChildExpenseEach      int64         `json:"child_expense_each"`
+	ChildrenExpenseTotal  int64         `json:"children_expense_total"`
 }
 
 func (h *AuditorPanelHandler) FinanceOverview(c *gin.Context) {
@@ -456,7 +459,7 @@ func (h *AuditorPanelHandler) FinanceOverview(c *gin.Context) {
 	}
 
 	var players []models.Player
-	if err := h.db.Where("game_id = ?", gameID).Find(&players).Error; err != nil {
+	if err := h.db.Where("game_id = ?", gameID).Preload("Profession").Find(&players).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "finance_players_failed"})
 		return
 	}
@@ -466,11 +469,26 @@ func (h *AuditorPanelHandler) FinanceOverview(c *gin.Context) {
 		totalIncome := p.Salary + p.PassiveIncome
 		totalExpenses := p.Expenses
 		cashflow := totalIncome - totalExpenses
+
+		var baseExpenses, childExpenseEach, childrenExpenseTotal int64
+		if p.ProfessionID != nil && p.Profession.ID != uuid.Nil {
+			childExpenseEach = p.Profession.ChildExpense
+			childrenExpenseTotal = int64(p.ChildrenCount) * childExpenseEach
+			baseExpenses = p.Expenses - childrenExpenseTotal
+		} else {
+			baseExpenses = p.Expenses
+			childExpenseEach = 0
+			childrenExpenseTotal = 0
+		}
+
 		out = append(out, PlayerFinanceDTO{
-			Player:        p,
-			TotalIncome:   totalIncome,
-			TotalExpenses: totalExpenses,
-			Cashflow:      cashflow,
+			Player:               p,
+			TotalIncome:          totalIncome,
+			TotalExpenses:        totalExpenses,
+			Cashflow:             cashflow,
+			BaseExpenses:         baseExpenses,
+			ChildExpenseEach:     childExpenseEach,
+			ChildrenExpenseTotal: childrenExpenseTotal,
 		})
 	}
 

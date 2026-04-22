@@ -110,6 +110,9 @@ export type PlayerFinanceDTO = {
   total_income: number
   total_expenses: number
   cashflow: number
+  base_expenses: number
+  child_expense_each: number
+  children_expense_total: number
 }
 
 export type LogDTO = {
@@ -124,7 +127,7 @@ export type LogDTO = {
 
 export type FinanceReport = {
   balance_sheet: { assets: number; liabilities: number; equity: number }
-  income_statement: { total_income: number; total_expenses: number; net_income: number }
+  income_statement: { total_income: number; total_expenses: number; net_income: number; base_expenses: number; child_expense_each: number; children_expense_total: number }
   cashflow: { net_cash_change: number }
 }
 

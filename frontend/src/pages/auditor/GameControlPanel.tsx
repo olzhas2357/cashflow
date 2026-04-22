@@ -303,12 +303,13 @@ export default function AuditorGameControlPanel() {
                   <th className="p-2 text-left font-semibold">Expenses</th>
                   <th className="p-2 text-left font-semibold">Passive Income</th>
                   <th className="p-2 text-left font-semibold">Children</th>
+                  <th className="p-2 text-left font-semibold">Cashflow</th>
                 </tr>
               </thead>
               <tbody>
                 {finance.length === 0 ? (
                   <tr>
-                    <td className="p-2 text-slate-500" colSpan={6}>
+                    <td className="p-2 text-slate-500" colSpan={7}>
                       No players in this game yet.
                     </td>
                   </tr>
@@ -322,9 +323,12 @@ export default function AuditorGameControlPanel() {
                       <td className="p-2 font-medium">{f.player.name}</td>
                       <td className="p-2">${f.player.cash.toLocaleString()}</td>
                       <td className="p-2">${f.player.salary.toLocaleString()}</td>
-                      <td className="p-2">${f.player.expenses.toLocaleString()}</td>
+                      <td className="p-2">${f.total_expenses.toLocaleString()}</td>
                       <td className="p-2">${f.player.passive_income.toLocaleString()}</td>
                       <td className="p-2">{f.player.children_count}</td>
+                      <td className={`p-2 font-semibold ${f.cashflow >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                        ${f.cashflow.toLocaleString()}
+                      </td>
                     </tr>
                   ))
                 )}
@@ -513,7 +517,10 @@ export default function AuditorGameControlPanel() {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="text-lg font-semibold">{f.player.name}</div>
-                        <div className="text-sm text-slate-600">Profession: {f.player.profession_id ?? '—'}</div>
+                        <div className="text-sm text-slate-600">Profession: {(() => {
+                          const prof = professions.find(p => p.id === f.player.profession_id)
+                          return prof?.name ?? '—'
+                        })()}</div>
                       </div>
                       <button className="rounded-xl border px-3 py-1 text-sm" onClick={() => setPlayerModalId(null)}>
                         Close
@@ -540,16 +547,28 @@ export default function AuditorGameControlPanel() {
                       <GlassCard className="sm:col-span-2">
                         <div className="text-sm text-slate-500">Cashflow formula</div>
                         <div className="mt-1 text-sm text-slate-700">
-                          cashflow = total_income − total_expenses
+                          monthly cashflow = salary + passive income - total expenses
                         </div>
                         <div className="mt-2 text-sm">
-                          total_income = salary ({f.player.salary}) + passive_income ({f.player.passive_income})
+                          salary: ${f.player.salary.toLocaleString()}
                         </div>
                         <div className="mt-1 text-sm">
-                          total_expenses = {f.player.expenses}
+                          passive income: ${f.player.passive_income.toLocaleString()}
+                        </div>
+                        <div className="mt-1 text-sm">
+                          base expenses: ${f.base_expenses.toLocaleString()}
+                        </div>
+                        <div className="mt-1 text-sm">
+                          child expense each: ${f.child_expense_each.toLocaleString()}
+                        </div>
+                        <div className="mt-1 text-sm">
+                          children total expense: ${f.children_expense_total.toLocaleString()} ({f.player.children_count} children)
+                        </div>
+                        <div className="mt-1 text-sm">
+                          total expenses: ${f.total_expenses.toLocaleString()}
                         </div>
                         <div className="mt-2 text-lg font-semibold">
-                          Cashflow: ${f.cashflow.toLocaleString()}
+                          Monthly cashflow: ${f.cashflow.toLocaleString()}
                         </div>
                       </GlassCard>
                     </div>

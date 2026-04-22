@@ -30,6 +30,7 @@ type Player struct {
 	Name   string     `gorm:"type:varchar(255);not null;default:''" json:"name"`
 
 	ProfessionID *uuid.UUID `gorm:"type:uuid;index" json:"profession_id,omitempty"`
+	Profession   *Profession `gorm:"foreignKey:ProfessionID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL" json:"profession,omitempty"`
 
 	Cash             int64 `gorm:"not null;default:0" json:"cash"`
 	Salary           int64 `gorm:"not null;default:0" json:"salary"`

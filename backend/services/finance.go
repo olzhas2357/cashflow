@@ -18,9 +18,12 @@ type BalanceSheet struct {
 }
 
 type IncomeStatement struct {
-	TotalIncome   int64 `json:"total_income"`
-	TotalExpenses int64 `json:"total_expenses"`
-	NetIncome     int64 `json:"net_income"`
+	TotalIncome          int64 `json:"total_income"`
+	TotalExpenses        int64 `json:"total_expenses"`
+	NetIncome            int64 `json:"net_income"`
+	BaseExpenses         int64 `json:"base_expenses"`
+	ChildExpenseEach     int64 `json:"child_expense_each"`
+	ChildrenExpenseTotal int64 `json:"children_expense_total"`
 }
 
 type Cashflow struct {
@@ -29,7 +32,7 @@ type Cashflow struct {
 
 func BuildFinanceReport(db *gorm.DB, playerID string) (FinanceReport, error) {
 	var player models.Player
-	if err := db.First(&player, "id = ?", playerID).Error; err != nil {
+	if err := db.Preload("Profession").First(&player, "id = ?", playerID).Error; err != nil {
 		return FinanceReport{}, err
 	}
 
@@ -50,6 +53,17 @@ func BuildFinanceReport(db *gorm.DB, playerID string) (FinanceReport, error) {
 	totalExpenses := player.Expenses
 	netIncome := totalIncome - totalExpenses
 
+	var baseExpenses, childExpenseEach, childrenExpenseTotal int64
+	if player.ProfessionID != nil && player.Profession != nil {
+		childExpenseEach = player.Profession.ChildExpense
+		childrenExpenseTotal = int64(player.ChildrenCount) * childExpenseEach
+		baseExpenses = player.Expenses - childrenExpenseTotal
+	} else {
+		baseExpenses = player.Expenses
+		childExpenseEach = 0
+		childrenExpenseTotal = 0
+	}
+
 	liabilities := player.LiabilitiesTotal
 	equity := assetsValue - liabilities
 
@@ -60,9 +74,12 @@ func BuildFinanceReport(db *gorm.DB, playerID string) (FinanceReport, error) {
 			Equity:      equity,
 		},
 		IncomeStatement: IncomeStatement{
-			TotalIncome:   totalIncome,
-			TotalExpenses: totalExpenses,
-			NetIncome:     netIncome,
+			TotalIncome:          totalIncome,
+			TotalExpenses:        totalExpenses,
+			NetIncome:            netIncome,
+			BaseExpenses:         baseExpenses,
+			ChildExpenseEach:     childExpenseEach,
+			ChildrenExpenseTotal: childrenExpenseTotal,
 		},
 		Cashflow: Cashflow{
 			NetCashChange: netIncome, // simplified starter calc

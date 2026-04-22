@@ -88,7 +88,7 @@ export default function PlayerDetail() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Monthly cashflow</CardTitle>
           </CardHeader>
           <CardContent className="font-mono text-3xl font-semibold text-emerald-400/90">
-            {money((p?.salary ?? 0) + (p?.passive_income ?? 0) - (p?.expenses ?? 0))}
+            {money(report?.income_statement.net_income ?? 0)}
           </CardContent>
         </Card>
         <Card>
@@ -131,7 +131,12 @@ export default function PlayerDetail() {
             <Row label="Assets (book)" value={money(report.balance_sheet.assets)} />
             <Row label="Liabilities" value={money(report.balance_sheet.liabilities)} />
             <Row label="Equity" value={money(report.balance_sheet.equity)} />
-            <Row label="Net income (simplified)" value={money(report.income_statement.net_income)} />
+            <Row label="Total income" value={money(report.income_statement.total_income)} />
+            <Row label="Base expenses" value={money(report.income_statement.base_expenses)} />
+            <Row label="Child expense each" value={money(report.income_statement.child_expense_each)} />
+            <Row label="Children expense total" value={money(report.income_statement.children_expense_total)} />
+            <Row label="Total expenses" value={money(report.income_statement.total_expenses)} />
+            <Row label="Net income (monthly cashflow)" value={money(report.income_statement.net_income)} highlight />
           </CardContent>
         </Card>
       )}
