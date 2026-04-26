@@ -1,0 +1,31 @@
+[
+    {
+      "id": "event_bad_tenant_damage",
+      "category": "expense",
+      "type": "property_damage",
+      "title": "Ущерб от жильца",
+      "description": "Жилец нанес ущерб вашей собственности. Страховка покрывает не все расходы.",
+      "cost": 1000,
+      "target_property_type": "any_rental",
+      "target_description": "Любая арендная недвижимость (Apartments, Houses, Plexes)",
+      "payment_rule": "Pay out of pocket or take a loan",
+      "extra": {
+        "trigger": "ownership_check"
+      }
+    },
+    {
+      "id": "event_sewer_break",
+      "category": "expense",
+      "type": "maintenance",
+      "title": "Прорыв канализации",
+      "description": "Срочный ремонт трубы в вашем 8-плексе.",
+      "cost": 2000,
+      "target_property_type": "8-plex",
+      "target_description": "Только жилые дома на 8 квартир (8-plex)",
+      "payment_rule": "Pay only for one 8-plex even if you own multiple",
+      "extra": {
+        "loan_eligible": true,
+        "loan_terms": "standard"
+      }
+    }
+  ]

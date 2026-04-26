@@ -4,7 +4,7 @@
     "title": "Ущерб собственности",
     "description": "Жилец не заплатил два месяца и уехал. Ущерб превысил страховку. Заплатите 500$, если вы владеете любой арендной недвижимостью.",
     "conditions": {
-      "has_asset_type": "REAL_ESTATE",
+      "has_asset_type": "real_estate",
       "target": "current_player_only"
     },
     "consequences": {

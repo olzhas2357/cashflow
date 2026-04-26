@@ -82,7 +82,10 @@ func GetPlayerID(c *gin.Context) (uuid.UUID, bool) {
 		return uuid.Nil, false
 	}
 	id, ok := v.(uuid.UUID)
-	return id, ok
+	if !ok || id == uuid.Nil {
+		return uuid.Nil, false
+	}
+	return id, true
 }
 
 func GetRole(c *gin.Context) (string, bool) {
@@ -100,7 +103,10 @@ func GetUserID(c *gin.Context) (uuid.UUID, bool) {
 		return uuid.Nil, false
 	}
 	id, ok := v.(uuid.UUID)
-	return id, ok
+	if !ok || id == uuid.Nil {
+		return uuid.Nil, false
+	}
+	return id, true
 }
 
 var _ = models.RolePlayer

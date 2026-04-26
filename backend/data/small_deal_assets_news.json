@@ -17,6 +17,40 @@
     }
   },
   {
+    "id": "stock_news_ok4u_reverse_1_2",
+    "category": "stock_news",
+    "type": "stock_news",
+    "title": "OK4U stock split 1:2",
+    "description": "All OK4U holders lose half of shares; price per share doubles.",
+    "price": 0,
+    "down_payment": 0,
+    "mortgage": 0,
+    "cashflow": 0,
+    "roi": 0.5,
+    "extra": {
+      "symbol": "OK4U",
+      "event": "reverse_split",
+      "ratio": "1:2"
+    }
+  },
+  {
+    "id": "stock_news_myt4u_split_2_1",
+    "category": "stock_news",
+    "type": "stock_news",
+    "title": "MYT4U stock split 2:1",
+    "description": "All MYT4U holders double shares; price per share halves.",
+    "price": 0,
+    "down_payment": 0,
+    "mortgage": 0,
+    "cashflow": 0,
+    "roi": 2.0,
+    "extra": {
+      "symbol": "MYT4U",
+      "event": "stock_split",
+      "ratio": "2:1"
+    }
+  },
+  {
     "id": "stock_news_myt4u_reverse_1_2",
     "category": "stock_news",
     "type": "stock_news",

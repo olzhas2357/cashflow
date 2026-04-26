@@ -1,10 +1,10 @@
 [
   {
-    "id": "re_3_2_65000",
+    "id": "re_3_2_65000_1",
     "category": "real_estate",
     "type": "real_estate",
     "title": "House 3/2",
-    "description": "Classic rental property with stable demand.",
+    "description": "Text",
     "price": 65000,
     "down_payment": 5000,
     "mortgage": 60000,
@@ -17,16 +17,189 @@
     }
   },
   {
-    "id": "re_condo_2_1_50000",
+    "id": "re_3_2_50000_2",
+    "category": "real_estate",
+    "type": "real_estate",
+    "title": "House 3/2",
+    "description": "Text",
+    "price": 50000,
+    "down_payment": 0,
+    "mortgage": 50000,
+    "cashflow": 100,
+    "roi": 0,
+    "extra": {
+      "resale_range": "65000-135000",
+      "beds": 3,
+      "baths": 2
+    }
+  },
+  {
+    "id": "re_3_2_45000_3",
+    "category": "real_estate",
+    "type": "real_estate",
+    "title": "House 3/2",
+    "description": "Text",
+    "price": 45000,
+    "down_payment": 2000,
+    "mortgage": 43000,
+    "cashflow": 250,
+    "roi": 150,
+    "extra": {
+      "resale_range": "65000-135000",
+      "beds": 3,
+      "baths": 2
+    }
+  },
+  {
+    "id": "re_3_2_50000_4",
+    "category": "real_estate",
+    "type": "real_estate",
+    "title": "House 3/2",
+    "description": "Text",
+    "price": 50000,
+    "down_payment": 3000,
+    "mortgage": 47000,
+    "cashflow": 250,
+    "roi": 40,
+    "extra": {
+      "resale_range": "65000-135000",
+      "beds": 3,
+      "baths": 2
+    }
+  },
+
+  {
+    "id": "re_3_2_50000_5",
+    "category": "real_estate",
+    "type": "real_estate",
+    "title": "House 3/2",
+    "description": "Text",
+    "price": 50000,
+    "down_payment": 4000,
+    "mortgage": 46000,
+    "cashflow": 200,
+    "roi": 60,
+    "extra": {
+      "resale_range": "65000-135000",
+      "beds": 3,
+      "baths": 2
+    }
+  },
+
+  {
+    "id": "re_3_2_50000_6",
+    "category": "real_estate",
+    "type": "real_estate",
+    "title": "House 3/2",
+    "description": "Text",
+    "price": 50000,
+    "down_payment": 0,
+    "mortgage": 50000,
+    "cashflow": -100,
+    "roi": 0,
+    "extra": {
+      "resale_range": "65000-135000",
+      "beds": 3,
+      "baths": 2
+    }
+  },
+  
+  {
+    "id": "re_3_2_35000_7",
+    "category": "real_estate",
+    "type": "real_estate",
+    "title": "House 3/2",
+    "description": "Text",
+    "price": 35000,
+    "down_payment": 2000,
+    "mortgage": 33000,
+    "cashflow": 220,
+    "roi": 132,
+    "extra": {
+      "resale_range": "65000-135000",
+      "beds": 3,
+      "baths": 2
+    }
+  },
+  {
+    "id": "re_condo_2_1_50000_1",
     "category": "real_estate",
     "type": "real_estate",
     "title": "Condo 2/1",
-    "description": "Small apartment with good rent demand.",
+    "description": "Text",
     "price": 50000,
     "down_payment": 5000,
     "mortgage": 45000,
     "cashflow": 100,
     "roi": 24,
+    "extra": {
+      "resale_range": "45000-65000",
+      "beds": 2,
+      "baths": 1
+    }
+  }, 
+  {
+    "id": "re_condo_2_1_60000_2",
+    "category": "real_estate",
+    "type": "real_estate",
+    "title": "Condo 2/1",
+    "description": "Text",
+    "price": 60000,
+    "down_payment": 5000,
+    "mortgage": 55000,
+    "cashflow": -100,
+    "roi": -24,
+    "extra": {
+      "resale_range": "45000-65000",
+      "beds": 2,
+      "baths": 1
+    }
+  },
+  {
+    "id": "re_condo_2_1_40000_3",
+    "category": "real_estate",
+    "type": "real_estate",
+    "title": "Condo 2/1",
+    "description": "Text",
+    "price": 40000,
+    "down_payment": 4000,
+    "mortgage": 36000,
+    "cashflow": 140,
+    "roi": 42,
+    "extra": {
+      "resale_range": "45000-65000",
+      "beds": 2,
+      "baths": 1
+    }
+  },
+  {
+    "id": "re_condo_2_1_50000_4",
+    "category": "real_estate",
+    "type": "real_estate",
+    "title": "Condo 2/1",
+    "description": "Text",
+    "price": 40000,
+    "down_payment": 4000,
+    "mortgage": 36000,
+    "cashflow": 140,
+    "roi": 42,
+    "extra": {
+      "resale_range": "45000-65000",
+      "beds": 2,
+      "baths": 1
+    }
+  },
+  {
+    "id": "re_condo_2_1_55000_5",
+    "category": "real_estate",
+    "type": "real_estate",
+    "title": "Condo 2/1",
+    "description": "Text",
+    "price": 55000,
+    "down_payment": 5000,
+    "mortgage": 50000,
+    "cashflow": 160,
+    "roi": 38,
     "extra": {
       "resale_range": "45000-65000",
       "beds": 2,

@@ -1,22 +1,478 @@
 [
   {
-    "name": "8-plex",
-    "title": "Eight-unit apartment building",
-    "description": "High cashflow multi-family asset.",
-    "price": 200000,
-    "down_payment": 40000,
-    "mortgage": 160000,
-    "cashflow": 1600,
-    "roi": 48
-  },
-  {
-    "name": "12-unit building",
-    "title": "12-unit apartment building",
-    "description": "Big real-estate card with strong yield.",
-    "price": 350000,
-    "down_payment": 50000,
-    "mortgage": 300000,
-    "cashflow": 2400,
-    "roi": 58
-  }
+    "id": "duplex_1",
+    "category": "real_estate",
+    "type": "real_estate",
+    "title": "Duplex",
+    "description": "Text",
+    "price": 45000,
+    "down_payment": 8000,
+    "mortgage": 37000,
+    "cashflow": 320,
+    "roi": 48,
+    "extra": {
+        "resale_range": "50000-80000",
+        "beds": 2,
+        "baths": 2,
+        "units": 2
+      }
+    },
+    {
+      "id": "duplex_2",
+    "category": "real_estate",
+    "type": "real_estate",
+    "title": "Duplex",
+    "description": "Text",
+    "price": 70000,
+    "down_payment": 7000,
+    "mortgage": 63000,
+    "cashflow": 140,
+    "roi": 24,
+    "extra": {
+        "resale_range": "50000-80000",
+        "beds": 2,
+        "baths": 2,
+        "units": 2
+      }
+    },
+    {
+    "id": "duplex_3",
+    "category": "real_estate",
+    "type": "real_estate",
+    "title": "Duplex",
+    "description": "Text",
+    "price": 60000,
+    "down_payment": 6000,
+    "mortgage": 54000,
+    "cashflow": 300,
+    "roi": 60,
+    "extra": {
+        "resale_range": "50000-80000",
+        "beds": 2,
+        "baths": 2,
+        "units": 2
+      }
+    },
+    {
+    "id": "duplex_4",
+    "category": "real_estate",
+    "type": "real_estate",
+    "title": "Duplex",
+    "description": "Text",
+    "price": 50000,
+    "down_payment": 8000,
+    "mortgage": 42000,
+    "cashflow": 240,
+    "roi": 36,
+    "extra": {
+        "resale_range": "50000-80000",
+        "beds": 2,
+        "baths": 2,
+        "units": 2
+      }
+    },
+    {
+      "id": "duplex_5",
+      "category": "real_estate",
+      "type": "real_estate",
+      "title": "Duplex",
+      "description": "Text",
+      "price": 60000,
+      "down_payment": 12000,
+      "mortgage": 48000,
+      "cashflow": 400,
+      "roi": 40,
+      "extra": {
+          "resale_range": "50000-80000",
+          "beds": 2,
+          "baths": 2,
+          "units": 2
+        }
+      },
+      {
+        "id": "4-plex_1",
+        "category": "real_estate",
+        "type": "real_estate",
+        "title": "4-plex",
+        "description": "Text",
+        "price": 140000,
+        "down_payment": 32000,
+        "mortgage": 108000,
+        "cashflow": 2000,
+        "roi": 75,
+        "extra": {
+            "resale_range": "100000-140000",
+            "beds": 4,
+            "baths": 3,
+            "units": 8
+          }
+        },
+        {
+          "id": "4-plex_2",
+          "category": "real_estate",
+          "type": "real_estate",
+          "title": "4-plex",
+          "description": "Text",
+          "price": 90000,
+          "down_payment": 15000,
+          "mortgage": 75000,
+          "cashflow": 500,
+          "roi": 40,
+          "extra": {
+            "resale_range": "100000-140000",
+            "beds": 4,
+            "baths": 3,
+            "units": 4
+          }
+        },
+        {
+          "id": "4-plex_3",
+          "category": "real_estate",
+          "type": "real_estate",
+          "title": "4-plex",
+          "description": "Text",
+          "price": 100000,
+          "down_payment": 20000,
+          "mortgage": 80000,
+          "cashflow": 800,
+          "roi": 48,
+          "extra": {
+            "resale_range": "100000-140000",
+            "beds": 4,
+            "baths": 3,
+            "units": 4
+          }
+        },
+
+        {
+          "id": "4-plex_4",
+          "category": "real_estate",
+          "type": "real_estate",
+          "title": "4-plex",
+          "description": "Text",
+          "price": 125000,
+          "down_payment": 15000,
+          "mortgage": 110000,
+          "cashflow": 600,
+          "roi": 48,
+          "extra": {
+            "resale_range": "100000-140000",
+            "beds": 4,
+            "baths": 3,
+            "units": 4
+          }
+        },
+        {
+          "id": "4-plex_5",
+          "category": "real_estate",
+          "type": "real_estate",
+          "title": "4-plex",
+          "description": "Text",
+          "price": 80000,
+          "down_payment": 20000,
+          "mortgage": 60000,
+          "cashflow": 400,
+          "roi": 24,
+          "extra": {
+            "resale_range": "100000-140000",
+            "beds": 4,
+            "baths": 3,
+            "units": 4
+          }
+        },
+        {
+          "id": "4-plex_6",
+          "category": "real_estate",
+          "type": "real_estate",
+          "title": "4-plex",
+          "description": "Text",
+          "price": 80000,
+          "down_payment": 16000,
+          "mortgage": 64000,
+          "cashflow": 750,
+          "roi": 56,
+          "extra": {
+            "resale_range": "100000-140000",
+            "beds": 4,
+            "baths": 3,
+            "units": 4
+          }
+        },
+        {
+          "id": "8-plex_1",
+          "category": "real_estate",
+          "type": "real_estate",
+          "title": "8-plex",
+          "description": "Text",
+          "price": 200000,
+          "down_payment": 40000,
+          "mortgage": 160000,
+          "cashflow": 1600,
+          "roi": 48,
+          "extra": {
+            "resale_range": "100000-140000",
+            "beds": 8,
+            "baths": 4,
+            "units": 16
+          }
+        },
+      
+        {
+          "id": "8-plex_2",
+          "category": "real_estate",
+          "type": "real_estate",
+          "title": "8-plex",
+          "description": "Text",
+          "price": 220000,
+          "down_payment": 44000,
+          "mortgage": 176000,
+          "cashflow": 1700,
+          "roi": 51,
+          "extra": {
+            "resale_range": "100000-140000",
+            "beds": 8,
+            "baths": 4,
+            "units": 16
+          }
+        },
+        {
+          "id": "8-plex_3",
+          "category": "real_estate",
+          "type": "real_estate",
+          "title": "8-plex",
+          "description": "Text",
+          "price": 160000,
+          "down_payment":  32000,
+          "mortgage": 128000,
+          "cashflow": 1700,
+          "roi":64,
+          "extra": {
+            "resale_range": "100000-140000",
+            "beds": 8,
+            "baths": 4,
+            "units": 16
+          }
+        },
+        {
+          "id": "8-plex_4",
+          "category": "real_estate",
+          "type": "real_estate",
+          "title": "8-plex",
+          "description": "Text",
+          "price": 240000,
+          "down_payment":  48000,
+          "mortgage": 200000,
+          "cashflow": 950,
+          "roi":29,
+          "extra": {
+            "resale_range": "100000-140000",
+            "beds": 8,
+            "baths": 4,
+            "units": 16
+          }
+        },
+        {
+          "id": "apartment_building_1",
+          "category": "real_estate",
+          "type": "real_estate",
+          "title": "Apartment building",
+          "description": "Дом на 60 квартир, можно продать за 1500000 - 2700000$",
+          "price": 1200000,
+          "down_payment":  200000,
+          "mortgage": 1000000,
+          "cashflow": 11000,
+          "roi":66,
+          "extra": {
+            "resale_range": "1500000-2700000",
+            "units": 60
+          }
+        },
+        {
+          "id": "apartment_building_2",
+          "category": "real_estate",
+          "type": "real_estate",
+          "title": "Apartment building",
+          "description": "12 квартирный дом продают, можно продать за 300000 - 480000$",
+          "price": 350000,
+          "down_payment":  50000,
+          "mortgage": 300000,
+          "cashflow": 2400,
+          "roi":58,
+          "extra": {
+            "resale_range": "300000-480000",
+            "units": 12
+          }
+        },
+        {
+          "id": "apartment_building_3",
+          "category": "real_estate",
+          "type": "real_estate",
+          "title": "Apartment building",
+          "description": "Старый 24-квартиный дом, можно продать 600000$ - 960000$",
+          "price": 550000,
+          "down_payment":  50000,
+          "mortgage": 500000,
+          "cashflow": 2800,
+          "roi":67,
+          "extra": {
+            "resale_range": "600000-960000",
+            "units": 24
+          }
+        },
+        {
+          "id": "apartment_building_4",
+          "category": "real_estate",
+          "type": "real_estate",
+          "title": "Apartment building",
+          "description": "Продаются 2 дома, общее число квартир - 24. можно продать за 600000 - 960000$",
+          "price": 575000,
+          "down_payment":  75000,
+          "mortgage": 500000,
+          "cashflow": 3400,
+          "roi":54,
+          "extra": {
+            "resale_range": "600000-960000",
+            "units": 24
+          }
+        },
+        {
+          "id": "house_3_2_1",
+          "category": "real_estate",
+          "type": "real_estate",
+          "title": "House 3/2",
+          "description": "Text",
+          "price": 65000,
+          "down_payment": 8000,
+          "mortgage": 57000,
+          "cashflow": 300,
+          "roi": 45,
+          "extra": {
+            "resale_range": "65000-135000",
+            "beds": 3,
+            "baths": 2
+          }
+        },
+        {
+          "id": "house_3_2_2",
+          "category": "real_estate",
+          "type": "real_estate",
+          "title": "House 3/2",
+          "description": "Text",
+          "price": 70000,
+          "down_payment": 20000,
+          "mortgage": 50000,
+          "cashflow": 500,
+          "roi": 30,
+          "extra": {
+            "resale_range": "70000-140000",
+            "beds": 3,
+            "baths": 2
+          }
+        },
+        {
+          "id": "house_3_2_3",
+          "category": "real_estate",
+          "type": "real_estate",
+          "title": "House 3/2",
+          "description": "Text",
+          "price": 115000,
+          "down_payment": 10000,
+          "mortgage": 105000,
+          "cashflow": -100,
+          "roi": -12,
+          "extra": {
+            "resale_range": "65000-135000",
+            "beds": 3,
+            "baths": 2
+          }
+        },
+        {
+          "id": "house_3_2_4",
+          "category": "real_estate",
+          "type": "real_estate",
+          "title": "House 3/2",
+          "description": "Text",
+          "price": 125000,
+          "down_payment": 20000,
+          "mortgage": 105000,
+          "cashflow": -100,
+          "roi": -6,
+          "extra": {
+            "resale_range": "65000-135000",
+            "beds": 3,
+            "baths": 2
+          }
+        },
+        {
+          "id": "house_3_2_5",
+          "category": "real_estate",
+          "type": "real_estate",
+          "title": "House 3/2",
+          "description": "Text",
+          "price": 75000,
+          "down_payment": 7000,
+          "mortgage": 68000,
+          "cashflow": 300,
+          "roi": 51,
+          "extra": {
+            "resale_range": "65000-135000",
+            "beds": 3,
+            "baths": 2
+          }
+        },
+        
+        {
+          "id": "house_3_2_6",
+          "category": "real_estate",
+          "type": "real_estate",
+          "title": "House 3/2",
+          "description": "Text",
+          "price": 67000,
+          "down_payment": 12000,
+          "mortgage": 55000,
+          "cashflow": 400,
+          "roi": 40,
+          "extra": {
+            "resale_range": "65000-135000",
+            "beds": 3,
+            "baths": 2
+          }
+        },
+        {
+          "id": "house_3_2_7",
+          "category": "real_estate",
+          "type": "real_estate",
+          "title": "House 3/2",
+          "description": "Text",
+          "price": 70000,
+          "down_payment": 9000,
+          "mortgage": 61000,
+          "cashflow": 300,
+          "roi": 40,
+          "extra": {
+            "resale_range": "65000-135000",
+            "beds": 3,
+            "baths": 2
+          }
+        },
+        {
+          "id": "house_3_2_8",
+          "category": "real_estate",
+          "type": "real_estate",
+          "title": "House 3/2",
+          "description": "Text",
+          "price": 65000,
+          "down_payment": 7000,
+          "mortgage": 58000,
+          "cashflow": 150,
+          "roi": 26,
+          "extra": {
+            "resale_range": "65000-135000",
+            "beds": 3,
+            "baths": 2
+          }
+        }
+        
+        
+
 ]

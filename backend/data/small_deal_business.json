@@ -2,9 +2,9 @@
   {
     "id": "biz_startup_auto_addons",
     "category": "business",
-    "type": "business",
-    "title": "Auto Accessories Startup",
-    "description": "Manufacturing startup with future resale potential.",
+    "type": "small_deal_business",
+    "title": "Стартап авто-аксессуаров",
+    "description": "Изобретите новый способ изготовления автомобильных 'наворотов', создайте компанию для их производства и продажи. Используйте сами или продайте право другому игроку.",
     "price": 3000,
     "down_payment": 3000,
     "mortgage": 0,
@@ -12,15 +12,15 @@
     "roi": 0,
     "extra": {
       "resale_value": "variable",
-      "risk": "medium"
+      "notes": "Можно будет продать за ??, если вообще удастся продать."
     }
   },
   {
     "id": "biz_software_program",
     "category": "business",
-    "type": "business",
-    "title": "Software Program",
-    "description": "Develop and commercialize a software product.",
+    "type": "small_deal_business",
+    "title": "Программное обеспечение",
+    "description": "Разработайте интересную компьютерную программу, создайте компанию для ее производства и продажи. Используйте сами или продайте право другому игроку.",
     "price": 5000,
     "down_payment": 5000,
     "mortgage": 0,
@@ -28,7 +28,71 @@
     "roi": 0,
     "extra": {
       "resale_value": "variable",
-      "risk": "medium_high"
+      "notes": "Можно будет продать за ??, если вообще удастся продать."
+    }
+  },
+  {
+    "id": "biz_land_10_acres",
+    "category": "business",
+    "type": "small_deal_business",
+    "title": "Участок земли 10 акров",
+    "description": "Парковый участок в неосвоенном районе. Никаких дорог и коммуникаций. Купите сами или продайте право другому игроку.",
+    "price": 5000,
+    "down_payment": 5000,
+    "mortgage": 0,
+    "cashflow": 0,
+    "roi": 0,
+    "extra": {
+      "resale_value": "variable",
+      "notes": "Впоследствии можно будет продать за ??"
+    }
+  },
+  {
+    "id": "biz_rare_gold_coin",
+    "category": "business",
+    "type": "small_deal_business",
+    "title": "Редкая золотая монета",
+    "description": "Монета эпохи заселения Нового Света номиналом 1 песо (XVI век, Гавана). Единственный экземпляр. Купите сами или продайте право другому игроку.",
+    "price": 500,
+    "down_payment": 500,
+    "mortgage": 0,
+    "cashflow": 0,
+    "roi": 0,
+    "extra": {
+      "resale_value_range": [0, 4000],
+      "notes": "Можно будет продать от 0 до 4000$."
+    }
+  },
+  {
+    "id": "biz_krugerrands_deal",
+    "category": "business",
+    "type": "small_deal_business",
+    "title": "Золотые Крюгерранды",
+    "description": "Другу срочно нужны деньги. Он продает 10 одноунциевых золотых крюгеррандов по цене 300$ за штуку. Купите сами или продайте право другому игроку.",
+    "price": 3000,
+    "down_payment": 3000,
+    "mortgage": 0,
+    "cashflow": 0,
+    "roi": 0,
+    "extra": {
+      "resale_value": "variable",
+      "notes": "В будущем можно продать за ??"
+    }
+  },
+  {
+    "id": "biz_loan_to_relative",
+    "category": "business",
+    "type": "small_deal_business",
+    "title": "Займ свояченице",
+    "description": "Свояченица просит 5000$ на взносы за дом. Обещает отдать 10000$, когда найдет работу. Купите сами или продайте право другому игроку.",
+    "price": 5000,
+    "down_payment": 5000,
+    "mortgage": 0,
+    "cashflow": 0,
+    "roi": "??",
+    "extra": {
+      "potential_return": 10000,
+      "notes": "Рискованный займ с высокой доходностью."
     }
   }
 ]

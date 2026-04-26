@@ -1,22 +1,187 @@
 [
   {
-    "name": "Car Wash",
-    "title": "Car wash business acquisition",
-    "description": "Operating business with stable demand.",
+    "id": "big_biz_company_sale_1",
+    "category": "business",
+    "type": "big_deal_business",
+    "title": "Company for sale",
+    "description": "Standard business acquisition opportunity.",
+    "price": 125000,
+    "down_payment": 25000,
+    "mortgage": 100000,
+    "cashflow": 1800,
+    "roi": 86,
+    "extra": {}
+  },
+  {
+    "id": "big_biz_company_sale_2",
+    "category": "business",
+    "type": "big_deal_business",
+    "title": "Company for sale",
+    "description": "Standard business acquisition opportunity.",
+    "price": 100000,
+    "down_payment": 20000,
+    "mortgage": 80000,
+    "cashflow": 1600,
+    "roi": 96,
+    "extra": {}
+  },
+  {
+    "id": "big_biz_company_sale_3",
+    "category": "business",
+    "type": "big_deal_business",
+    "title": "Company for sale",
+    "description": "Standard business acquisition opportunity.",
+    "price": 200000,
+    "down_payment": 40000,
+    "mortgage": 160000,
+    "cashflow": 2700,
+    "roi": 81,
+    "extra": {}
+  },
+  {
+    "id": "big_biz_company_sale_4",
+    "category": "business",
+    "type": "big_deal_business",
+    "title": "Company for sale",
+    "description": "Standard business acquisition opportunity.",
+    "price": 150000,
+    "down_payment": 30000,
+    "mortgage": 120000,
+    "cashflow": 2500,
+    "roi": 100,
+    "extra": {}
+  },
+  {
+    "id": "big_biz_lp_1",
+    "category": "business",
+    "type": "big_deal_business",
+    "title": "Limited partner required",
+    "description": "Investment in a partnership as a limited partner.",
+    "price": 30000,
+    "down_payment": 30000,
+    "mortgage": 0,
+    "cashflow": 1500,
+    "roi": 60,
+    "extra": {
+      "comment": "60000 - 90000$"
+    }
+  },
+  {
+    "id": "big_biz_lp_2",
+    "category": "business",
+    "type": "big_deal_business",
+    "title": "Limited partner required",
+    "description": "Investment in a partnership as a limited partner.",
+    "price": 25000,
+    "down_payment": 25000,
+    "mortgage": 0,
+    "cashflow": 1000,
+    "roi": 48,
+    "extra": {
+      "comment": "50000-75000$"
+    }
+  },
+  {
+    "id": "big_biz_lp_3",
+    "category": "business",
+    "type": "big_deal_business",
+    "title": "Limited partner required",
+    "description": "Investment in a partnership as a limited partner.",
+    "price": 20000,
+    "down_payment": 20000,
+    "mortgage": 0,
+    "cashflow": 800,
+    "roi": 48,
+    "extra": {
+      "comment": "40000-60000$"
+    }
+  },
+  {
+    "id": "big_biz_lp_4",
+    "category": "business",
+    "type": "big_deal_business",
+    "title": "Limited partner required",
+    "description": "Investment in a partnership as a limited partner.",
+    "price": 30000,
+    "down_payment": 30000,
+    "mortgage": 0,
+    "cashflow": 1000,
+    "roi": 40,
+    "extra": {
+      "comment": "60000-90000$"
+    }
+  },
+  {
+    "id": "big_biz_land_20",
+    "category": "business",
+    "type": "big_deal_business",
+    "title": "20 акров земли на продажу",
+    "description": "20 акров свободной земли в жилой зоне. Возможность значительного прироста стоимости при переквалификации в коммерческую.",
+    "price": 20000,
+    "down_payment": 20000,
+    "mortgage": 0,
+    "cashflow": 0,
+    "roi": 0,
+    "extra": {
+      "notes": "Можно будет продать за ??"
+    }
+  },
+  {
+    "id": "big_biz_pizza_franchise",
+    "category": "business",
+    "type": "big_deal_business",
+    "title": "Франшиза пиццерии",
+    "description": "Компания «Диетическая пицца» продает лицензию. Точка рядом с колледжем, большой наплыв посетителей.",
+    "price": 500000,
+    "down_payment": 100000,
+    "mortgage": 400000,
+    "cashflow": 5000,
+    "roi": 60,
+    "extra": {
+      "resale_range": "520000 - 800000$"
+    }
+  },
+  {
+    "id": "car_wash",
+    "category": "business",
+    "type": "big_deal_business",
+    "title": "Автомойка на продажу",
+    "description": "Враждующая семья владельцев хочет продать бизнес как можно скорее. Отличное расположение.",
     "price": 350000,
     "down_payment": 50000,
     "mortgage": 300000,
     "cashflow": 1500,
-    "roi": 36
+    "roi": 36,
+    "extra": {
+      "notes": "Продажа за 12-25 номиналов годового потока"
+    }
   },
   {
-    "name": "Shopping Mall",
-    "title": "Shopping mall distressed sale",
-    "description": "Large deal with upside after occupancy growth.",
+    "id": "big_biz_pension",
+    "category": "business",
+    "type": "big_deal_business",
+    "title": "Пансионат с полупансионом",
+    "description": "Владелец отходит от дел. Курортный район, 5 спален / 3 ванные.",
+    "price": 150000,
+    "down_payment": 30000,
+    "mortgage": 120000,
+    "cashflow": 1000,
+    "roi": 40,
+    "extra": {}
+  },
+  {
+    "id": "shop_mall",
+    "category": "business",
+    "type": "big_deal_business",
+    "title": "Торговый пассаж",
+    "description": "Банк конфисковал пассаж. Занят на 50%. Высокий потенциал при заполнении площадей.",
     "price": 50000,
     "down_payment": 50000,
     "mortgage": 0,
     "cashflow": 800,
-    "roi": 19
+    "roi": 19,
+    "extra": {
+      "resale_range": "350000 - 1500000$"
+    }
   }
 ]

@@ -91,6 +91,15 @@ func (h *AuditorPanelHandler) CreateGame(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, typ.ErrorResponse{Error: "unauthorized"})
 		return
 	}
+	var user models.User
+	if err := h.db.Select("id").First(&user, "id = ?", userID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusUnauthorized, typ.ErrorResponse{Error: "unauthorized"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "load_user_failed"})
+		return
+	}
 
 	game := models.GameSession{
 		ID:         uuid.New(),
