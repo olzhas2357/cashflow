@@ -40,7 +40,7 @@
     "price": 1200,
     "down_payment": 1200,
     "mortgage": 0,
-    "cashflow": 0,
+    "cashflow": 10,
     "roi": 10,
     "extra": {
       "turns_left": 3,

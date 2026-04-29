@@ -90,7 +90,10 @@ func BuildFinanceReport(db *gorm.DB, playerID string) (FinanceReport, error) {
 	}
 
 	fields := ComputeMonthlyFinanceFields(player, player.Profession)
-	totalIncome := fields.TotalIncome + assetIncome
+	// TotalIncome already includes player's passive income.
+	// Asset income is the same stream stored in player.PassiveIncome,
+	// so adding it again would double-count and create UI mismatches.
+	totalIncome := fields.TotalIncome
 	totalExpenses := fields.TotalExpenses
 	netIncome := totalIncome - totalExpenses
 

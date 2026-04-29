@@ -89,7 +89,7 @@
     "down_payment": 5000,
     "mortgage": 0,
     "cashflow": 0,
-    "roi": "??",
+    "roi": 100,
     "extra": {
       "potential_return": 10000,
       "notes": "Рискованный займ с высокой доходностью."

@@ -37,10 +37,14 @@ type Player struct {
 	Salary           int64 `gorm:"not null;default:0" json:"salary"`
 	PassiveIncome    int64 `gorm:"not null;default:0" json:"passive_income"`
 	Expenses         int64 `gorm:"not null;default:0" json:"expenses"`
+	TotalIncome      int64 `gorm:"not null;default:0" json:"total_income"`
+	TotalExpenses    int64 `gorm:"not null;default:0" json:"total_expenses"`
+	MonthlyCashflow  int64 `gorm:"not null;default:0" json:"monthly_cashflow"`
 	AssetsTotal      int64 `gorm:"not null;default:0" json:"assets_total"`
 	LiabilitiesTotal int64 `gorm:"not null;default:0" json:"liabilities_total"`
 	LoanBalance      int64 `gorm:"not null;default:0" json:"loan_balance"`
 	LoanExpense      int64 `gorm:"not null;default:0" json:"loan_expense"`
+	FinanciallyFree  bool  `gorm:"not null;default:false" json:"financially_free"`
 
 	ChildrenCount int `gorm:"not null;default:0" json:"children_count"`
 	CharityTurns  int `gorm:"not null;default:0" json:"charity_turns"`
@@ -219,9 +223,14 @@ type FinancialLog struct {
 	GameID   uuid.UUID `gorm:"type:uuid;not null;index" json:"game_id"`
 	PlayerID uuid.UUID `gorm:"type:uuid;not null;index" json:"player_id"`
 
-	Amount      int64   `gorm:"not null" json:"amount"`
-	Type        string  `gorm:"type:varchar(50);not null;index" json:"type"`
-	Description *string `gorm:"type:text" json:"description,omitempty"`
+	Amount              int64   `gorm:"not null;default:0" json:"amount"`
+	Type                string  `gorm:"type:varchar(50);not null;index" json:"type"`
+	ActionType          string  `gorm:"type:varchar(50);not null;default:'';index" json:"action_type"`
+	DeltaSavings        int64   `gorm:"not null;default:0" json:"delta_savings"`
+	DeltaPassiveIncome  int64   `gorm:"not null;default:0" json:"delta_passive_income"`
+	DeltaExpenses       int64   `gorm:"not null;default:0" json:"delta_expenses"`
+	ResultingCashflow   int64   `gorm:"not null;default:0" json:"resulting_cashflow"`
+	Description         *string `gorm:"type:text" json:"description,omitempty"`
 
 	CreatedAt time.Time `json:"created_at"`
 }

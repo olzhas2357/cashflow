@@ -80,6 +80,10 @@ export default function AuditorGameControlPanel() {
   const selectedFinance = useMemo(() => finance.find((f) => f.player.id === selectedPlayerId) ?? null, [finance, selectedPlayerId])
 
   const selectedPlayer = selectedFinance?.player ?? null
+  const selectedPlayerRealEstate = useMemo(
+    () => assets.filter((a: any) => a.owner_id === selectedPlayerId && a.type === 'real_estate'),
+    [assets, selectedPlayerId],
+  )
 
   const [selectedDoodadId, setSelectedDoodadId] = useState<string>(doodads[0]?.id ?? '')
   const [selectedSmallDealId, setSelectedSmallDealId] = useState<string>(smallDeals[0]?.id ?? '')
@@ -494,6 +498,70 @@ export default function AuditorGameControlPanel() {
           </table>
         </div>
       </GlassCard>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <GlassCard className="lg:col-span-1">
+          <h2 className="text-lg font-semibold">Small Deal List</h2>
+          <div className="mt-2 text-sm text-slate-600">All available small deals in this session.</div>
+          <div className="mt-3 max-h-72 space-y-2 overflow-auto pr-1">
+            {smallDeals.length === 0 ? (
+              <div className="text-sm text-slate-500">No small deals.</div>
+            ) : (
+              smallDeals.map((d: SmallDeal) => (
+                <div key={d.id} className="rounded-xl border border-slate-200 p-3 text-sm">
+                  <div className="font-semibold">{d.title || d.name}</div>
+                  <div className="mt-1 text-xs uppercase tracking-wide text-slate-500">{d.category}</div>
+                  <div className="mt-1 text-slate-600">
+                    Price: ${d.price.toLocaleString()} • Down: ${d.down_payment.toLocaleString()} • CF: +{d.cashflow.toLocaleString()}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </GlassCard>
+
+        <GlassCard className="lg:col-span-1">
+          <h2 className="text-lg font-semibold">Big Deal List</h2>
+          <div className="mt-2 text-sm text-slate-600">All available big deals in this session.</div>
+          <div className="mt-3 max-h-72 space-y-2 overflow-auto pr-1">
+            {bigDeals.length === 0 ? (
+              <div className="text-sm text-slate-500">No big deals.</div>
+            ) : (
+              bigDeals.map((d: BigDeal) => (
+                <div key={d.id} className="rounded-xl border border-slate-200 p-3 text-sm">
+                  <div className="font-semibold">{d.title || d.name}</div>
+                  <div className="mt-1 text-xs uppercase tracking-wide text-slate-500">{d.deal_type || 'deal'}</div>
+                  <div className="mt-1 text-slate-600">
+                    Price: ${d.price.toLocaleString()} • Down: ${d.down_payment.toLocaleString()} • CF: +{d.cashflow.toLocaleString()}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </GlassCard>
+
+        <GlassCard className="lg:col-span-1">
+          <h2 className="text-lg font-semibold">Real Estate Purchases</h2>
+          <div className="mt-2 text-sm text-slate-600">
+            {selectedPlayer ? `All real estate assets of ${selectedPlayer.name}.` : 'Select player to see purchases.'}
+          </div>
+          <div className="mt-3 max-h-72 space-y-2 overflow-auto pr-1">
+            {selectedPlayerRealEstate.length === 0 ? (
+              <div className="text-sm text-slate-500">No real estate purchases yet.</div>
+            ) : (
+              selectedPlayerRealEstate.map((a: any) => (
+                <div key={a.id} className="rounded-xl border border-slate-200 p-3 text-sm">
+                  <div className="font-semibold">{a.name}</div>
+                  <div className="mt-1 text-slate-600">
+                    Price: ${a.price.toLocaleString()} • Down: ${a.down_payment.toLocaleString()} • Mortgage: ${a.mortgage.toLocaleString()}
+                  </div>
+                  <div className="mt-1 text-slate-600">Monthly cashflow: +${a.income.toLocaleString()}</div>
+                </div>
+              ))
+            )}
+          </div>
+        </GlassCard>
+      </div>
 
       <AnimatePresence>
         {playerModalId ? (

@@ -1,34 +1,32 @@
 [
   {
-    "id": "small_biz_land_10",
-    "category": "business",
-    "type": "small_deal_business",
-    "title": "10-акровый участок земли",
-    "description": "Изумительный, похожий на парк участок в неосвоенном районе. Никаких дорог, коммунальных услуг и шума. Спекулятивная покупка.",
+    "id": "big_land_10_acres",
+    "category": "expense",
+    "type": "big_deal_land",
+    "title": "10-acre residential land",
+    "description": "Speculative land purchase opportunity.",
     "price": 5000,
     "down_payment": 5000,
     "mortgage": 0,
     "cashflow": 0,
     "roi": 0,
     "extra": {
-      "resale_value": "variable",
-      "notes": "Впоследствии можно будет продать за ??"
+      "resale_value": "variable"
     }
   },
   {
-    "id": "big_biz_land_20",
-    "category": "business",
-    "type": "big_deal_business",
-    "title": "20 акров земли на продажу",
-    "description": "20 акров свободной земли в жилой зоне. Возможность значительного прироста стоимости при переквалификации в коммерческую зону.",
+    "id": "big_land_20_acres",
+    "category": "expense",
+    "type": "big_deal_land",
+    "title": "20-acre development land",
+    "description": "Larger speculative land tract with no immediate cashflow.",
     "price": 20000,
     "down_payment": 20000,
     "mortgage": 0,
     "cashflow": 0,
     "roi": 0,
     "extra": {
-      "resale_value": "variable",
-      "notes": "Можно продать за ?? при наступлении рыночного события."
+      "resale_value": "variable"
     }
   }
 ]

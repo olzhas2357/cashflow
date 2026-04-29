@@ -31,6 +31,7 @@ import {
   postEventCharity,
   postEventDoodad,
   postEventDownsized,
+  postEventLoan,
   postEventPayday,
   postEventSmallDeal,
   rejectTransaction,
@@ -50,12 +51,25 @@ const money = (n: number) =>
   n.toLocaleString(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
 
 const SMALL_CATS = [
-  { value: 'small_deal_assets', label: 'Stock' },
-  { value: 'small_deal_real_estate', label: 'Real estate' },
-  { value: 'small_deal_business', label: 'Business' },
-  { value: 'small_deal_deposite_certificate', label: 'Deposit certificate' },
-  { value: 'small_deal_assets_news', label: 'Stock news' },
-  { value: 'small_deal_real_estate_news', label: 'RE news' },
+  { value: 'stock', label: 'Stock' },
+  { value: 'real_estate', label: 'Real estate' },
+  { value: 'business', label: 'Business' },
+  { value: 'deposit', label: 'Deposit certificate' },
+  { value: 'stock_news', label: 'Stock news' },
+] as const
+
+const LEGACY_SMALL_CAT_MAP: Record<string, string[]> = {
+  stock: ['small_deal_assets'],
+  real_estate: ['small_deal_real_estate'],
+  business: ['small_deal_business'],
+  deposit: ['small_deal_deposite_certificate'],
+  stock_news: ['small_deal_assets_news'],
+}
+
+const BIG_CATS = [
+  { value: 'real_estate', label: 'Real estate' },
+  { value: 'business', label: 'Business' },
+  { value: 'expense', label: 'Expense' },
 ] as const
 
 export default function GameDashboard() {
@@ -130,17 +144,28 @@ export default function GameDashboard() {
   }, [players, targetId])
 
   const [dlg, setDlg] = useState<
-    'none' | 'small' | 'big' | 'doodad' | 'payday' | 'baby' | 'charity' | 'downsized' | 'market' | 'tx' | 'player_finance'
+    'none' | 'small' | 'big' | 'doodad' | 'payday' | 'baby' | 'charity' | 'downsized' | 'loan' | 'market' | 'tx' | 'player_finance'
   >('none')
   const [financePlayerId, setFinancePlayerId] = useState('')
 
   const [smallCat, setSmallCat] = useState<string>(SMALL_CATS[0].value)
   const [smallDealId, setSmallDealId] = useState('')
+  const [smallShares, setSmallShares] = useState<number>(1)
+  const [smallAllowLoan, setSmallAllowLoan] = useState<boolean>(false)
+  const [bigCat, setBigCat] = useState<string>(BIG_CATS[0].value)
   const [bigDealId, setBigDealId] = useState('')
   const [doodadId, setDoodadId] = useState('')
+  const [loanAmount, setLoanAmount] = useState<number>(3000)
 
   const smallDeals = smallQ.data ?? []
-  const filteredSmall = useMemo(() => smallDeals.filter((d) => d.category === smallCat), [smallDeals, smallCat])
+  const filteredSmall = useMemo(
+    () =>
+      smallDeals.filter((d) => {
+        if (d.category === smallCat) return true
+        return (LEGACY_SMALL_CAT_MAP[smallCat] ?? []).includes(d.category)
+      }),
+    [smallDeals, smallCat],
+  )
   useEffect(() => {
     const active = gameQ.data?.active_small_deal
     if (!active) return
@@ -152,12 +177,34 @@ export default function GameDashboard() {
   useEffect(() => {
     if (filteredSmall[0]?.id) setSmallDealId(filteredSmall[0].id)
     else setSmallDealId('')
+    setSmallShares(1)
+    setSmallAllowLoan(false)
   }, [filteredSmall, smallCat])
 
+  const selectedSmallDeal = useMemo(
+    () => filteredSmall.find((d) => d.id === smallDealId) ?? null,
+    [filteredSmall, smallDealId],
+  )
+  const isStockSmallDeal = selectedSmallDeal?.category === 'stock' || selectedSmallDeal?.category === 'small_deal_assets'
+
   const bigDeals = bigQ.data ?? []
+  const filteredBig = useMemo(
+    () =>
+      bigDeals.filter((d) => {
+        if (bigCat === 'business') {
+          return d.deal_type === 'big_deal_business' || d.deal_type === 'business'
+        }
+        if (bigCat === 'real_estate') {
+          return d.deal_type === 'big_deal_real_estate' || d.deal_type === 'real_estate'
+        }
+        return d.deal_type === 'big_deal_land' || d.deal_type === 'expenses' || d.deal_type === 'expense' || d.cashflow <= 0
+      }),
+    [bigDeals, bigCat],
+  )
   useEffect(() => {
-    if (bigDeals[0]?.id) setBigDealId(bigDeals[0].id)
-  }, [bigDeals])
+    if (filteredBig[0]?.id) setBigDealId(filteredBig[0].id)
+    else setBigDealId('')
+  }, [filteredBig, bigCat])
 
   const doodads = doodadsQ.data ?? []
   useEffect(() => {
@@ -185,6 +232,9 @@ export default function GameDashboard() {
   const paydayM = useMutation({
     mutationFn: () => postEventPayday(token!, gameId!, targetId),
     onSuccess: refresh,
+    onError: (err) => {
+      alert((err as Error).message || 'Payday failed')
+    },
   })
   const babyM = useMutation({
     mutationFn: () => postEventBaby(token!, gameId!, targetId),
@@ -198,9 +248,23 @@ export default function GameDashboard() {
     mutationFn: () => postEventDownsized(token!, gameId!, targetId),
     onSuccess: refresh,
   })
-  const smallM = useMutation({
-    mutationFn: () => postEventSmallDeal(token!, gameId!, targetId, smallDealId),
+  const loanM = useMutation({
+    mutationFn: () => postEventLoan(token!, gameId!, targetId, Math.max(1000, Math.round(loanAmount / 1000) * 1000)),
     onSuccess: refresh,
+    onError: (err) => {
+      alert((err as Error).message || 'Loan failed')
+    },
+  })
+  const smallM = useMutation({
+    mutationFn: () =>
+      postEventSmallDeal(token!, gameId!, targetId, smallDealId, {
+        shares: isStockSmallDeal ? Math.max(1, smallShares) : undefined,
+        allow_loan: smallAllowLoan,
+      }),
+    onSuccess: refresh,
+    onError: (err) => {
+      alert((err as Error).message || 'Small deal purchase failed')
+    },
   })
   const bigM = useMutation({
     mutationFn: () => postEventBigDeal(token!, gameId!, targetId, bigDealId),
@@ -402,8 +466,9 @@ export default function GameDashboard() {
             <ActionBtn icon={Baby} label="Baby" onClick={() => setDlg('baby')} />
             <ActionBtn icon={HeartHandshake} label="Charity" onClick={() => setDlg('charity')} />
             <ActionBtn icon={UserMinus} label="Downsized" onClick={() => setDlg('downsized')} />
+            <ActionBtn icon={Banknote} label="Loan" onClick={() => setDlg('loan')} />
             <ActionBtn icon={LineChart} label="Market" onClick={() => setDlg('market')} />
-            <ActionBtn icon={ArrowLeftRight} label="Transaction" onClick={() => setDlg('tx')} className="col-span-2" />
+            <ActionBtn icon={ArrowLeftRight} label="Transaction" onClick={() => setDlg('tx')} />
           </div>
         </div>
       </aside>
@@ -443,6 +508,22 @@ export default function GameDashboard() {
                 ))}
               </select>
             </div>
+            {isStockSmallDeal && (
+              <div className="space-y-1">
+                <Label>Shares (only for player who drew this card)</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={smallShares}
+                  onChange={(e) => setSmallShares(Math.max(1, Number(e.target.value) || 1))}
+                />
+              </div>
+            )}
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={smallAllowLoan} onChange={(e) => setSmallAllowLoan(e.target.checked)} />
+              Use loan automatically if cash is not enough
+            </label>
             {filteredSmall[0] && (
               <p className="text-xs text-muted-foreground">{filteredSmall.find((x) => x.id === smallDealId)?.description}</p>
             )}
@@ -451,7 +532,7 @@ export default function GameDashboard() {
             <Button variant="outline" onClick={() => setDlg('none')}>
               Pass
             </Button>
-            <Button onClick={() => smallM.mutate()} disabled={!smallDealId || smallM.isPending}>
+            <Button onClick={() => smallM.mutate()} disabled={!smallDealId || smallM.isPending || (isStockSmallDeal && smallShares < 1)}>
               Buy
             </Button>
           </DialogFooter>
@@ -465,13 +546,27 @@ export default function GameDashboard() {
             <DialogDescription>Large acquisition — confirm buyer and card.</DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
+              <div>
+                <Label>Category</Label>
+                <select
+                  className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  value={bigCat}
+                  onChange={(e) => setBigCat(e.target.value)}
+                >
+                  {BIG_CATS.map((c) => (
+                    <option key={c.value} value={c.value}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             <Label>Deal</Label>
             <select
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
               value={bigDealId}
               onChange={(e) => setBigDealId(e.target.value)}
             >
-              {bigDeals.map((d) => (
+                {filteredBig.map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.title || d.name} — {money(d.down_payment)} down / {money(d.cashflow)} CF
                 </option>
@@ -572,6 +667,32 @@ export default function GameDashboard() {
           <DialogFooter>
             <Button variant="destructive" onClick={() => downsizedM.mutate()} disabled={downsizedM.isPending}>
               Apply downsized
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={dlg === 'loan'} onOpenChange={(o) => !o && setDlg('none')}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Bank loan</DialogTitle>
+            <DialogDescription>
+              Player receives cash now, and monthly expenses increase by 10% of loan amount.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>Loan amount (multiple of 1000)</Label>
+            <Input
+              type="number"
+              min={1000}
+              step={1000}
+              value={loanAmount}
+              onChange={(e) => setLoanAmount(Number(e.target.value) || 0)}
+            />
+          </div>
+          <DialogFooter>
+            <Button onClick={() => loanM.mutate()} disabled={loanM.isPending || loanAmount < 1000}>
+              Apply loan
             </Button>
           </DialogFooter>
         </DialogContent>

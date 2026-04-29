@@ -69,10 +69,114 @@ type EventRequest struct {
 	AllowLoan bool       `json:"allow_loan"`
 
 	// Market selling / buying
-	SellerID uuid.UUID `json:"seller_id"`
-	BuyerID  uuid.UUID `json:"buyer_id"`
-	AssetID  uuid.UUID `json:"asset_id"`
-	Price    int64     `json:"price"`
+	SellerID   uuid.UUID `json:"seller_id"`
+	BuyerID    uuid.UUID `json:"buyer_id"`
+	AssetID    uuid.UUID `json:"asset_id"`
+	Price      int64     `json:"price"`
+	LoanAmount int64     `json:"loan_amount"`
+}
+
+type financeSnapshot struct {
+	Savings       int64
+	PassiveIncome int64
+	TotalExpenses int64
+	Cashflow      int64
+}
+
+func snapshotFinance(p models.Player) financeSnapshot {
+	return financeSnapshot{
+		Savings:       p.Cash,
+		PassiveIncome: p.PassiveIncome,
+		TotalExpenses: p.TotalExpenses,
+		Cashflow:      p.MonthlyCashflow,
+	}
+}
+
+func (h *AuditorPanelHandler) recalculatePlayerFinancials(p *models.Player, prof *models.Profession) {
+	fields := services.ComputeMonthlyFinanceFields(*p, prof)
+	p.Expenses = fields.BaseExpenses
+	p.TotalExpenses = fields.TotalExpenses
+	p.TotalIncome = fields.TotalIncome
+	p.MonthlyCashflow = fields.MonthlyCashflow
+	p.FinanciallyFree = p.PassiveIncome > p.TotalExpenses
+}
+
+func (h *AuditorPanelHandler) reconcilePlayerFromAssets(tx *gorm.DB, p *models.Player) error {
+	var assets []models.Asset
+	if err := tx.Where("owner_id = ?", p.ID).Find(&assets).Error; err != nil {
+		return err
+	}
+
+	var assetsTotal int64
+	var passiveIncome int64
+	var mortgages int64
+	for _, a := range assets {
+		assetsTotal += a.Price
+		passiveIncome += a.Income
+		mortgages += a.Mortgage
+	}
+
+	p.AssetsTotal = assetsTotal
+	p.PassiveIncome = passiveIncome
+	p.LiabilitiesTotal = mortgages + p.LoanBalance
+	return nil
+}
+
+func (h *AuditorPanelHandler) auditPlayerFinancials(tx *gorm.DB, p *models.Player, prof *models.Profession) error {
+	if p.Cash < 0 {
+		return errors.New("audit failed")
+	}
+
+	var assets []models.Asset
+	if err := tx.Where("owner_id = ?", p.ID).Find(&assets).Error; err != nil {
+		return err
+	}
+
+	var expectedPassiveIncome int64
+	var expectedMortgages int64
+	for _, a := range assets {
+		expectedPassiveIncome += a.Income
+		expectedMortgages += a.Mortgage
+	}
+
+	if p.PassiveIncome != expectedPassiveIncome {
+		return errors.New("audit failed")
+	}
+	if p.LiabilitiesTotal != expectedMortgages+p.LoanBalance {
+		return errors.New("audit failed")
+	}
+
+	fields := services.ComputeMonthlyFinanceFields(*p, prof)
+	if p.TotalExpenses != fields.TotalExpenses || p.MonthlyCashflow != fields.MonthlyCashflow || p.TotalIncome != fields.TotalIncome {
+		return errors.New("audit failed")
+	}
+	return nil
+}
+
+func (h *AuditorPanelHandler) createFinancialLog(
+	tx *gorm.DB,
+	gameID uuid.UUID,
+	playerID uuid.UUID,
+	actionType string,
+	before financeSnapshot,
+	after models.Player,
+	description string,
+) error {
+	desc := description
+	log := models.FinancialLog{
+		ID:                 uuid.New(),
+		GameID:             gameID,
+		PlayerID:           playerID,
+		Type:               actionType,
+		ActionType:         actionType,
+		Amount:             after.Cash - before.Savings,
+		DeltaSavings:       after.Cash - before.Savings,
+		DeltaPassiveIncome: after.PassiveIncome - before.PassiveIncome,
+		DeltaExpenses:      after.TotalExpenses - before.TotalExpenses,
+		ResultingCashflow:  after.MonthlyCashflow,
+		Description:        &desc,
+	}
+	return tx.Create(&log).Error
 }
 
 func (h *AuditorPanelHandler) CreateGame(c *gin.Context) {
@@ -289,19 +393,17 @@ func (h *AuditorPanelHandler) AssignProfession(c *gin.Context) {
 		return
 	}
 
-	baseExpenses := prof.Tax + prof.MortgagePayment + prof.SchoolLoanPayment + prof.CarLoanPayment +
-		prof.CreditCardPayment + prof.RetailPayment + prof.OtherExpenses
-	// child expense is dynamic with children_count
-	totalExpenses := baseExpenses + (prof.ChildExpense * int64(player.ChildrenCount))
-
-	// Initialize from profession: salary, expenses, starting cash, and initial liabilities (stored later via assets/mortgage).
+	// Initialize from profession: salary, starting cash, and all accounting fields.
 	player.ProfessionID = &prof.ID
 	player.Salary = prof.Salary
-	player.Expenses = totalExpenses
+	player.Expenses = 0
 	player.Cash = prof.Savings
 	player.PassiveIncome = 0
 	player.AssetsTotal = 0
 	player.LiabilitiesTotal = 0
+	player.LoanBalance = 0
+	player.LoanExpense = 0
+	h.recalculatePlayerFinancials(&player, &prof)
 
 	if err := h.db.Save(&player).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "assign_profession_failed"})
@@ -758,17 +860,32 @@ func (h *AuditorPanelHandler) applyPayday(gameID uuid.UUID, playerID uuid.UUID) 
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Preload("Profession").First(&p, "id = ? AND game_id = ?", playerID, gameID).Error; err != nil {
 			return err
 		}
-		fields := services.ComputeMonthlyFinanceFields(p, p.Profession)
-		cashflow := fields.MonthlyCashflow
+		if err := h.reconcilePlayerFromAssets(tx, &p); err != nil {
+			return err
+		}
+		before := snapshotFinance(p)
 
-		p.Cash += cashflow
+		h.recalculatePlayerFinancials(&p, p.Profession)
+
+		if p.SkipTurns > 0 {
+			p.SkipTurns--
+		} else {
+			p.Cash += p.MonthlyCashflow
+		}
+		// Keep ledger valid: if player is cash-negative while skipping payday, auto-apply minimal bank loan.
+		if p.Cash < 0 {
+			loanNeeded := -p.Cash
+			if loanNeeded%1000 != 0 {
+				loanNeeded = ((loanNeeded / 1000) + 1) * 1000
+			}
+			p.Cash += loanNeeded
+			p.LoanBalance += loanNeeded
+			p.LiabilitiesTotal += loanNeeded
+			p.LoanExpense += loanNeeded / 10
+		}
 		// charity turns count down per payday
 		if p.CharityTurns > 0 {
 			p.CharityTurns--
-		}
-
-		if err := tx.Save(&p).Error; err != nil {
-			return err
 		}
 
 		// Deposit certificates mature on payday turns.
@@ -780,18 +897,7 @@ func (h *AuditorPanelHandler) applyPayday(gameID uuid.UUID, playerID uuid.UUID) 
 			dep.TurnsLeft--
 			if dep.TurnsLeft <= 0 {
 				p.Cash += dep.Payout
-				maturedDesc := fmt.Sprintf("%s matured payout", dep.Name)
-				if err := tx.Model(&models.Player{}).Where("id = ?", p.ID).Update("cash", p.Cash).Error; err != nil {
-					return err
-				}
 				if err := tx.Model(&dep).Updates(map[string]any{"turns_left": 0}).Error; err != nil {
-					return err
-				}
-				maturedLog := models.FinancialLog{
-					ID: uuid.New(), GameID: gameID, PlayerID: p.ID,
-					Amount: dep.Payout, Type: "deposit_matured", Description: &maturedDesc,
-				}
-				if err := tx.Create(&maturedLog).Error; err != nil {
 					return err
 				}
 				continue
@@ -801,18 +907,14 @@ func (h *AuditorPanelHandler) applyPayday(gameID uuid.UUID, playerID uuid.UUID) 
 			}
 		}
 
-		amount := cashflow
-		typStr := "payday"
-		desc := fmtDesc(p.Name, "Payday")
-		log := models.FinancialLog{
-			ID:          uuid.New(),
-			GameID:      gameID,
-			PlayerID:    p.ID,
-			Amount:      amount,
-			Type:        typStr,
-			Description: &desc,
+		h.recalculatePlayerFinancials(&p, p.Profession)
+		if err := tx.Save(&p).Error; err != nil {
+			return err
 		}
-		return tx.Create(&log).Error
+		if err := h.auditPlayerFinancials(tx, &p, p.Profession); err != nil {
+			return err
+		}
+		return h.createFinancialLog(tx, gameID, p.ID, "payday", before, p, fmtDesc(p.Name, "Payday"))
 	})
 }
 
@@ -836,33 +938,29 @@ func (h *AuditorPanelHandler) Baby(c *gin.Context) {
 
 	if err := h.db.Transaction(func(tx *gorm.DB) error {
 		var p models.Player
-		if err := tx.First(&p, "id = ? AND game_id = ?", req.PlayerID, gameID).Error; err != nil {
+		if err := tx.Preload("Profession").First(&p, "id = ? AND game_id = ?", req.PlayerID, gameID).Error; err != nil {
 			return err
 		}
+		if err := h.reconcilePlayerFromAssets(tx, &p); err != nil {
+			return err
+		}
+		before := snapshotFinance(p)
 		if p.ChildrenCount >= 3 {
-			return errors.New("max_children_reached")
+			return nil
 		}
-		var prof models.Profession
-		if p.ProfessionID == nil {
+		if p.Profession == nil {
 			return errors.New("profession_not_selected")
-		}
-		if err := tx.First(&prof, "id = ?", *p.ProfessionID).Error; err != nil {
-			return err
 		}
 
 		p.ChildrenCount++
-		fields := services.ComputeMonthlyFinanceFields(p, &prof)
-		p.Expenses = fields.TotalExpenses
+		h.recalculatePlayerFinancials(&p, p.Profession)
 		if err := tx.Save(&p).Error; err != nil {
 			return err
 		}
-		ev := "baby"
-		desc := "Baby added; increased child expense."
-		log := models.FinancialLog{
-			ID: uuid.New(), GameID: gameID, PlayerID: p.ID,
-			Amount: -prof.ChildExpense, Type: ev, Description: &desc,
+		if err := h.auditPlayerFinancials(tx, &p, p.Profession); err != nil {
+			return err
 		}
-		return tx.Create(&log).Error
+		return h.createFinancialLog(tx, gameID, p.ID, "child", before, p, "Baby added; increased child expense.")
 	}); err != nil {
 		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: err.Error()})
 		return
@@ -997,6 +1095,53 @@ func (h *AuditorPanelHandler) Doodad(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
+func (h *AuditorPanelHandler) BankLoan(c *gin.Context) {
+	gameID, ok := parseGameID(c)
+	if !ok {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "invalid_game_id"})
+		return
+	}
+	var req EventRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "invalid_request"})
+		return
+	}
+	if req.PlayerID == uuid.Nil || req.LoanAmount <= 0 {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "player_id_and_loan_amount_required"})
+		return
+	}
+	if req.LoanAmount%1000 != 0 {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "loan_must_be_multiple_of_1000"})
+		return
+	}
+
+	if err := h.db.Transaction(func(tx *gorm.DB) error {
+		var p models.Player
+		if err := tx.Preload("Profession").First(&p, "id = ? AND game_id = ?", req.PlayerID, gameID).Error; err != nil {
+			return err
+		}
+		before := snapshotFinance(p)
+
+		p.Cash += req.LoanAmount
+		p.LoanBalance += req.LoanAmount
+		p.LiabilitiesTotal += req.LoanAmount
+		p.LoanExpense += req.LoanAmount / 10
+		h.recalculatePlayerFinancials(&p, p.Profession)
+
+		if err := tx.Save(&p).Error; err != nil {
+			return err
+		}
+		if err := h.auditPlayerFinancials(tx, &p, p.Profession); err != nil {
+			return err
+		}
+		return h.createFinancialLog(tx, gameID, p.ID, "loan", before, p, "Bank loan issued")
+	}); err != nil {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
 func resolveSmallDealType(deal models.SmallDeal) string {
 	switch deal.Category {
 	case "stock":
@@ -1034,6 +1179,9 @@ func applyLoanIfNeeded(player *models.Player, required int64, allowLoan bool) (i
 		return 0, nil
 	}
 	loan := required - player.Cash
+	if loan%1000 != 0 {
+		loan = ((loan / 1000) + 1) * 1000
+	}
 	if !allowLoan {
 		return 0, errors.New("insufficient_cash")
 	}
@@ -1056,6 +1204,9 @@ func (h *AuditorPanelHandler) processStockDeal(tx *gorm.DB, gameID uuid.UUID, pl
 	}
 	player.Cash -= totalCost
 	player.AssetsTotal += totalCost
+	if deal.Cashflow > 0 {
+		player.PassiveIncome += deal.Cashflow * shares
+	}
 
 	var stock models.Asset
 	err = tx.Where("game_id = ? AND owner_id = ? AND type = ? AND symbol = ?", gameID, player.ID, "stock", deal.Symbol).First(&stock).Error
@@ -1069,7 +1220,7 @@ func (h *AuditorPanelHandler) processStockDeal(tx *gorm.DB, gameID uuid.UUID, pl
 			Name:        deal.Name,
 			Type:        "stock",
 			Price:       totalCost,
-			Income:      0,
+			Income:      deal.Cashflow * shares,
 			DownPayment: totalCost,
 			Mortgage:    0,
 			Symbol:      deal.Symbol,
@@ -1086,6 +1237,7 @@ func (h *AuditorPanelHandler) processStockDeal(tx *gorm.DB, gameID uuid.UUID, pl
 		stock.Shares += shares
 		stock.Price += totalCost
 		stock.DownPayment += totalCost
+		stock.Income += deal.Cashflow * shares
 		stock.LoanAmount += loan
 		stock.LoanExpense += loan / 10
 		stock.UnitPrice = deal.Price
@@ -1102,6 +1254,21 @@ func (h *AuditorPanelHandler) processStockNews(tx *gorm.DB, gameID uuid.UUID, de
 		return nil, err
 	}
 	multiplier := deal.ROI
+	if len(deal.Extra) > 0 {
+		var extra map[string]any
+		if err := json.Unmarshal(deal.Extra, &extra); err == nil {
+			if raw, ok := extra["share_multiplier"]; ok {
+				switch v := raw.(type) {
+				case float64:
+					multiplier = v
+				case int:
+					multiplier = float64(v)
+				case int64:
+					multiplier = float64(v)
+				}
+			}
+		}
+	}
 	if multiplier <= 0 {
 		multiplier = 1
 	}
@@ -1175,6 +1342,9 @@ func (h *AuditorPanelHandler) processBusinessDeal(tx *gorm.DB, gameID uuid.UUID,
 	player.Cash -= deal.DownPayment
 	player.PassiveIncome += deal.Cashflow
 	player.AssetsTotal += deal.Price
+	if deal.Mortgage > 0 {
+		player.LiabilitiesTotal += deal.Mortgage
+	}
 	asset := models.Asset{
 		ID:          uuid.New(),
 		GameID:      &gameID,
@@ -1183,7 +1353,7 @@ func (h *AuditorPanelHandler) processBusinessDeal(tx *gorm.DB, gameID uuid.UUID,
 		Price:       deal.Price,
 		Income:      deal.Cashflow,
 		DownPayment: deal.DownPayment,
-		Mortgage:    0,
+		Mortgage:    deal.Mortgage,
 		LoanAmount:  loan,
 		LoanExpense: loan / 10,
 		OwnerID:     &player.ID,
@@ -1202,6 +1372,7 @@ func (h *AuditorPanelHandler) processDepositDeal(tx *gorm.DB, gameID uuid.UUID, 
 	}
 	player.Cash -= required
 	player.AssetsTotal += required
+	player.PassiveIncome += deal.Cashflow
 	payout := required + int64(float64(required)*(deal.ROI/100.0))
 	if payout < required {
 		payout = required
@@ -1212,7 +1383,7 @@ func (h *AuditorPanelHandler) processDepositDeal(tx *gorm.DB, gameID uuid.UUID, 
 		Name:        deal.Name,
 		Type:        "deposit_certificate",
 		Price:       required,
-		Income:      0,
+		Income:      deal.Cashflow,
 		DownPayment: required,
 		Mortgage:    0,
 		LoanAmount:  loan,
@@ -1268,50 +1439,41 @@ func (h *AuditorPanelHandler) SmallDealPurchase(c *gin.Context) {
 			return errors.New("player_id_required")
 		}
 		var p models.Player
-		if err := tx.First(&p, "id = ? AND game_id = ?", req.PlayerID, gameID).Error; err != nil {
+		if err := tx.Preload("Profession").First(&p, "id = ? AND game_id = ?", req.PlayerID, gameID).Error; err != nil {
 			return err
 		}
+		before := snapshotFinance(p)
 
-		var amount int64
+		actionType := "buy"
 		switch dealType {
 		case "stock":
 			if err := h.processStockDeal(tx, gameID, &p, deal, req.Shares, req.AllowLoan); err != nil {
 				return err
 			}
-			amount = -(deal.Price * req.Shares)
 		case "real_estate":
 			if err := h.processRealEstateDeal(tx, gameID, &p, deal, req.AllowLoan); err != nil {
 				return err
 			}
-			amount = -deal.DownPayment
 		case "business":
 			if err := h.processBusinessDeal(tx, gameID, &p, deal, req.AllowLoan); err != nil {
 				return err
 			}
-			amount = -deal.DownPayment
 		case "deposit_certificate":
 			if err := h.processDepositDeal(tx, gameID, &p, deal, req.AllowLoan); err != nil {
 				return err
-			}
-			if deal.Price > 0 {
-				amount = -deal.Price
-			} else {
-				amount = -deal.DownPayment
 			}
 		default:
 			return errors.New("unsupported_small_deal_type")
 		}
 
+		h.recalculatePlayerFinancials(&p, p.Profession)
 		if err := tx.Save(&p).Error; err != nil {
 			return err
 		}
-		ev := "small_deal_buy_" + dealType
-		desc := deal.Name
-		log := models.FinancialLog{
-			ID: uuid.New(), GameID: gameID, PlayerID: p.ID,
-			Amount: amount, Type: ev, Description: &desc,
+		if err := h.auditPlayerFinancials(tx, &p, p.Profession); err != nil {
+			return err
 		}
-		return tx.Create(&log).Error
+		return h.createFinancialLog(tx, gameID, p.ID, actionType, before, p, "Small deal purchase: "+deal.Name)
 	}); err != nil {
 		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: err.Error()})
 		return
@@ -1337,9 +1499,10 @@ func (h *AuditorPanelHandler) BigDealPurchase(c *gin.Context) {
 
 	if err := h.db.Transaction(func(tx *gorm.DB) error {
 		var p models.Player
-		if err := tx.First(&p, "id = ? AND game_id = ?", req.PlayerID, gameID).Error; err != nil {
+		if err := tx.Preload("Profession").First(&p, "id = ? AND game_id = ?", req.PlayerID, gameID).Error; err != nil {
 			return err
 		}
+		before := snapshotFinance(p)
 		var deal models.BigDeal
 		if err := tx.First(&deal, "id = ?", *req.DealID).Error; err != nil {
 			return err
@@ -1349,6 +1512,7 @@ func (h *AuditorPanelHandler) BigDealPurchase(c *gin.Context) {
 		p.PassiveIncome += deal.Cashflow
 		p.AssetsTotal += deal.Price
 		p.LiabilitiesTotal += deal.Mortgage
+		h.recalculatePlayerFinancials(&p, p.Profession)
 		if err := tx.Save(&p).Error; err != nil {
 			return err
 		}
@@ -1368,13 +1532,10 @@ func (h *AuditorPanelHandler) BigDealPurchase(c *gin.Context) {
 			return err
 		}
 
-		ev := "big_deal_buy"
-		desc := deal.Name
-		log := models.FinancialLog{
-			ID: uuid.New(), GameID: gameID, PlayerID: p.ID,
-			Amount: -deal.DownPayment, Type: ev, Description: &desc,
+		if err := h.auditPlayerFinancials(tx, &p, p.Profession); err != nil {
+			return err
 		}
-		return tx.Create(&log).Error
+		return h.createFinancialLog(tx, gameID, p.ID, "buy", before, p, "Big deal purchase: "+deal.Name)
 	}); err != nil {
 		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: err.Error()})
 		return
@@ -1507,14 +1668,18 @@ func (h *AuditorPanelHandler) ApproveTx(c *gin.Context) {
 		// Load locked player rows
 		var buyer models.Player
 		if err := txDB.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Preload("Profession").
 			First(&buyer, "id = ?", tx.BuyerID).Error; err != nil {
 			return err
 		}
 		var seller models.Player
 		if err := txDB.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Preload("Profession").
 			First(&seller, "id = ?", tx.MarketOffer.SellerID).Error; err != nil {
 			return err
 		}
+		beforeBuyer := snapshotFinance(buyer)
+		beforeSeller := snapshotFinance(seller)
 
 		var asset models.Asset
 		if err := txDB.First(&asset, "id = ?", tx.MarketOffer.AssetID).Error; err != nil {
@@ -1525,14 +1690,30 @@ func (h *AuditorPanelHandler) ApproveTx(c *gin.Context) {
 			return errors.New("insufficient_cash")
 		}
 
-		// Transfer cash
+		// BUYER: payment + passive income/liabilities transfer.
 		buyer.Cash -= agreed
-		seller.Cash += agreed
-
-		// Update passive income based on asset's monthly cashflow (income column)
 		buyer.PassiveIncome += asset.Income
-		seller.PassiveIncome -= asset.Income
+		buyer.LiabilitiesTotal += asset.Mortgage + asset.LoanAmount
+		h.recalculatePlayerFinancials(&buyer, buyer.Profession)
 
+		// SELLER: remove asset economics, then add sale proceeds net of debt.
+		seller.PassiveIncome -= asset.Income
+		seller.LiabilitiesTotal -= asset.Mortgage + asset.LoanAmount
+		seller.LoanBalance -= asset.LoanAmount
+		seller.LoanExpense -= asset.LoanExpense
+		profit := agreed - asset.Mortgage - asset.LoanAmount
+		seller.Cash += profit
+		h.recalculatePlayerFinancials(&seller, seller.Profession)
+
+		if seller.LiabilitiesTotal < 0 {
+			seller.LiabilitiesTotal = 0
+		}
+		if seller.LoanBalance < 0 {
+			seller.LoanBalance = 0
+		}
+		if seller.LoanExpense < 0 {
+			seller.LoanExpense = 0
+		}
 		if err := txDB.Save(&buyer).Error; err != nil {
 			return err
 		}
@@ -1557,21 +1738,16 @@ func (h *AuditorPanelHandler) ApproveTx(c *gin.Context) {
 			return err
 		}
 
-		// Financial logs for both players
-		sDesc := "Approved market sell (cash received)"
-		bDesc := "Approved market buy (cash spent)"
-		slog := models.FinancialLog{
-			ID: uuid.New(), GameID: gameID, PlayerID: seller.ID,
-			Amount: agreed, Type: "transaction_approved", Description: &sDesc,
-		}
-		bLog := models.FinancialLog{
-			ID: uuid.New(), GameID: gameID, PlayerID: buyer.ID,
-			Amount: -agreed, Type: "transaction_approved", Description: &bDesc,
-		}
-		if err := txDB.Create(&slog).Error; err != nil {
+		if err := h.auditPlayerFinancials(txDB, &buyer, buyer.Profession); err != nil {
 			return err
 		}
-		if err := txDB.Create(&bLog).Error; err != nil {
+		if err := h.auditPlayerFinancials(txDB, &seller, seller.Profession); err != nil {
+			return err
+		}
+		if err := h.createFinancialLog(txDB, gameID, seller.ID, "sell", beforeSeller, seller, "Approved market sell"); err != nil {
+			return err
+		}
+		if err := h.createFinancialLog(txDB, gameID, buyer.ID, "buy", beforeBuyer, buyer, "Approved market buy"); err != nil {
 			return err
 		}
 

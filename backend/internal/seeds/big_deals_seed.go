@@ -22,15 +22,19 @@ type bigDealSeedRow struct {
 }
 
 func SeedBigDealBusiness(db *gorm.DB) error {
-	return seedBigDeals(db, "big_deal_business.json", "big_deal_business", "big deal business")
+	return seedBigDeals(db, "big_deal_business.json", "business", "big deal business")
 }
 
 func SeedBigDealRealEstate(db *gorm.DB) error {
-	return seedBigDeals(db, "big_deal_real_estate.json", "big_deal_real_estate", "big deal real estate")
+	return seedBigDeals(db, "big_deal_real_estate.json", "real_estate", "big deal real estate")
 }
 
 func SeedBigDealLand(db *gorm.DB) error {
-	return seedBigDeals(db, "big_deal_land.json", "big_deal_land", "big deal land")
+	return seedBigDeals(db, "big_deal_land.json", "expense", "big deal land")
+}
+
+func SeedBigDealRealEstateNews(db *gorm.DB) error {
+	return seedBigDeals(db, "big_deal_real_estate_news.json", "expense", "big deal real estate news")
 }
 
 func seedBigDeals(db *gorm.DB, fileName, dealType, logLabel string) error {
@@ -51,7 +55,10 @@ func seedBigDeals(db *gorm.DB, fileName, dealType, logLabel string) error {
 		}
 
 		var exists int64
-		if err := db.Model(&models.BigDeal{}).Where("title = ? OR name = ?", unique, unique).Count(&exists).Error; err != nil {
+		if err := db.Model(&models.BigDeal{}).
+			Where("deal_type = ? AND title = ? AND name = ? AND price = ? AND down_payment = ? AND mortgage = ? AND cashflow = ?",
+				dealType, row.Title, row.Name, row.Price, row.DownPayment, row.Mortgage, row.Cashflow).
+			Count(&exists).Error; err != nil {
 			return err
 		}
 		if exists > 0 {
