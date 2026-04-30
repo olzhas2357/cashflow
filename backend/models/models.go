@@ -208,6 +208,7 @@ type MarketEvent struct {
 
 type Doodad struct {
 	ID                     uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+	ExternalID             string    `gorm:"type:varchar(128);not null;uniqueIndex" json:"external_id"`
 	DoodadType             string    `gorm:"type:varchar(40);not null;index" json:"doodad_type"`
 	Name                   string    `gorm:"type:varchar(255);not null;index" json:"name"`
 	Description            string    `gorm:"type:text;not null;default:''" json:"description"`

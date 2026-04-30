@@ -11,6 +11,7 @@ import (
 )
 
 type doodadSeedRow struct {
+	ID                     string `json:"id"`
 	Type                   string `json:"type"`
 	Name                   string `json:"name"`
 	Title                  string `json:"title"`
@@ -31,6 +32,10 @@ func SeedDoodads(db *gorm.DB) error {
 
 	loaded := 0
 	for _, row := range rows {
+		if row.ID == "" {
+			continue
+		}
+
 		name := row.Name
 		if name == "" {
 			name = row.Title
@@ -48,7 +53,7 @@ func SeedDoodads(db *gorm.DB) error {
 		}
 
 		var exists int64
-		if err := db.Model(&models.Doodad{}).Where("name = ?", name).Count(&exists).Error; err != nil {
+		if err := db.Model(&models.Doodad{}).Where("external_id = ?", row.ID).Count(&exists).Error; err != nil {
 			return err
 		}
 		if exists > 0 {
@@ -56,6 +61,7 @@ func SeedDoodads(db *gorm.DB) error {
 		}
 
 		item := models.Doodad{
+			ExternalID:             row.ID,
 			DoodadType:             typ,
 			Name:                   name,
 			Description:            row.Description,
