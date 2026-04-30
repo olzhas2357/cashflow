@@ -2,7 +2,7 @@
   {
     "id": "biz_startup_auto_addons",
     "category": "business",
-    "type": "small_deal_business",
+    "type": "CAR_PARTS_CO",
     "title": "Стартап авто-аксессуаров",
     "description": "Изобретите новый способ изготовления автомобильных 'наворотов', создайте компанию для их производства и продажи. Используйте сами или продайте право другому игроку.",
     "price": 3000,
@@ -18,7 +18,7 @@
   {
     "id": "biz_software_program",
     "category": "business",
-    "type": "small_deal_business",
+    "type": "SOFTWARE_CO",
     "title": "Программное обеспечение",
     "description": "Разработайте интересную компьютерную программу, создайте компанию для ее производства и продажи. Используйте сами или продайте право другому игроку.",
     "price": 5000,
@@ -34,7 +34,7 @@
   {
     "id": "biz_land_10_acres",
     "category": "business",
-    "type": "small_deal_business",
+    "type": "LAND_10_ACRES",
     "title": "Участок земли 10 акров",
     "description": "Парковый участок в неосвоенном районе. Никаких дорог и коммуникаций. Купите сами или продайте право другому игроку.",
     "price": 5000,
@@ -50,7 +50,7 @@
   {
     "id": "biz_rare_gold_coin",
     "category": "business",
-    "type": "small_deal_business",
+    "type": "GOLD_COINS",
     "title": "Редкая золотая монета",
     "description": "Монета эпохи заселения Нового Света номиналом 1 песо (XVI век, Гавана). Единственный экземпляр. Купите сами или продайте право другому игроку.",
     "price": 500,
@@ -66,7 +66,7 @@
   {
     "id": "biz_krugerrands_deal",
     "category": "business",
-    "type": "small_deal_business",
+    "type": "GOLD_KRUGERRAND",
     "title": "Золотые Крюгерранды",
     "description": "Другу срочно нужны деньги. Он продает 10 одноунциевых золотых крюгеррандов по цене 300$ за штуку. Купите сами или продайте право другому игроку.",
     "price": 3000,

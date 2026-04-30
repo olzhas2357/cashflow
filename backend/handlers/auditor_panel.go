@@ -1142,6 +1142,74 @@ func (h *AuditorPanelHandler) BankLoan(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
+func (h *AuditorPanelHandler) RepayLoan(c *gin.Context) {
+	gameID, ok := parseGameID(c)
+	if !ok {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "invalid_game_id"})
+		return
+	}
+
+	var req EventRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "invalid_request"})
+		return
+	}
+
+	if req.PlayerID == uuid.Nil || req.LoanAmount <= 0 {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "player_id_and_amount_required"})
+		return
+	}
+
+	if req.LoanAmount%1000 != 0 {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "amount_must_be_multiple_of_1000"})
+		return
+	}
+
+	if err := h.db.Transaction(func(tx *gorm.DB) error {
+		var p models.Player
+
+		if err := tx.Preload("Profession").
+			First(&p, "id = ? AND game_id = ?", req.PlayerID, gameID).Error; err != nil {
+			return err
+		}
+
+		if req.LoanAmount > p.LoanBalance {
+			return errors.New("repay_exceeds_loan")
+		}
+
+		if req.LoanAmount > p.Cash {
+			return errors.New("insufficient_cash")
+		}
+
+		before := snapshotFinance(p)
+
+		p.Cash -= req.LoanAmount
+		p.LoanBalance -= req.LoanAmount
+		p.LiabilitiesTotal -= req.LoanAmount
+
+		expenseReduction := req.LoanAmount / 10
+		p.LoanExpense -= expenseReduction
+		if p.LoanExpense < 0 {
+			p.LoanExpense = 0
+		}
+
+		h.recalculatePlayerFinancials(&p, p.Profession)
+
+		if err := tx.Save(&p).Error; err != nil {
+			return err
+		}
+		if err := h.auditPlayerFinancials(tx, &p, p.Profession); err != nil {
+			return err
+		}
+		return h.createFinancialLog(tx, gameID, p.ID, "repay_loan", before, p, "Loan repayment")
+	}); err != nil {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
 func resolveSmallDealType(deal models.SmallDeal) string {
 	switch deal.Category {
 	case "stock":
@@ -1248,64 +1316,69 @@ func (h *AuditorPanelHandler) processStockDeal(tx *gorm.DB, gameID uuid.UUID, pl
 	return nil
 }
 
-func (h *AuditorPanelHandler) processStockNews(tx *gorm.DB, gameID uuid.UUID, deal models.SmallDeal) ([]uuid.UUID, error) {
+func (h *AuditorPanelHandler) processStockNews(
+	tx *gorm.DB,
+	gameID uuid.UUID,
+	deal models.SmallDeal,
+) ([]uuid.UUID, error) {
+
 	var stocks []models.Asset
-	if err := tx.Where("game_id = ? AND type = ? AND symbol = ?", gameID, "stock", deal.Symbol).Find(&stocks).Error; err != nil {
+	if err := tx.Where("game_id = ? AND type = ? AND symbol = ?",
+		gameID, "stock", deal.Symbol).Find(&stocks).Error; err != nil {
 		return nil, err
 	}
+
+	var extra map[string]any
+	_ = json.Unmarshal(deal.Extra, &extra)
+
+	event, _ := extra["event"].(string)
 	multiplier := deal.ROI
-	if len(deal.Extra) > 0 {
-		var extra map[string]any
-		if err := json.Unmarshal(deal.Extra, &extra); err == nil {
-			if raw, ok := extra["share_multiplier"]; ok {
-				switch v := raw.(type) {
-				case float64:
-					multiplier = v
-				case int:
-					multiplier = float64(v)
-				case int64:
-					multiplier = float64(v)
-				}
-			}
-		}
+
+	if v, ok := extra["share_multiplier"].(float64); ok {
+		multiplier = v
 	}
+
 	if multiplier <= 0 {
 		multiplier = 1
 	}
+
 	affected := make([]uuid.UUID, 0, len(stocks))
+
 	for _, stock := range stocks {
-		newUnitPrice := deal.Price
-		if newUnitPrice <= 0 {
-			newUnitPrice = int64(float64(stock.UnitPrice) * multiplier)
-		}
-		if newUnitPrice <= 0 {
-			newUnitPrice = stock.UnitPrice
-		}
-		newShares := stock.Shares
-		if multiplier != 1 && deal.Price == 0 {
-			newShares = int64(float64(stock.Shares) * multiplier)
+
+		oldShares := stock.Shares
+		oldPrice := stock.UnitPrice
+
+		newShares := oldShares
+		newPrice := oldPrice
+
+		switch event {
+
+		case "stock_split":
+			// 2:1
+			newShares = int64(float64(oldShares) * multiplier)
+			newPrice = int64(float64(oldPrice) / multiplier)
+
+		case "reverse_split":
+			// 1:2
+			newShares = int64(float64(oldShares) * multiplier)
+			newPrice = int64(float64(oldPrice) / multiplier)
+
 			if newShares < 1 {
 				newShares = 1
 			}
 		}
-		newValue := newUnitPrice * newShares
-		diff := newValue - stock.Price
 
 		if err := tx.Model(&stock).Updates(map[string]any{
-			"unit_price": newUnitPrice,
 			"shares":     newShares,
-			"price":      newValue,
+			"unit_price": newPrice,
 		}).Error; err != nil {
 			return nil, err
 		}
-		if diff != 0 {
-			if err := tx.Model(&models.Player{}).Where("id = ?", *stock.OwnerID).
-				Update("assets_total", gorm.Expr("assets_total + ?", diff)).Error; err != nil {
-				return nil, err
-			}
-		}
+
 		affected = append(affected, *stock.OwnerID)
 	}
+
 	return affected, nil
 }
 

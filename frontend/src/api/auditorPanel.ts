@@ -23,6 +23,8 @@ export type UserPlayer = {
   expenses: number
   assets_total: number
   liabilities_total: number
+  loan_balance?: number
+  loan_expense?: number
   children_count: number
   charity_turns: number
   skip_turns: number
@@ -386,6 +388,14 @@ export async function postEventBigDeal(token: string, gameId: string, playerId: 
 
 export async function postEventLoan(token: string, gameId: string, playerId: string, loanAmount: number) {
   return apiFetch<{ ok: boolean }>(`${A}/games/${gameId}/events/loan`, {
+    token,
+    method: 'POST',
+    body: JSON.stringify({ player_id: playerId, loan_amount: loanAmount }),
+  })
+}
+
+export async function postEventRepayLoan(token: string, gameId: string, playerId: string, loanAmount: number) {
+  return apiFetch<{ ok: boolean }>(`${A}/games/${gameId}/events/repay-loan`, {
     token,
     method: 'POST',
     body: JSON.stringify({ player_id: playerId, loan_amount: loanAmount }),

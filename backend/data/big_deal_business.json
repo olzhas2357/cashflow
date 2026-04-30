@@ -54,7 +54,7 @@
   {
     "id": "big_biz_lp_1",
     "category": "business",
-    "type": "big_deal_business",
+    "type": "LIMITED_PARTNERSHIP",
     "title": "Limited partner required",
     "description": "Investment in a partnership as a limited partner.",
     "price": 30000,
@@ -69,7 +69,7 @@
   {
     "id": "big_biz_lp_2",
     "category": "business",
-    "type": "big_deal_business",
+    "type": "LIMITED_PARTNERSHIP",
     "title": "Limited partner required",
     "description": "Investment in a partnership as a limited partner.",
     "price": 25000,
@@ -84,7 +84,7 @@
   {
     "id": "big_biz_lp_3",
     "category": "business",
-    "type": "big_deal_business",
+    "type": "LIMITED_PARTNERSHIP",
     "title": "Limited partner required",
     "description": "Investment in a partnership as a limited partner.",
     "price": 20000,
@@ -99,7 +99,7 @@
   {
     "id": "big_biz_lp_4",
     "category": "business",
-    "type": "big_deal_business",
+    "type": "LIMITED_PARTNERSHIP",
     "title": "Limited partner required",
     "description": "Investment in a partnership as a limited partner.",
     "price": 30000,
@@ -114,7 +114,7 @@
   {
     "id": "big_biz_land_20",
     "category": "business",
-    "type": "big_deal_business",
+    "type": "LAND_20_ACRES",
     "title": "20 акров земли на продажу",
     "description": "20 акров свободной земли в жилой зоне. Возможность значительного прироста стоимости при переквалификации в коммерческую.",
     "price": 20000,
@@ -144,7 +144,7 @@
   {
     "id": "car_wash",
     "category": "business",
-    "type": "big_deal_business",
+    "type": "CAR_WASH",
     "title": "Автомойка на продажу",
     "description": "Враждующая семья владельцев хочет продать бизнес как можно скорее. Отличное расположение.",
     "price": 350000,
@@ -159,7 +159,7 @@
   {
     "id": "big_biz_pension",
     "category": "business",
-    "type": "big_deal_business",
+    "type": "BED_BREAKFAST",
     "title": "Пансионат с полупансионом",
     "description": "Владелец отходит от дел. Курортный район, 5 спален / 3 ванные.",
     "price": 150000,

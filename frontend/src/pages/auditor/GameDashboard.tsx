@@ -12,6 +12,7 @@ import {
   LineChart,
   UserMinus,
   ArrowLeftRight,
+  Wallet,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import {
@@ -32,6 +33,7 @@ import {
   postEventDoodad,
   postEventDownsized,
   postEventLoan,
+  postEventRepayLoan,
   postEventPayday,
   postEventSmallDeal,
   rejectTransaction,
@@ -144,7 +146,19 @@ export default function GameDashboard() {
   }, [players, targetId])
 
   const [dlg, setDlg] = useState<
-    'none' | 'small' | 'big' | 'doodad' | 'payday' | 'baby' | 'charity' | 'downsized' | 'loan' | 'market' | 'tx' | 'player_finance'
+    | 'none'
+    | 'small'
+    | 'big'
+    | 'doodad'
+    | 'payday'
+    | 'baby'
+    | 'charity'
+    | 'downsized'
+    | 'loan'
+    | 'repay_loan'
+    | 'market'
+    | 'tx'
+    | 'player_finance'
   >('none')
   const [financePlayerId, setFinancePlayerId] = useState('')
 
@@ -156,6 +170,7 @@ export default function GameDashboard() {
   const [bigDealId, setBigDealId] = useState('')
   const [doodadId, setDoodadId] = useState('')
   const [loanAmount, setLoanAmount] = useState<number>(3000)
+  const [repayAmount, setRepayAmount] = useState<number>(3000)
 
   const smallDeals = smallQ.data ?? []
   const filteredSmall = useMemo(
@@ -255,6 +270,14 @@ export default function GameDashboard() {
       alert((err as Error).message || 'Loan failed')
     },
   })
+  const repayM = useMutation({
+    mutationFn: () =>
+      postEventRepayLoan(token!, gameId!, targetId, Math.max(1000, Math.round(repayAmount / 1000) * 1000)),
+    onSuccess: refresh,
+    onError: (err) => {
+      alert((err as Error).message || 'Repay failed')
+    },
+  })
   const smallM = useMutation({
     mutationFn: () =>
       postEventSmallDeal(token!, gameId!, targetId, smallDealId, {
@@ -297,6 +320,8 @@ export default function GameDashboard() {
     selectedDoodad?.doodad_type === 'child_payment'
       ? (selectedDoodad.cost_per_child ?? 0) * (players.find((p) => p.id === targetId)?.children_count ?? 0)
       : (selectedDoodad?.cost ?? 0)
+
+  const targetLoanBalance = players.find((p) => p.id === targetId)?.loan_balance ?? 0
 
   const selectedFinance = useMemo(
     () => finance.find((f) => f.player.id === financePlayerId) ?? null,
@@ -467,6 +492,7 @@ export default function GameDashboard() {
             <ActionBtn icon={HeartHandshake} label="Charity" onClick={() => setDlg('charity')} />
             <ActionBtn icon={UserMinus} label="Downsized" onClick={() => setDlg('downsized')} />
             <ActionBtn icon={Banknote} label="Loan" onClick={() => setDlg('loan')} />
+            <ActionBtn icon={Wallet} label="Repay loan" onClick={() => setDlg('repay_loan')} />
             <ActionBtn icon={LineChart} label="Market" onClick={() => setDlg('market')} />
             <ActionBtn icon={ArrowLeftRight} label="Transaction" onClick={() => setDlg('tx')} />
           </div>
@@ -693,6 +719,43 @@ export default function GameDashboard() {
           <DialogFooter>
             <Button onClick={() => loanM.mutate()} disabled={loanM.isPending || loanAmount < 1000}>
               Apply loan
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={dlg === 'repay_loan'} onOpenChange={(o) => !o && setDlg('none')}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Repay bank loan</DialogTitle>
+            <DialogDescription>
+              Pay from cash. Principal, liabilities, and the 10% loan payment line are reduced in proportion.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+              Current bank loan balance: <span className="font-mono text-foreground">{money(targetLoanBalance)}</span>
+            </p>
+            <Label>Repay amount (multiple of 1000, ≤ balance and ≤ cash)</Label>
+            <Input
+              type="number"
+              min={1000}
+              step={1000}
+              value={repayAmount}
+              onChange={(e) => setRepayAmount(Number(e.target.value) || 0)}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={() => repayM.mutate()}
+              disabled={
+                repayM.isPending ||
+                repayAmount < 1000 ||
+                targetLoanBalance < 1000 ||
+                (players.find((p) => p.id === targetId)?.cash ?? 0) < Math.max(1000, Math.round(repayAmount / 1000) * 1000)
+              }
+            >
+              Repay
             </Button>
           </DialogFooter>
         </DialogContent>

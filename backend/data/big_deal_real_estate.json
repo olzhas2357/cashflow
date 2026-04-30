@@ -2,7 +2,7 @@
   {
     "id": "duplex_1",
     "category": "real_estate",
-    "type": "real_estate",
+    "type": "APARTMENTS",
     "title": "Duplex",
     "description": "Text",
     "price": 45000,
@@ -20,7 +20,7 @@
     {
       "id": "duplex_2",
     "category": "real_estate",
-    "type": "real_estate",
+    "type": "APARTMENTS",
     "title": "Duplex",
     "description": "Text",
     "price": 70000,
@@ -38,7 +38,7 @@
     {
     "id": "duplex_3",
     "category": "real_estate",
-    "type": "real_estate",
+    "type": "APARTMENTS",
     "title": "Duplex",
     "description": "Text",
     "price": 60000,
@@ -56,7 +56,7 @@
     {
     "id": "duplex_4",
     "category": "real_estate",
-    "type": "real_estate",
+    "type": "APARTMENTS",
     "title": "Duplex",
     "description": "Text",
     "price": 50000,
@@ -74,7 +74,7 @@
     {
       "id": "duplex_5",
       "category": "real_estate",
-      "type": "real_estate",
+      "type": "APARTMENTS",
       "title": "Duplex",
       "description": "Text",
       "price": 60000,
@@ -92,7 +92,7 @@
       {
         "id": "4-plex_1",
         "category": "real_estate",
-        "type": "real_estate",
+        "type": "APARTMENTS",
         "title": "4-plex",
         "description": "Text",
         "price": 140000,
@@ -110,7 +110,7 @@
         {
           "id": "4-plex_2",
           "category": "real_estate",
-          "type": "real_estate",
+          "type": "APARTMENTS",
           "title": "4-plex",
           "description": "Text",
           "price": 90000,
@@ -128,7 +128,7 @@
         {
           "id": "4-plex_3",
           "category": "real_estate",
-          "type": "real_estate",
+          "type": "APARTMENTS",
           "title": "4-plex",
           "description": "Text",
           "price": 100000,
@@ -147,7 +147,7 @@
         {
           "id": "4-plex_4",
           "category": "real_estate",
-          "type": "real_estate",
+          "type": "APARTMENTS",
           "title": "4-plex",
           "description": "Text",
           "price": 125000,
@@ -165,7 +165,7 @@
         {
           "id": "4-plex_5",
           "category": "real_estate",
-          "type": "real_estate",
+          "type": "APARTMENTS",
           "title": "4-plex",
           "description": "Text",
           "price": 80000,
@@ -183,7 +183,7 @@
         {
           "id": "4-plex_6",
           "category": "real_estate",
-          "type": "real_estate",
+          "type": "APARTMENTS",
           "title": "4-plex",
           "description": "Text",
           "price": 80000,
@@ -201,7 +201,7 @@
         {
           "id": "8-plex_1",
           "category": "real_estate",
-          "type": "real_estate",
+          "type": "APARTMENTS",
           "title": "8-plex",
           "description": "Text",
           "price": 200000,
@@ -220,7 +220,7 @@
         {
           "id": "8-plex_2",
           "category": "real_estate",
-          "type": "real_estate",
+          "type": "APARTMENTS",
           "title": "8-plex",
           "description": "Text",
           "price": 220000,
@@ -238,7 +238,7 @@
         {
           "id": "8-plex_3",
           "category": "real_estate",
-          "type": "real_estate",
+          "type": "APARTMENTS",
           "title": "8-plex",
           "description": "Text",
           "price": 160000,
@@ -256,7 +256,7 @@
         {
           "id": "8-plex_4",
           "category": "real_estate",
-          "type": "real_estate",
+          "type": "APARTMENTS",
           "title": "8-plex",
           "description": "Text",
           "price": 240000,
@@ -274,7 +274,7 @@
         {
           "id": "apartment_building_1",
           "category": "real_estate",
-          "type": "real_estate",
+          "type": "APT_OVER_12",
           "title": "Apartment building",
           "description": "Дом на 60 квартир, можно продать за 1500000 - 2700000$",
           "price": 1200000,
@@ -290,7 +290,7 @@
         {
           "id": "apartment_building_2",
           "category": "real_estate",
-          "type": "real_estate",
+          "type": "ALL_MULTI_FAMILY",
           "title": "Apartment building",
           "description": "12 квартирный дом продают, можно продать за 300000 - 480000$",
           "price": 350000,
@@ -306,7 +306,7 @@
         {
           "id": "apartment_building_3",
           "category": "real_estate",
-          "type": "real_estate",
+          "type": "APT_OVER_12",
           "title": "Apartment building",
           "description": "Старый 24-квартиный дом, можно продать 600000$ - 960000$",
           "price": 550000,
@@ -322,7 +322,7 @@
         {
           "id": "apartment_building_4",
           "category": "real_estate",
-          "type": "real_estate",
+          "type": "APT_OVER_12",
           "title": "Apartment building",
           "description": "Продаются 2 дома, общее число квартир - 24. можно продать за 600000 - 960000$",
           "price": 575000,
@@ -338,7 +338,7 @@
         {
           "id": "house_3_2_1",
           "category": "real_estate",
-          "type": "real_estate",
+          "type": "HOUSE_3_2",
           "title": "House 3/2",
           "description": "Text",
           "price": 65000,
@@ -355,7 +355,7 @@
         {
           "id": "house_3_2_2",
           "category": "real_estate",
-          "type": "real_estate",
+          "type": "HOUSE_3_2",
           "title": "House 3/2",
           "description": "Text",
           "price": 70000,
@@ -372,7 +372,7 @@
         {
           "id": "house_3_2_3",
           "category": "real_estate",
-          "type": "real_estate",
+          "type": "HOUSE_3_2",
           "title": "House 3/2",
           "description": "Text",
           "price": 115000,
@@ -389,7 +389,7 @@
         {
           "id": "house_3_2_4",
           "category": "real_estate",
-          "type": "real_estate",
+          "type": "HOUSE_3_2",
           "title": "House 3/2",
           "description": "Text",
           "price": 125000,
@@ -406,7 +406,7 @@
         {
           "id": "house_3_2_5",
           "category": "real_estate",
-          "type": "real_estate",
+          "type": "HOUSE_3_2",
           "title": "House 3/2",
           "description": "Text",
           "price": 75000,
@@ -424,7 +424,7 @@
         {
           "id": "house_3_2_6",
           "category": "real_estate",
-          "type": "real_estate",
+          "type": "HOUSE_3_2",
           "title": "House 3/2",
           "description": "Text",
           "price": 67000,
@@ -441,7 +441,7 @@
         {
           "id": "house_3_2_7",
           "category": "real_estate",
-          "type": "real_estate",
+          "type": "HOUSE_3_2",
           "title": "House 3/2",
           "description": "Text",
           "price": 70000,
@@ -458,7 +458,7 @@
         {
           "id": "house_3_2_8",
           "category": "real_estate",
-          "type": "real_estate",
+          "type": "HOUSE_3_2",
           "title": "House 3/2",
           "description": "Text",
           "price": 65000,

@@ -73,76 +73,76 @@
   {
     "id": "d_010",
     "type": "simple_payment",
-    "title": "Всякая всячина",
+    "title": "Всякая всячина 100",
     "description": "Заплатите 100$.",
     "cash_cost": 100
   },
   {
     "id": "d_011",
     "type": "simple_payment",
-    "title": "Всякая всячина",
+    "title": "Всякая всячина 80",
     "description": "Заплатите 80$.",
     "cash_cost": 80
   },
   {
     "id": "d_012",
     "type": "simple_payment",
-    "title": "Всякая всячина",
+    "title": "Всякая всячина 50",
     "description": "Заплатите 50$.",
     "cash_cost": 50
   },
   {
     "id": "d_013",
     "type": "simple_payment",
-    "title": "Всякая всячина",
+    "title": "Всякая всячина 150",
     "description": "Заплатите 150$.",
     "cash_cost": 150
   },
   {
     "id": "d_014",
     "type": "simple_payment",
-    "title": "Всякая всячина",
+    "title": "Всякая всячина 80",
     "description": "Заплатите 80$.",
     "cash_cost": 80
   },
   {
     "id": "d_015",
     "type": "simple_payment",
-    "title": "Всякая всячина",
+    "title": "Всякая всячина 100",
     "description": "Заплатите 100$.",
     "cash_cost": 100
   },
   {
     "id": "d_016",
     "type": "simple_payment",
-    "title": "Всякая всячина",
+    "title": "Всякая всячина 250",
     "description": "Заплатите 250$.",
     "cash_cost": 250
   },
   {
     "id": "d_017",
     "type": "simple_payment",
-    "title": "Всякая всячина",
+    "title": "Всякая всячина 200",
     "description": "Заплатите 200$.",
     "cash_cost": 200
   },
   {
     "id": "d_018",
     "type": "simple_payment",
-    "title": "Всякая всячина",
+    "title": "Всякая всячина 200",
     "description": "Заплатите 200$.",
     "cash_cost": 200
   },
   {
     "id": "d_019",
     "type": "simple_payment",
-    "title": "Всякая всячина",
+    "title": "Всякая всячина 200",
     "description": "Заплатите 200$.",
     "cash_cost": 200
   },
   {
     "id": "d_020",
-    "type": "simple_payment",
+    "type": "simple_payment 300",
     "title": "Всякая всячина",
     "description": "Заплатите 300$.",
     "cash_cost": 300
@@ -150,161 +150,161 @@
   {
     "id": "d_021",
     "type": "simple_payment",
-    "title": "Всякая всячина",
+    "title": "Всякая всячина 220",
     "description": "Заплатите 220$.",
     "cash_cost": 220
   },
   {
     "id": "d_022",
     "type": "simple_payment",
-    "title": "Всякая всячина",
+    "title": "Всякая всячина 700",
     "description": "Заплатите 700$.",
     "cash_cost": 700
   },
   {
     "id": "d_023",
     "type": "simple_payment",
-    "title": "Всякая всячина",
+    "title": "Всякая всячина 180",
     "description": "Заплатите 180$.",
     "cash_cost": 180
   },
   {
     "id": "d_024",
     "type": "simple_payment",
-    "title": "Всякая всячина",
+    "title": "Всякая всячина 100",
     "description": "Заплатите 100$.",
     "cash_cost": 100
   },
   {
     "id": "d_025",
     "type": "simple_payment",
-    "title": "Всякая всячина",
+    "title": "Всякая всячина 100",
     "description": "Заплатите 100$.",
     "cash_cost":100
   },
   {
     "id": "d_026",
     "type": "simple_payment",
-    "title": "Всякая всячина",
+    "title": "Всякая всячина 100",
     "description": "Заплатите 100$.",
     "cash_cost": 100
   },
   {
     "id": "d_027",
     "type": "simple_payment",
-    "title": "Всякая всячина",
+    "title": "Всякая всячина 2000",
     "description": "Заплатите 2000$.",
     "cash_cost": 2000
   },
   {
     "id": "d_028",
     "type": "simple_payment",
-    "title": "Всякая всячина",
+    "title": "Всякая всячина 100",
     "description": "Заплатите 100$.",
     "cash_cost": 100
    },
    {
     "id": "d_029",
     "type": "simple_payment",
-    "title": "Всякая всячина",
+    "title": "Всякая всячина 600",
     "description": "Заплатите 600$.",
     "cash_cost": 600
    },
    {
     "id": "d_030",
     "type": "simple_payment",
-    "title": "Всякая всячина",
+    "title": "Всякая всячина 200",
     "description": "Заплатите 200$.",
     "cash_cost": 200
    },
    {
   "id": "d_031",
   "type": "simple_payment",
-  "title": "Всякая всячина",        
+  "title": "Всякая всячина 120",        
   "description": "Заплатите 120$.",
   "cash_cost": 120
    },
     {
       "id": "d_032",
       "type": "simple_payment",
-      "title": "Всякая всячина",
+      "title": "Всякая всячина 350",
       "description": "Заплатите 350$.",
       "cash_cost": 350
     },
     {
       "id": "d_033",
       "type": "simple_payment",
-      "title": "Всякая всячина",
+      "title": "Всякая всячина 250",
       "description": "Заплатите 250$.",
       "cash_cost": 250
     },
     {
       "id": "d_034",
       "type": "simple_payment",
-      "title": "Всякая всячина",
+      "title": "Всякая всячина 10",
       "description": "Заплатите 10$.",
       "cash_cost": 10
     },
     {
       "id": "d_035",
       "type": "simple_payment",
-      "title": "Всякая всячина",
+      "title": "Всякая всячина 40",
       "description": "Заплатите 40$.",
       "cash_cost": 40
     },
     {
       "id": "d_036",
       "type": "simple_payment",
-      "title": "Всякая всячина",
+      "title": "Всякая всячина 20",
       "description": "Заплатите 20$.",
       "cash_cost": 20
     },
     {
       "id": "d_037",
       "type": "simple_payment",
-      "title": "Всякая всячина",
+      "title": "Всякая всячина 300",
       "description": "Заплатите 300$.",
       "cash_cost": 300
     },
     {
       "id": "d_038",
       "type": "simple_payment",
-      "title": "Всякая всячина",
+      "title": "Всякая всячина 150",
       "description": "Заплатите 150$.",
       "cash_cost": 150
     },
     {
       "id": "d_039",
       "type": "simple_payment",
-      "title": "Всякая всячина",
+      "title": "Всякая всячина 150",
       "description": "Заплатите 150$.",
       "cash_cost": 150
     },
     {
       "id": "d_040",
       "type": "simple_payment",
-      "title": "Всякая всячина",
+      "title": "Всякая всячина 70",
       "description": "Заплатите 70$.",
       "cash_cost": 70
     },
     {
       "id": "d_041",
       "type": "simple_payment",
-      "title": "Всякая всячина",
+      "title": "Всякая всячина 200",
       "description": "Заплатите 200$.",
       "cash_cost": 200
     },
     {
       "id": "d_042",
       "type": "simple_payment",
-      "title": "Всякая всячина",
+      "title": "Всякая всячина 500",
       "description": "Заплатите 500$.",
       "cash_cost": 500
     },
     {
       "id": "d_043",
       "type": "simple_payment",
-      "title": "Всякая всячина",
+      "title": "Всякая всячина 100",
       "description": "Заплатите 100$.",
       "cash_cost": 100
     }

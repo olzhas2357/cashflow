@@ -97,6 +97,7 @@ func NewServer(cfg ServerConfig) *gin.Engine {
 	auditor.POST("/games/:id/events/small-deal", h.Auditor.SmallDealPurchase)
 	auditor.POST("/games/:id/events/big-deal", h.Auditor.BigDealPurchase)
 	auditor.POST("/games/:id/events/loan", h.Auditor.BankLoan)
+	auditor.POST("/games/:id/events/repay-loan", h.Auditor.RepayLoan)
 
 	auditor.POST("/games/:id/market/sell", h.Auditor.MarketSell)
 	auditor.GET("/games/:id/transactions/pending", h.Auditor.PendingTransactions)
