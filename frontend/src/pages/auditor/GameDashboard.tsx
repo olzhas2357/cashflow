@@ -24,9 +24,17 @@ import {
   getGame,
   listBigDeals,
   listDoodads,
+  closeGameMarket,
+  gameMarketState,
   listMarketEvents,
   listPendingTransactions,
   listSmallDeals,
+  listMarketAuctionOffers,
+  marketAuctionBid,
+  marketAuctionList,
+  marketExternalSell,
+  openGameMarket,
+  openSmallDeal,
   postEventBaby,
   postEventBigDeal,
   postEventCharity,
@@ -36,8 +44,11 @@ import {
   postEventRepayLoan,
   postEventPayday,
   postEventSmallDeal,
+  postEventStockSellBank,
   rejectTransaction,
+  transactionPlayerConfirm,
   type GameAsset,
+  type MarketEvent,
   type PlayerFinanceDTO,
 } from '@/api/auditorPanel'
 import { Button } from '@/components/ui/button'
@@ -51,6 +62,13 @@ import { Input } from '@/components/ui/input'
 
 const money = (n: number) =>
   n.toLocaleString(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+
+/** Совпадает с backend MarketNPCOfferSupported — только эти карты можно «открыть» как NPC-покупателя. */
+function marketEventNpcSupported(ev: MarketEvent): boolean {
+  return (
+    (ev.event_type === 'REAL_ESTATE_BUYER' || ev.event_type === 'BUSINESS_BUYER') && ev.offer_price > 0
+  )
+}
 
 const SMALL_CATS = [
   { value: 'stock', label: 'Stock' },
@@ -71,7 +89,7 @@ const LEGACY_SMALL_CAT_MAP: Record<string, string[]> = {
 const BIG_CATS = [
   { value: 'real_estate', label: 'Real estate' },
   { value: 'business', label: 'Business' },
-  { value: 'expense', label: 'Expense' },
+  { value: 'expense', label: 'RE expenses / news' },
 ] as const
 
 export default function GameDashboard() {
@@ -114,6 +132,7 @@ export default function GameDashboard() {
     queryKey: ['auditor_small_deals'],
     queryFn: () => listSmallDeals(token!),
     enabled: !!token,
+    staleTime: 0,
   })
   const bigQ = useQuery({
     queryKey: ['auditor_big_deals'],
@@ -130,6 +149,19 @@ export default function GameDashboard() {
     queryFn: () => listMarketEvents(token!),
     enabled: !!token,
   })
+  const allMarketEvents = useMemo(() => {
+    const raw = marketQ.data ?? []
+    return [...raw].sort((a, b) => {
+      const byType = a.event_type.localeCompare(b.event_type)
+      if (byType !== 0) return byType
+      return a.name.localeCompare(b.name)
+    })
+  }, [marketQ.data])
+
+  const npcBuyerSupportedEvents = useMemo(
+    () => allMarketEvents.filter(marketEventNpcSupported),
+    [allMarketEvents],
+  )
   const finance = financeQ.data ?? []
   const players = finance.map((f) => f.player)
 
@@ -138,6 +170,9 @@ export default function GameDashboard() {
     await qc.invalidateQueries({ queryKey: ['auditor_logs', gameId] })
     await qc.invalidateQueries({ queryKey: ['auditor_pending_txs', gameId] })
     await qc.invalidateQueries({ queryKey: ['auditor_assets', gameId] })
+    await qc.invalidateQueries({ queryKey: ['auditor_game', gameId] })
+    await qc.invalidateQueries({ queryKey: ['market_state', gameId] })
+    await qc.invalidateQueries({ queryKey: ['market_auction_offers', gameId] })
   }
 
   const [targetId, setTargetId] = useState('')
@@ -160,11 +195,44 @@ export default function GameDashboard() {
     | 'tx'
     | 'player_finance'
   >('none')
+  const [npcMarketEventId, setNpcMarketEventId] = useState('')
+
+  const selectedMarketCatalogEvent = useMemo(
+    () => allMarketEvents.find((e) => e.id === npcMarketEventId) ?? null,
+    [allMarketEvents, npcMarketEventId],
+  )
+  const selectedMarketNpcSupported =
+    selectedMarketCatalogEvent != null && marketEventNpcSupported(selectedMarketCatalogEvent)
+
+  const marketStateQ = useQuery({
+    queryKey: ['market_state', gameId],
+    queryFn: () => gameMarketState(token!, gameId!),
+    enabled: dlg === 'market' && !!token && !!gameId,
+  })
+
+  const auctionOffersQ = useQuery({
+    queryKey: ['market_auction_offers', gameId],
+    queryFn: () => listMarketAuctionOffers(token!, gameId!),
+    enabled: dlg === 'market' && !!token && !!gameId,
+  })
+
+  useEffect(() => {
+    if (npcMarketEventId) return
+    setNpcMarketEventId(npcBuyerSupportedEvents[0]?.id ?? allMarketEvents[0]?.id ?? '')
+  }, [npcMarketEventId, npcBuyerSupportedEvents, allMarketEvents])
+
+  useEffect(() => {
+    if (dlg !== 'market' || !gameId || !token) return
+    void qc.invalidateQueries({ queryKey: ['market_state', gameId] })
+    void qc.invalidateQueries({ queryKey: ['market_auction_offers', gameId] })
+  }, [dlg, gameId, token, qc])
+
   const [financePlayerId, setFinancePlayerId] = useState('')
 
   const [smallCat, setSmallCat] = useState<string>(SMALL_CATS[0].value)
   const [smallDealId, setSmallDealId] = useState('')
   const [smallShares, setSmallShares] = useState<number>(1)
+  const [smallSellShares, setSmallSellShares] = useState<number>(1)
   const [smallAllowLoan, setSmallAllowLoan] = useState<boolean>(false)
   const [bigCat, setBigCat] = useState<string>(BIG_CATS[0].value)
   const [bigDealId, setBigDealId] = useState('')
@@ -189,18 +257,49 @@ export default function GameDashboard() {
     }
     setSmallDealId(active.id)
   }, [gameQ.data?.active_small_deal?.id])
-  useEffect(() => {
-    if (filteredSmall[0]?.id) setSmallDealId(filteredSmall[0].id)
-    else setSmallDealId('')
-    setSmallShares(1)
-    setSmallAllowLoan(false)
-  }, [filteredSmall, smallCat])
 
-  const selectedSmallDeal = useMemo(
-    () => filteredSmall.find((d) => d.id === smallDealId) ?? null,
-    [filteredSmall, smallDealId],
-  )
+  // Refresh deck when opening modal so DB seed/description updates appear without stale cache.
+  useEffect(() => {
+    if (dlg !== 'small' || !token) return
+    void qc.invalidateQueries({ queryKey: ['auditor_small_deals'] })
+  }, [dlg, qc, token])
+
+  useEffect(() => {
+    if (dlg !== 'big' || !token) return
+    void qc.invalidateQueries({ queryKey: ['auditor_big_deals'] })
+  }, [dlg, qc, token])
+
+  useEffect(() => {
+    setSmallShares(1)
+    setSmallSellShares(1)
+    setSmallAllowLoan(false)
+    if (filteredSmall.length === 0) {
+      if (!smallQ.isPending && !smallQ.isFetching) setSmallDealId('')
+      return
+    }
+    setSmallDealId((prev) =>
+      prev && filteredSmall.some((d) => d.id === prev) ? prev : filteredSmall[0].id,
+    )
+  }, [filteredSmall, smallCat, smallQ.isPending, smallQ.isFetching])
+
+  const selectedSmallDeal = useMemo(() => {
+    if (!smallDealId) return null
+    return (
+      filteredSmall.find((d) => d.id === smallDealId) ??
+      smallDeals.find((d) => d.id === smallDealId) ??
+      null
+    )
+  }, [filteredSmall, smallDeals, smallDealId])
+
+  const smallDealDescription = useMemo(() => {
+    const fromList = selectedSmallDeal?.description?.trim()
+    if (fromList) return selectedSmallDeal!.description
+    const active = gameQ.data?.active_small_deal
+    if (active?.id === smallDealId && active.description?.trim()) return active.description
+    return ''
+  }, [selectedSmallDeal, gameQ.data?.active_small_deal, smallDealId])
   const isStockSmallDeal = selectedSmallDeal?.category === 'stock' || selectedSmallDeal?.category === 'small_deal_assets'
+  const selectedStockSymbol = selectedSmallDeal?.symbol || ''
 
   const bigDeals = bigQ.data ?? []
   const filteredBig = useMemo(
@@ -212,14 +311,38 @@ export default function GameDashboard() {
         if (bigCat === 'real_estate') {
           return d.deal_type === 'big_deal_real_estate' || d.deal_type === 'real_estate'
         }
-        return d.deal_type === 'big_deal_land' || d.deal_type === 'expenses' || d.deal_type === 'expense' || d.cashflow <= 0
+        // News cards (cost only). Legacy rows may still use deal_type "expense" before re-seed.
+        const legacyNewsExpense =
+          (d.deal_type === 'expense' || d.deal_type === 'expenses') &&
+          d.price === 0 &&
+          d.mortgage === 0 &&
+          d.cashflow === 0 &&
+          d.down_payment > 0
+        return d.deal_type === 'big_deal_real_estate_news' || legacyNewsExpense
       }),
     [bigDeals, bigCat],
   )
   useEffect(() => {
-    if (filteredBig[0]?.id) setBigDealId(filteredBig[0].id)
-    else setBigDealId('')
-  }, [filteredBig, bigCat])
+    if (filteredBig.length === 0) {
+      if (!bigQ.isPending && !bigQ.isFetching) setBigDealId('')
+      return
+    }
+    setBigDealId((prev) =>
+      prev && filteredBig.some((d) => d.id === prev) ? prev : filteredBig[0].id,
+    )
+  }, [filteredBig, bigCat, bigQ.isPending, bigQ.isFetching])
+
+  const selectedBigDeal = useMemo(() => {
+    if (!bigDealId) return null
+    return (
+      filteredBig.find((d) => d.id === bigDealId) ?? bigDeals.find((d) => d.id === bigDealId) ?? null
+    )
+  }, [filteredBig, bigDeals, bigDealId])
+
+  const bigDealDescription = useMemo(() => {
+    const t = selectedBigDeal?.description?.trim()
+    return t || ''
+  }, [selectedBigDeal])
 
   const doodads = doodadsQ.data ?? []
   useEffect(() => {
@@ -231,7 +354,44 @@ export default function GameDashboard() {
   const [assetId, setAssetId] = useState('')
   const [sellPrice, setSellPrice] = useState(0)
 
+  const [auctionSellerId, setAuctionSellerId] = useState('')
+  const [auctionAssetId, setAuctionAssetId] = useState('')
+  const [auctionAskingPrice, setAuctionAskingPrice] = useState(0)
+  const [bidOfferId, setBidOfferId] = useState('')
+  const [bidBuyerId, setBidBuyerId] = useState('')
+  const [bidAmount, setBidAmount] = useState(0)
+
   const assets = assetsQ.data ?? []
+
+  useEffect(() => {
+    if (dlg !== 'market') return
+    if (!auctionSellerId && targetId) setAuctionSellerId(targetId)
+    if (!bidBuyerId && targetId) setBidBuyerId(targetId)
+  }, [dlg, targetId, auctionSellerId, bidBuyerId])
+
+  const auctionSellerAssets = useMemo(
+    () => assets.filter((a: GameAsset) => a.owner_id === auctionSellerId),
+    [assets, auctionSellerId],
+  )
+  useEffect(() => {
+    if (auctionSellerAssets.length === 0) {
+      setAuctionAssetId('')
+      return
+    }
+    setAuctionAssetId((prev) =>
+      prev && auctionSellerAssets.some((a) => a.id === prev) ? prev : auctionSellerAssets[0].id,
+    )
+  }, [auctionSellerAssets])
+
+  useEffect(() => {
+    const offers = auctionOffersQ.data ?? []
+    if (offers.length === 0) {
+      setBidOfferId('')
+      return
+    }
+    setBidOfferId((prev) => (prev && offers.some((o) => o.id === prev) ? prev : offers[0].id))
+  }, [auctionOffersQ.data])
+
   useEffect(() => {
     if (!sellerId && players[0]?.id) setSellerId(players[0].id)
     if (!buyerId && players[1]?.id) setBuyerId(players[1].id)
@@ -279,14 +439,31 @@ export default function GameDashboard() {
     },
   })
   const smallM = useMutation({
-    mutationFn: () =>
-      postEventSmallDeal(token!, gameId!, targetId, smallDealId, {
+    mutationFn: async () => {
+      // Opening the card binds "who drew it"; backend uses this for stock-buy permission.
+      await openSmallDeal(token!, gameId!, smallDealId, targetId)
+      return postEventSmallDeal(token!, gameId!, targetId, smallDealId, {
         shares: isStockSmallDeal ? Math.max(1, smallShares) : undefined,
         allow_loan: smallAllowLoan,
-      }),
+      })
+    },
     onSuccess: refresh,
     onError: (err) => {
       alert((err as Error).message || 'Small deal purchase failed')
+    },
+  })
+  const stockSellBankM = useMutation({
+    mutationFn: () =>
+      postEventStockSellBank(
+        token!,
+        gameId!,
+        targetId,
+        selectedStockSymbol,
+        Math.max(1, smallSellShares),
+      ),
+    onSuccess: refresh,
+    onError: (err) => {
+      alert((err as Error).message || 'Stock sell to bank failed')
     },
   })
   const bigM = useMutation({
@@ -312,8 +489,53 @@ export default function GameDashboard() {
     onSuccess: refresh,
   })
 
+  const openNpcMarketM = useMutation({
+    mutationFn: () => openGameMarket(token!, gameId!, npcMarketEventId),
+    onSuccess: refresh,
+    onError: (err) => alert((err as Error).message || 'Open NPC market failed'),
+  })
+  const closeNpcMarketM = useMutation({
+    mutationFn: () => closeGameMarket(token!, gameId!),
+    onSuccess: refresh,
+    onError: (err) => alert((err as Error).message || 'Close market failed'),
+  })
+  const npcMarketSellM = useMutation({
+    mutationFn: ({ playerId, assetId }: { playerId: string; assetId: string }) =>
+      marketExternalSell(token!, gameId!, playerId, assetId),
+    onSuccess: refresh,
+    onError: (err) => alert((err as Error).message || 'NPC market sale failed'),
+  })
+  const auctionListM = useMutation({
+    mutationFn: () =>
+      marketAuctionList(token!, gameId!, {
+        seller_id: auctionSellerId,
+        asset_id: auctionAssetId,
+        asking_price: auctionAskingPrice,
+      }),
+    onSuccess: refresh,
+    onError: (err) => alert((err as Error).message || 'Auction list failed'),
+  })
+  const auctionBidM = useMutation({
+    mutationFn: () =>
+      marketAuctionBid(token!, gameId!, {
+        buyer_id: bidBuyerId,
+        market_offer_id: bidOfferId,
+        bid_price: Math.max(1, bidAmount),
+      }),
+    onSuccess: refresh,
+    onError: (err) => alert((err as Error).message || 'Bid failed'),
+  })
+  const playerConfirmTxM = useMutation({
+    mutationFn: ({ txId, playerId }: { txId: string; playerId: string }) =>
+      transactionPlayerConfirm(token!, gameId!, txId, playerId),
+    onSuccess: refresh,
+    onError: (err) => alert((err as Error).message || 'Confirm failed'),
+  })
+
   const recent = (logsQ.data ?? []).slice(-12).reverse()
   const pending = pendingQ.data ?? []
+  const activeNpcMarket = gameQ.data?.active_market_event ?? marketStateQ.data?.active_event ?? null
+  const npcEligible = marketStateQ.data?.eligible ?? []
 
   const selectedDoodad = doodads.find((d) => d.id === doodadId)
   const doodadCost =
@@ -326,6 +548,10 @@ export default function GameDashboard() {
   const selectedFinance = useMemo(
     () => finance.find((f) => f.player.id === financePlayerId) ?? null,
     [finance, financePlayerId],
+  )
+  const selectedOwnedAsset = useMemo(
+    () => owned.find((a) => a.id === assetId) ?? null,
+    [owned, assetId],
   )
 
   return (
@@ -408,7 +634,7 @@ export default function GameDashboard() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Pending transactions</CardTitle>
-              <CardDescription>Player-to-player asset sales awaiting approval.</CardDescription>
+              <CardDescription>Сделки между игроками: подтверждение сторонами или одобрение аудитором.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {pending.length === 0 ? (
@@ -417,15 +643,40 @@ export default function GameDashboard() {
                 pending.map((p) => {
                   const tx = p.transaction
                   const asset = tx.market_offer?.asset
+                  const sellerIdTx = tx.market_offer?.seller_id
+                  const agreed = tx.counter_offer ?? tx.offer_price
                   return (
                     <div key={tx.id} className="rounded-lg border border-border p-3 text-sm">
                       <div className="font-medium">{asset?.name ?? 'Asset'}</div>
                       <div className="text-muted-foreground">
-                        Price {money(tx.offer_price)} · Buyer cash after {money(p.buyer_cash_after)}
+                        Offer {money(tx.offer_price)}
+                        {tx.counter_offer != null ? ` · counter ${money(tx.counter_offer)}` : ''} · settled at {money(agreed)} · Buyer
+                        cash after {money(p.buyer_cash_after)}
                       </div>
-                      <div className="mt-2 flex gap-2">
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        Подтверждения: продавец {tx.seller_confirmed ? 'да' : 'нет'}, покупатель {tx.buyer_confirmed ? 'да' : 'нет'}
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {sellerIdTx ? (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            disabled={playerConfirmTxM.isPending || tx.seller_confirmed}
+                            onClick={() => playerConfirmTxM.mutate({ txId: tx.id, playerId: sellerIdTx })}
+                          >
+                            Продавец: подтвердить
+                          </Button>
+                        ) : null}
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={playerConfirmTxM.isPending || tx.buyer_confirmed}
+                          onClick={() => playerConfirmTxM.mutate({ txId: tx.id, playerId: tx.buyer_id })}
+                        >
+                          Покупатель: подтвердить
+                        </Button>
                         <Button size="sm" onClick={() => approveM.mutate(tx.id)}>
-                          Approve
+                          Approve (аудитор)
                         </Button>
                         <Button size="sm" variant="outline" onClick={() => rejectM.mutate(tx.id)}>
                           Reject
@@ -535,24 +786,56 @@ export default function GameDashboard() {
               </select>
             </div>
             {isStockSmallDeal && (
-              <div className="space-y-1">
-                <Label>Shares (only for player who drew this card)</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  step={1}
-                  value={smallShares}
-                  onChange={(e) => setSmallShares(Math.max(1, Number(e.target.value) || 1))}
-                />
+              <div className="space-y-3 rounded-md border border-border bg-muted/20 p-3">
+                <div className="space-y-1">
+                  <Label>Shares to buy (only for player who drew this card)</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={smallShares}
+                    onChange={(e) => setSmallShares(Math.max(1, Number(e.target.value) || 1))}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Sell old shares to bank (any player)</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Current card price: {money(selectedSmallDeal?.price ?? 0)} per share
+                    {selectedStockSymbol ? ` (${selectedStockSymbol})` : ''}.
+                  </p>
+                  <Input
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={smallSellShares}
+                    onChange={(e) => setSmallSellShares(Math.max(1, Number(e.target.value) || 1))}
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="w-full"
+                    disabled={!selectedStockSymbol || stockSellBankM.isPending || smallSellShares < 1}
+                    onClick={() => stockSellBankM.mutate()}
+                  >
+                    Sell to bank at card price
+                  </Button>
+                </div>
               </div>
             )}
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={smallAllowLoan} onChange={(e) => setSmallAllowLoan(e.target.checked)} />
               Use loan automatically if cash is not enough
             </label>
-            {filteredSmall[0] && (
-              <p className="text-xs text-muted-foreground">{filteredSmall.find((x) => x.id === smallDealId)?.description}</p>
-            )}
+            <div className="space-y-1">
+              <Label className="text-muted-foreground">Description</Label>
+              <div className="max-h-[180px] overflow-y-auto rounded-md border border-border bg-muted/30 p-3 text-sm leading-relaxed text-foreground">
+                {smallDealDescription
+                  ? smallDealDescription
+                  : selectedSmallDeal
+                    ? '—'
+                    : 'Select a card to see description from deck JSON.'}
+              </div>
+            </div>
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setDlg('none')}>
@@ -569,7 +852,9 @@ export default function GameDashboard() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Big deal</DialogTitle>
-            <DialogDescription>Large acquisition — confirm buyer and card.</DialogDescription>
+            <DialogDescription>
+              Property / business: creates an asset. RE expenses / news: one-time cash cost only (no asset).
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
               <div>
@@ -594,10 +879,23 @@ export default function GameDashboard() {
             >
                 {filteredBig.map((d) => (
                 <option key={d.id} value={d.id}>
-                  {d.title || d.name} — {money(d.down_payment)} down / {money(d.cashflow)} CF
+                  {d.deal_type === 'big_deal_real_estate_news' ||
+                  ((d.deal_type === 'expense' || d.deal_type === 'expenses') && d.price === 0 && d.down_payment > 0)
+                    ? `${d.title || d.name} — ${money(d.down_payment)} cost`
+                    : `${d.title || d.name} — ${money(d.down_payment)} down / ${money(d.cashflow)} CF`}
                 </option>
               ))}
             </select>
+            <div className="space-y-1">
+              <Label className="text-muted-foreground">Description</Label>
+              <div className="max-h-[220px] overflow-y-auto rounded-md border border-border bg-muted/30 p-3 text-sm leading-relaxed text-foreground">
+                {bigDealDescription
+                  ? bigDealDescription
+                  : selectedBigDeal
+                    ? '—'
+                    : 'Select a deal to see description from the deck.'}
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button onClick={() => bigM.mutate()} disabled={!bigDealId || bigM.isPending}>
@@ -762,37 +1060,287 @@ export default function GameDashboard() {
       </Dialog>
 
       <Dialog open={dlg === 'market'} onOpenChange={(o) => !o && setDlg('none')}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Market events</DialogTitle>
+            <DialogTitle>Market</DialogTitle>
             <DialogDescription>
-              Reference cards from the market deck. Selling to another player uses “Transaction”. Below: who holds assets in
-              this game.
+              Внешний покупатель: чистая выплата = цена карты − ипотека; актив удаляется, пассивный доход пересчитывается.
+              Внутренний аукцион при открытой карте: лот другим игрокам, ставки, двойное подтверждение (или одобрение аудитором).
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <div className="mb-2 text-sm font-medium">Deck (sample)</div>
-              <ScrollArea className="h-[200px] rounded-md border border-border p-2 text-xs">
-                {(marketQ.data ?? []).slice(0, 40).map((ev) => (
-                  <div key={ev.id} className="border-b border-border/50 py-2">
-                    <div className="font-medium">{ev.name}</div>
-                    <div className="text-muted-foreground">{ev.description.slice(0, 120)}…</div>
+          <div className="space-y-4">
+            <div className="rounded-lg border border-border bg-muted/20 p-3">
+              <div className="mb-2 text-sm font-medium">Открыть событие (внешний покупатель)</div>
+              <div className="flex flex-wrap items-end gap-2">
+                <div className="min-w-[220px] flex-1 space-y-1">
+                  <Label>Карта из колоды</Label>
+                  <select
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    value={npcMarketEventId}
+                    onChange={(e) => setNpcMarketEventId(e.target.value)}
+                  >
+                    {allMarketEvents.length === 0 ? (
+                      <option value="">Нет карточек в базе</option>
+                    ) : (
+                      allMarketEvents.map((ev) => (
+                        <option key={ev.id} value={ev.id}>
+                          {marketEventNpcSupported(ev) ? '' : '[справочно] '}
+                          {ev.name}
+                          {ev.offer_price > 0 ? ` — ${money(ev.offer_price)}` : ''} ({ev.event_type} /{' '}
+                          {ev.sub_type})
+                        </option>
+                      ))
+                    )}
+                  </select>
+                  {selectedMarketCatalogEvent && !selectedMarketNpcSupported ? (
+                    <p className="text-xs text-amber-700 dark:text-amber-500">
+                      NPC-продажа пока только для REAL_ESTATE_BUYER и BUSINESS_BUYER с фиксированной ценой. Остальные
+                      карты — для справки на столе.
+                    </p>
+                  ) : null}
+                </div>
+                <Button
+                  type="button"
+                  onClick={() => openNpcMarketM.mutate()}
+                  disabled={
+                    !npcMarketEventId ||
+                    openNpcMarketM.isPending ||
+                    npcBuyerSupportedEvents.length === 0 ||
+                    !selectedMarketNpcSupported
+                  }
+                >
+                  Open market
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => closeNpcMarketM.mutate()}
+                  disabled={closeNpcMarketM.isPending}
+                >
+                  Close market
+                </Button>
+              </div>
+              {activeNpcMarket ? (
+                <div className="mt-3 rounded-md border border-primary/30 bg-background p-2 text-sm">
+                  <div className="font-medium text-primary">Активная карта</div>
+                  <div>{activeNpcMarket.name}</div>
+                  <div className="text-muted-foreground">{activeNpcMarket.description}</div>
+                  <div className="mt-1 font-mono">
+                    Цена покупателя: {money(activeNpcMarket.offer_price)} · {activeNpcMarket.event_type} ·{' '}
+                    {activeNpcMarket.sub_type}
                   </div>
-                ))}
-              </ScrollArea>
+                </div>
+              ) : (
+                <p className="mt-2 text-xs text-muted-foreground">Нет активного рыночного события для этой игры.</p>
+              )}
             </div>
+
+            <div className="rounded-lg border border-border bg-muted/10 p-3">
+              <div className="mb-2 text-sm font-medium">Внутренний аукцион (при открытой карте рынка)</div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-2">
+                  <div className="text-xs font-medium uppercase text-muted-foreground">Выставить лот</div>
+                  <div>
+                    <Label className="text-xs">Продавец</Label>
+                    <select
+                      className="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                      value={auctionSellerId}
+                      onChange={(e) => setAuctionSellerId(e.target.value)}
+                    >
+                      {players.map((pl) => (
+                        <option key={pl.id} value={pl.id}>
+                          {pl.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Актив</Label>
+                    <select
+                      className="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                      value={auctionAssetId}
+                      onChange={(e) => setAuctionAssetId(e.target.value)}
+                    >
+                      {auctionSellerAssets.map((a: GameAsset) => (
+                        <option key={a.id} value={a.id}>
+                          {a.name} ({a.type}
+                          {a.unit_price ? ` · ${money(a.unit_price)} avg` : ''})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Желаемая цена (инфо, 0 ок)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      className="font-mono"
+                      value={auctionAskingPrice}
+                      onChange={(e) => setAuctionAskingPrice(Number(e.target.value) || 0)}
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={!activeNpcMarket || !auctionAssetId || auctionListM.isPending}
+                    onClick={() => auctionListM.mutate()}
+                  >
+                    Выставить на торги
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-xs font-medium uppercase text-muted-foreground">Ставка</div>
+                  <div>
+                    <Label className="text-xs">Лот</Label>
+                    <select
+                      className="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                      value={bidOfferId}
+                      onChange={(e) => setBidOfferId(e.target.value)}
+                    >
+                      {(auctionOffersQ.data ?? []).map((o) => (
+                        <option key={o.id} value={o.id}>
+                          {o.asset?.name ?? o.asset_id} — {players.find((pl) => pl.id === o.seller_id)?.name ?? '?'}
+                          {o.price > 0 ? ` (${money(o.price)})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Покупатель</Label>
+                    <select
+                      className="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                      value={bidBuyerId}
+                      onChange={(e) => setBidBuyerId(e.target.value)}
+                    >
+                      {players.map((pl) => (
+                        <option key={pl.id} value={pl.id}>
+                          {pl.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Предложенная цена</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      className="font-mono"
+                      value={bidAmount || ''}
+                      onChange={(e) => setBidAmount(Number(e.target.value) || 0)}
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    disabled={!activeNpcMarket || !bidOfferId || !bidBuyerId || bidAmount < 1 || auctionBidM.isPending}
+                    onClick={() => auctionBidM.mutate()}
+                  >
+                    Отправить ставку
+                  </Button>
+                  <p className="text-[11px] text-muted-foreground">
+                    После ставки продавец и покупатель нажимают «подтвердить» в блоке Pending transactions (остальные ставки по
+                    лоту сбрасываются при подтверждении продавцом).
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div>
-              <div className="mb-2 text-sm font-medium">Assets on table</div>
-              <ul className="space-y-1 text-sm">
-                {assets.map((a: GameAsset) => (
-                  <li key={a.id} className="flex justify-between gap-2">
-                    <span>{a.name}</span>
-                    <span className="text-muted-foreground">{players.find((p) => p.id === a.owner_id)?.name ?? 'Unowned'}</span>
-                  </li>
-                ))}
-                {assets.length === 0 && <li className="text-muted-foreground">No assets yet.</li>}
-              </ul>
+              <div className="mb-2 text-sm font-medium">Подходящие активы — продажа банку (NPC)</div>
+              {marketStateQ.isFetching ? (
+                <p className="text-xs text-muted-foreground">Загрузка…</p>
+              ) : npcEligible.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Никто не держит подходящий актив под текущую карту.</p>
+              ) : (
+                <div className="space-y-3">
+                  {npcEligible.map((row) => (
+                    <div key={row.player_id} className="rounded-md border border-border p-2">
+                      <div className="mb-2 font-medium">{row.name}</div>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Asset</TableHead>
+                            <TableHead className="text-right">Mortgage</TableHead>
+                            <TableHead className="text-right">Loan</TableHead>
+                            <TableHead className="text-right">CF</TableHead>
+                            <TableHead className="text-right">Net</TableHead>
+                            <TableHead />
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {row.assets.map((a) => (
+                            <TableRow key={a.asset_id}>
+                              <TableCell>
+                                {a.name}
+                                {a.building_units > 0 ? (
+                                  <span className="ml-1 text-xs text-muted-foreground">({a.building_units} units)</span>
+                                ) : null}
+                              </TableCell>
+                              <TableCell className="text-right font-mono">{money(a.mortgage)}</TableCell>
+                              <TableCell className="text-right font-mono">{money(a.loan_amount)}</TableCell>
+                              <TableCell className="text-right font-mono">{money(a.cashflow)}</TableCell>
+                              <TableCell className="text-right font-mono">{money(a.net_to_player)}</TableCell>
+                              <TableCell className="text-right">
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  disabled={npcMarketSellM.isPending || !activeNpcMarket}
+                                  onClick={() =>
+                                    npcMarketSellM.mutate({ playerId: row.player_id, assetId: a.asset_id })
+                                  }
+                                  title={`Чистая выплата: ${money(a.net_to_player)}`}
+                                >
+                                  Продать в банк
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <div className="mb-2 text-sm font-medium">Вся колода ({allMarketEvents.length})</div>
+                <ScrollArea className="h-[min(50vh,440px)] rounded-md border border-border p-2 text-xs">
+                  {allMarketEvents.map((ev) => (
+                    <div key={ev.id} className="border-b border-border/50 py-2">
+                      <div className="flex flex-wrap items-baseline gap-x-2 font-medium">
+                        <span>{ev.name}</span>
+                        <Badge variant="outline" className="font-normal">
+                          {ev.event_type}
+                        </Badge>
+                        {marketEventNpcSupported(ev) ? (
+                          <Badge variant="secondary" className="font-normal">
+                            NPC OK
+                          </Badge>
+                        ) : null}
+                      </div>
+                      {ev.offer_price > 0 ? (
+                        <div className="font-mono text-muted-foreground">{money(ev.offer_price)}</div>
+                      ) : null}
+                      <div className="mt-1 whitespace-pre-wrap text-muted-foreground">{ev.description}</div>
+                    </div>
+                  ))}
+                </ScrollArea>
+              </div>
+              <div>
+                <div className="mb-2 text-sm font-medium">Assets on table</div>
+                <ul className="space-y-1 text-sm">
+                  {assets.map((a: GameAsset) => (
+                    <li key={a.id} className="flex justify-between gap-2">
+                      <span>{a.name}</span>
+                      <span className="text-muted-foreground">{players.find((p) => p.id === a.owner_id)?.name ?? 'Unowned'}</span>
+                    </li>
+                  ))}
+                  {assets.length === 0 && <li className="text-muted-foreground">No assets yet.</li>}
+                </ul>
+              </div>
             </div>
           </div>
           <DialogFooter>
@@ -804,7 +1352,7 @@ export default function GameDashboard() {
                 setDlg('tx')
               }}
             >
-              New sale…
+              Player→player sale…
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -856,10 +1404,17 @@ export default function GameDashboard() {
               >
                 {owned.map((a: GameAsset) => (
                   <option key={a.id} value={a.id}>
-                    {a.name} ({a.type})
+                    {a.name} ({a.type}
+                    {a.unit_price ? ` · bought @ ${money(a.unit_price)}` : ''})
                   </option>
                 ))}
               </select>
+              {selectedOwnedAsset ? (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Bought at: {selectedOwnedAsset.unit_price ? money(selectedOwnedAsset.unit_price) : '—'}
+                  {selectedOwnedAsset.shares ? ` · Shares: ${selectedOwnedAsset.shares}` : ''}
+                </p>
+              ) : null}
             </div>
             <div>
               <Label>Price</Label>

@@ -6,6 +6,9 @@ export type GameSession = {
   max_players: number
   active_small_deal_id?: string | null
   active_small_deal?: SmallDeal | null
+  active_small_deal_opened_by?: string | null
+  active_market_event_id?: string | null
+  active_market_event?: MarketEvent | null
   created_at?: string
   updated_at?: string
   created_by?: string
@@ -78,6 +81,7 @@ export type SmallDeal = {
 
 export type BigDeal = {
   id: string
+  external_id?: string
   deal_type: string
   name: string
   title: string
@@ -109,6 +113,28 @@ export type MarketEvent = {
   description: string
   offer_price: number
   is_global: boolean
+}
+
+export type MarketEligibleAssetDTO = {
+  asset_id: string
+  name: string
+  mortgage: number
+  loan_amount: number
+  cashflow: number
+  offer_price: number
+  net_to_player: number
+  building_units: number
+}
+
+export type MarketEligiblePlayerDTO = {
+  player_id: string
+  name: string
+  assets: MarketEligibleAssetDTO[]
+}
+
+export type GameMarketStateDTO = {
+  active_event?: MarketEvent | null
+  eligible: MarketEligiblePlayerDTO[]
 }
 
 export type PlayerFinanceDTO = {
@@ -148,7 +174,23 @@ export type GameAsset = {
   game_id?: string | null
   down_payment: number
   mortgage: number
+  symbol?: string
+  shares?: number
+  unit_price?: number
+  loan_amount?: number
+  loan_expense?: number
   owner_id?: string | null
+}
+
+export type MarketOfferAuction = {
+  id: string
+  asset_id: string
+  seller_id: string
+  price: number
+  status: string
+  game_id?: string | null
+  asset?: GameAsset
+  seller?: UserPlayer
 }
 
 export type PendingTransactionDTO = {
@@ -157,8 +199,12 @@ export type PendingTransactionDTO = {
     market_offer_id: string
     buyer_id: string
     offer_price: number
+    counter_offer?: number | null
     status: string
     game_id?: string | null
+    seller_confirmed?: boolean
+    buyer_confirmed?: boolean
+    message?: string
     market_offer?: {
       asset?: GameAsset
       seller_id: string
@@ -184,6 +230,69 @@ export async function createGame(token: string, payload: { name: string; max_pla
 
 export async function getGame(token: string, gameId: string) {
   return apiFetch<GameSession>(`${A}/games/${gameId}`, { token })
+}
+
+export async function openGameMarket(token: string, gameId: string, marketEventId: string) {
+  return apiFetch<{ ok: boolean }>(`${A}/games/${gameId}/market/open`, {
+    token,
+    method: 'POST',
+    body: JSON.stringify({ market_event_id: marketEventId }),
+  })
+}
+
+export async function closeGameMarket(token: string, gameId: string) {
+  return apiFetch<{ ok: boolean }>(`${A}/games/${gameId}/market/close`, {
+    token,
+    method: 'POST',
+  })
+}
+
+export async function gameMarketState(token: string, gameId: string) {
+  return apiFetch<GameMarketStateDTO>(`${A}/games/${gameId}/market/state`, { token })
+}
+
+export async function marketExternalSell(token: string, gameId: string, playerId: string, assetId: string) {
+  return apiFetch<{ ok: boolean }>(`${A}/games/${gameId}/market/external-sell`, {
+    token,
+    method: 'POST',
+    body: JSON.stringify({ player_id: playerId, asset_id: assetId }),
+  })
+}
+
+export async function listMarketAuctionOffers(token: string, gameId: string) {
+  return apiFetch<MarketOfferAuction[]>(`${A}/games/${gameId}/market/auction/offers`, { token })
+}
+
+export async function marketAuctionList(
+  token: string,
+  gameId: string,
+  payload: { seller_id: string; asset_id: string; asking_price?: number },
+) {
+  return apiFetch<{ ok: boolean }>(`${A}/games/${gameId}/market/auction/list`, {
+    token,
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function marketAuctionBid(
+  token: string,
+  gameId: string,
+  payload: { buyer_id: string; market_offer_id: string; bid_price: number },
+) {
+  return apiFetch<unknown>(`${A}/games/${gameId}/market/auction/bid`, {
+    token,
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function transactionPlayerConfirm(token: string, gameId: string, txId: string, playerId: string) {
+  return apiFetch<{ ok: boolean }>(`${A}/games/${gameId}/transactions/${txId}/player-confirm`, {
+    token,
+    method: 'POST',
+    body: JSON.stringify({ player_id: playerId }),
+  })
 }
 
 export async function addPlayers(token: string, gameId: string, payload: { names: string[] }) {
@@ -270,11 +379,11 @@ export async function deleteSmallDeal(token: string, dealId: string) {
   })
 }
 
-export async function openSmallDeal(token: string, gameId: string, dealId: string) {
+export async function openSmallDeal(token: string, gameId: string, dealId: string, playerId?: string) {
   return apiFetch<GameSession>(`/api/game/open-small-deal`, {
     token,
     method: 'POST',
-    body: JSON.stringify({ game_id: gameId, deal_id: dealId }),
+    body: JSON.stringify({ game_id: gameId, deal_id: dealId, player_id: playerId }),
   })
 }
 
@@ -375,6 +484,20 @@ export async function postEventSmallDeal(
       shares: options?.shares,
       allow_loan: options?.allow_loan,
     }),
+  })
+}
+
+export async function postEventStockSellBank(
+  token: string,
+  gameId: string,
+  playerId: string,
+  symbol: string,
+  shares: number,
+) {
+  return apiFetch<{ ok: boolean }>(`${A}/games/${gameId}/events/stock-sell-bank`, {
+    token,
+    method: 'POST',
+    body: JSON.stringify({ player_id: playerId, symbol, shares }),
   })
 }
 

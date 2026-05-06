@@ -60,7 +60,14 @@ type Asset struct {
 
 	Name   string `gorm:"type:varchar(255);not null" json:"name"`
 	Type   string `gorm:"type:varchar(30);not null;index" json:"type"` // stocks, real_estate, business, other
-	Price  int64  `gorm:"not null" json:"price"`
+	// BuildingUnits: from deal JSON (e.g. 12 / 24) for Market matching; 0 if unknown.
+	BuildingUnits int64 `gorm:"not null;default:0" json:"building_units"`
+	// DealExternalID: seed id of the deal card that created this asset (big/small), for debugging / future rules.
+	DealExternalID string `gorm:"type:varchar(128);not null;default:'';index" json:"deal_external_id,omitempty"`
+	// Extra: deal metadata (beds, baths, units, …) for Market matching — mirrors board card JSON.
+	Extra datatypes.JSON `gorm:"type:jsonb;not null;default:'{}'" json:"extra"`
+
+	Price int64 `gorm:"not null" json:"price"`
 	Income int64  `gorm:"not null;default:0" json:"income"` // treat as monthly cashflow from this asset
 
 	GameID      *uuid.UUID `gorm:"type:uuid;index" json:"game_id,omitempty"`
@@ -112,6 +119,10 @@ type Transaction struct {
 	Status       string `gorm:"type:varchar(20);not null;index" json:"status"` // pending, approved, rejected
 	AgreedPrice  *int64 `gorm:"type:bigint" json:"agreed_price"`
 
+	// Player-to-player market auction: both must confirm before settlement (see TransactionPlayerConfirm).
+	SellerConfirmed bool `gorm:"not null;default:false" json:"seller_confirmed"`
+	BuyerConfirmed  bool `gorm:"not null;default:false" json:"buyer_confirmed"`
+
 	MarketOffer MarketOffer `gorm:"foreignKey:MarketOfferID;references:ID" json:"market_offer,omitempty"`
 	Buyer       Player      `gorm:"foreignKey:BuyerID;references:ID" json:"buyer,omitempty"`
 	Seller      Player      `gorm:"-:migration" json:"seller,omitempty"` // derived
@@ -140,6 +151,11 @@ type GameSession struct {
 	CreatedBy         uuid.UUID  `gorm:"type:uuid;not null;index" json:"created_by"`
 	ActiveSmallDealID *uuid.UUID `gorm:"type:uuid;index" json:"active_small_deal_id,omitempty"`
 	ActiveSmallDeal   *SmallDeal `gorm:"foreignKey:ActiveSmallDealID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL" json:"active_small_deal,omitempty"`
+	// ActiveSmallDealOpenedBy: player who opened current small deal card (used by stock buy rules).
+	ActiveSmallDealOpenedBy *uuid.UUID `gorm:"type:uuid;index" json:"active_small_deal_opened_by,omitempty"`
+
+	ActiveMarketEventID *uuid.UUID   `gorm:"type:uuid;index" json:"active_market_event_id,omitempty"`
+	ActiveMarketEvent   *MarketEvent `gorm:"foreignKey:ActiveMarketEventID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL" json:"active_market_event,omitempty"`
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -185,6 +201,7 @@ type SmallDeal struct {
 
 type BigDeal struct {
 	ID          uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+	ExternalID  string    `gorm:"type:varchar(128);not null;default:'';index" json:"external_id,omitempty"`
 	DealType    string    `gorm:"type:varchar(30);not null;default:'';index" json:"deal_type"`
 	Name        string    `gorm:"type:varchar(255);not null;index" json:"name"`
 	Title       string    `gorm:"type:varchar(255);not null;default:''" json:"title"`
@@ -194,6 +211,7 @@ type BigDeal struct {
 	Mortgage    int64     `gorm:"not null;default:0" json:"mortgage"`
 	Cashflow    int64     `gorm:"not null;default:0" json:"cashflow"`
 	ROI         float64   `gorm:"type:numeric(10,2);not null;default:0" json:"roi"`
+	Extra       datatypes.JSON `gorm:"type:jsonb;not null;default:'{}'" json:"extra"`
 }
 
 type MarketEvent struct {

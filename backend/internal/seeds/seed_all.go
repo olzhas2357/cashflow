@@ -36,7 +36,7 @@ func SeedAll(db *gorm.DB) error {
 	if err := SeedBigDealRealEstate(db); err != nil {
 		return err
 	}
-	if err := SeedBigDealLand(db); err != nil {
+	if err := SeedBigDealRealEstateNews(db); err != nil {
 		return err
 	}
 	if err := SeedMarketEvents(db); err != nil {

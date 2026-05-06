@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -64,6 +65,7 @@ func (h *AssetHandler) CreateAsset(c *gin.Context) {
 		ID:      uuid.New(),
 		Name:    req.Name,
 		Type:    req.Type,
+		Extra:   datatypes.JSON("{}"),
 		Price:   req.Price,
 		Income:  req.Income,
 		OwnerID: &ownID,

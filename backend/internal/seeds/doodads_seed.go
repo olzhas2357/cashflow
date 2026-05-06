@@ -1,6 +1,7 @@
 package seeds
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 
@@ -30,7 +31,8 @@ func SeedDoodads(db *gorm.DB) error {
 		return err
 	}
 
-	loaded := 0
+	inserted := 0
+	updated := 0
 	for _, row := range rows {
 		if row.ID == "" {
 			continue
@@ -52,14 +54,6 @@ func SeedDoodads(db *gorm.DB) error {
 			typ = "simple_payment"
 		}
 
-		var exists int64
-		if err := db.Model(&models.Doodad{}).Where("external_id = ?", row.ID).Count(&exists).Error; err != nil {
-			return err
-		}
-		if exists > 0 {
-			continue
-		}
-
 		item := models.Doodad{
 			ExternalID:             row.ID,
 			DoodadType:             typ,
@@ -71,12 +65,35 @@ func SeedDoodads(db *gorm.DB) error {
 			LiabilityAmount:        row.LiabilityAmount,
 			MonthlyExpenseIncrease: row.MonthlyExpenseIncrease,
 		}
+
+		var existing models.Doodad
+		findErr := db.Where("external_id = ?", row.ID).First(&existing).Error
+		if findErr == nil {
+			if err := db.Model(&existing).Updates(map[string]interface{}{
+				"doodad_type":              item.DoodadType,
+				"name":                     item.Name,
+				"description":              item.Description,
+				"cost":                     item.Cost,
+				"cost_per_child":           item.CostPerChild,
+				"liability_type":           item.LiabilityType,
+				"liability_amount":         item.LiabilityAmount,
+				"monthly_expense_increase": item.MonthlyExpenseIncrease,
+			}).Error; err != nil {
+				return err
+			}
+			updated++
+			continue
+		}
+		if !errors.Is(findErr, gorm.ErrRecordNotFound) {
+			return findErr
+		}
+
 		if err := db.Create(&item).Error; err != nil {
 			return err
 		}
-		loaded++
+		inserted++
 	}
 
-	fmt.Printf("Loaded %d doodads\n", loaded)
+	fmt.Printf("Loaded %d new, synced %d existing doodads\n", inserted, updated)
 	return nil
 }

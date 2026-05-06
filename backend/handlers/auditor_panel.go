@@ -15,6 +15,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -57,8 +58,9 @@ type UpsertSmallDealRequest struct {
 }
 
 type OpenSmallDealRequest struct {
-	GameID uuid.UUID `json:"game_id" binding:"required"`
-	DealID uuid.UUID `json:"deal_id" binding:"required"`
+	GameID   uuid.UUID `json:"game_id" binding:"required"`
+	DealID   uuid.UUID `json:"deal_id" binding:"required"`
+	PlayerID uuid.UUID `json:"player_id"`
 }
 
 type EventRequest struct {
@@ -240,7 +242,7 @@ func (h *AuditorPanelHandler) GetGame(c *gin.Context) {
 		return
 	}
 	var game models.GameSession
-	if err := h.db.Preload("ActiveSmallDeal").First(&game, "id = ?", gameID).Error; err != nil {
+	if err := h.db.Preload("ActiveSmallDeal").Preload("ActiveMarketEvent").First(&game, "id = ?", gameID).Error; err != nil {
 		c.JSON(http.StatusNotFound, typ.ErrorResponse{Error: "game_not_found"})
 		return
 	}
@@ -573,7 +575,13 @@ func (h *AuditorPanelHandler) OpenSmallDeal(c *gin.Context) {
 		return
 	}
 
-	if err := h.db.Model(&game).Update("active_small_deal_id", req.DealID).Error; err != nil {
+	updates := map[string]any{"active_small_deal_id": req.DealID}
+	if req.PlayerID != uuid.Nil {
+		updates["active_small_deal_opened_by"] = req.PlayerID
+	} else {
+		updates["active_small_deal_opened_by"] = nil
+	}
+	if err := h.db.Model(&game).Updates(updates).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "open_small_deal_failed"})
 		return
 	}
@@ -584,14 +592,73 @@ func (h *AuditorPanelHandler) OpenSmallDeal(c *gin.Context) {
 	c.JSON(http.StatusOK, game)
 }
 
+func bigDealFallbackKey(d models.BigDeal) string {
+	return fmt.Sprintf(
+		"%s|%s|%s|%d|%d|%d|%d|%.2f",
+		strings.TrimSpace(d.DealType),
+		strings.TrimSpace(d.Title),
+		strings.TrimSpace(d.Name),
+		d.Price,
+		d.DownPayment,
+		d.Mortgage,
+		d.Cashflow,
+		d.ROI,
+	)
+}
+
+func preferredBigDeal(a, b models.BigDeal) models.BigDeal {
+	aDesc := strings.TrimSpace(a.Description)
+	bDesc := strings.TrimSpace(b.Description)
+	if aDesc == "" && bDesc != "" {
+		return b
+	}
+	if aDesc != "" && bDesc == "" {
+		return a
+	}
+	if a.ID.String() <= b.ID.String() {
+		return a
+	}
+	return b
+}
+
+// dedupeBigDealsByExternalID keeps one canonical row per card identity.
+// Primary key: external_id. Fallback for legacy rows: stable finance+title fingerprint.
+func dedupeBigDealsByExternalID(deals []models.BigDeal) []models.BigDeal {
+	best := make(map[string]models.BigDeal)
+	for _, d := range deals {
+		key := strings.TrimSpace(d.ExternalID)
+		if key == "" {
+			key = bigDealFallbackKey(d)
+		}
+		prev, ok := best[key]
+		if !ok {
+			best[key] = d
+			continue
+		}
+		best[key] = preferredBigDeal(prev, d)
+	}
+	out := make([]models.BigDeal, 0, len(deals))
+	for _, d := range deals {
+		key := strings.TrimSpace(d.ExternalID)
+		if key == "" {
+			key = bigDealFallbackKey(d)
+		}
+		if best[key].ID != d.ID {
+			continue
+		}
+		out = append(out, d)
+	}
+	return out
+}
+
 // ListBigDeals returns all big deal cards.
 func (h *AuditorPanelHandler) ListBigDeals(c *gin.Context) {
 	var deals []models.BigDeal
-	if err := h.db.Order("deal_type asc, name asc").Find(&deals).Error; err != nil {
+	if err := h.db.Order("deal_type asc, name asc, id asc").Find(&deals).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "list_big_deals_failed"})
 		return
 	}
-	c.JSON(http.StatusOK, deals)
+	c.JSON(http.StatusOK, dedupeBigDealsByExternalID(deals))
 }
 
 // ListDoodads returns all doodad cards.
@@ -704,7 +771,7 @@ func (h *AuditorPanelHandler) ReferenceData(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "reference_small_deals_failed"})
 		return
 	}
-	if err := h.db.Find(&bigDeals).Error; err != nil {
+	if err := h.db.Order("deal_type asc, name asc, id asc").Find(&bigDeals).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "reference_big_deals_failed"})
 		return
 	}
@@ -716,7 +783,7 @@ func (h *AuditorPanelHandler) ReferenceData(c *gin.Context) {
 	c.JSON(http.StatusOK, ReferenceDataResponse{
 		Professions: professions,
 		SmallDeals:  smallDeals,
-		BigDeals:    bigDeals,
+		BigDeals:    dedupeBigDealsByExternalID(bigDeals),
 		Doodads:     doodads,
 	})
 }
@@ -1287,6 +1354,7 @@ func (h *AuditorPanelHandler) processStockDeal(tx *gorm.DB, gameID uuid.UUID, pl
 			GameID:      &gameID,
 			Name:        deal.Name,
 			Type:        "stock",
+			Extra:       datatypes.JSON("{}"),
 			Price:       totalCost,
 			Income:      deal.Cashflow * shares,
 			DownPayment: totalCost,
@@ -1382,6 +1450,101 @@ func (h *AuditorPanelHandler) processStockNews(
 	return affected, nil
 }
 
+// StockSellToBank sells existing shares to bank by active stock card price.
+// Rule: when an active stock card is open, any player may sell old shares of the same symbol.
+func (h *AuditorPanelHandler) StockSellToBank(c *gin.Context) {
+	gameID, ok := parseGameID(c)
+	if !ok {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "invalid_game_id"})
+		return
+	}
+	var req struct {
+		PlayerID uuid.UUID `json:"player_id" binding:"required"`
+		Symbol   string    `json:"symbol" binding:"required"`
+		Shares   int64     `json:"shares" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || req.Shares <= 0 {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "invalid_request"})
+		return
+	}
+
+	if err := h.db.Transaction(func(tx *gorm.DB) error {
+		var game models.GameSession
+		if err := tx.Preload("ActiveSmallDeal").
+			First(&game, "id = ?", gameID).Error; err != nil {
+			return err
+		}
+		if game.ActiveSmallDeal == nil {
+			return errors.New("no_active_small_deal")
+		}
+		activeDeal := *game.ActiveSmallDeal
+		if resolveSmallDealType(activeDeal) != "stock" {
+			return errors.New("active_deal_not_stock")
+		}
+		cardSymbol := activeDeal.Symbol
+		if cardSymbol == "" {
+			cardSymbol = req.Symbol
+		}
+		if !strings.EqualFold(cardSymbol, req.Symbol) {
+			return errors.New("symbol_not_active")
+		}
+
+		var p models.Player
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Preload("Profession").
+			First(&p, "id = ? AND game_id = ?", req.PlayerID, gameID).Error; err != nil {
+			return err
+		}
+		before := snapshotFinance(p)
+
+		var stock models.Asset
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("game_id = ? AND owner_id = ? AND type = ? AND symbol = ?", gameID, p.ID, "stock", req.Symbol).
+			First(&stock).Error; err != nil {
+			return errors.New("stock_not_found")
+		}
+		if stock.Shares < req.Shares {
+			return errors.New("insufficient_shares")
+		}
+
+		unitPrice := activeDeal.Price
+		proceeds := unitPrice * req.Shares
+		p.Cash += proceeds
+
+		stock.Shares -= req.Shares
+		stock.Price -= stock.UnitPrice * req.Shares
+		if stock.Price < 0 {
+			stock.Price = 0
+		}
+		stock.DownPayment = stock.Price
+		if stock.Shares == 0 {
+			if err := tx.Delete(&stock).Error; err != nil {
+				return err
+			}
+		} else {
+			if err := tx.Save(&stock).Error; err != nil {
+				return err
+			}
+		}
+
+		if err := h.reconcilePlayerFromAssets(tx, &p); err != nil {
+			return err
+		}
+		h.recalculatePlayerFinancials(&p, p.Profession)
+		if err := tx.Save(&p).Error; err != nil {
+			return err
+		}
+		if err := h.auditPlayerFinancials(tx, &p, p.Profession); err != nil {
+			return err
+		}
+		return h.createFinancialLog(tx, gameID, p.ID, "stock_sell_bank", before, p, fmt.Sprintf("Sold %d %s shares to bank at %d", req.Shares, req.Symbol, unitPrice))
+	}); err != nil {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
 func (h *AuditorPanelHandler) processRealEstateDeal(tx *gorm.DB, gameID uuid.UUID, player *models.Player, deal models.SmallDeal, allowLoan bool) error {
 	loan, err := applyLoanIfNeeded(player, deal.DownPayment, allowLoan)
 	if err != nil {
@@ -1392,17 +1555,20 @@ func (h *AuditorPanelHandler) processRealEstateDeal(tx *gorm.DB, gameID uuid.UUI
 	player.AssetsTotal += deal.Price
 	player.LiabilitiesTotal += deal.Mortgage
 	asset := models.Asset{
-		ID:          uuid.New(),
-		GameID:      &gameID,
-		Name:        deal.Name,
-		Type:        "real_estate",
-		Price:       deal.Price,
-		Income:      deal.Cashflow,
-		DownPayment: deal.DownPayment,
-		Mortgage:    deal.Mortgage,
-		LoanAmount:  loan,
-		LoanExpense: loan / 10,
-		OwnerID:     &player.ID,
+		ID:             uuid.New(),
+		GameID:         &gameID,
+		Name:           deal.Name,
+		Type:           "real_estate",
+		Extra:          deal.Extra,
+		BuildingUnits:  services.BuildingUnitsFromExtra(deal.Extra),
+		DealExternalID: deal.ExternalID,
+		Price:          deal.Price,
+		Income:         deal.Cashflow,
+		DownPayment:    deal.DownPayment,
+		Mortgage:       deal.Mortgage,
+		LoanAmount:     loan,
+		LoanExpense:    loan / 10,
+		OwnerID:        &player.ID,
 	}
 	return tx.Create(&asset).Error
 }
@@ -1419,17 +1585,20 @@ func (h *AuditorPanelHandler) processBusinessDeal(tx *gorm.DB, gameID uuid.UUID,
 		player.LiabilitiesTotal += deal.Mortgage
 	}
 	asset := models.Asset{
-		ID:          uuid.New(),
-		GameID:      &gameID,
-		Name:        deal.Name,
-		Type:        "business",
-		Price:       deal.Price,
-		Income:      deal.Cashflow,
-		DownPayment: deal.DownPayment,
-		Mortgage:    deal.Mortgage,
-		LoanAmount:  loan,
-		LoanExpense: loan / 10,
-		OwnerID:     &player.ID,
+		ID:             uuid.New(),
+		GameID:         &gameID,
+		Name:           deal.Name,
+		Type:           "business",
+		Extra:          deal.Extra,
+		BuildingUnits:  services.BuildingUnitsFromExtra(deal.Extra),
+		DealExternalID: deal.ExternalID,
+		Price:          deal.Price,
+		Income:         deal.Cashflow,
+		DownPayment:    deal.DownPayment,
+		Mortgage:       deal.Mortgage,
+		LoanAmount:     loan,
+		LoanExpense:    loan / 10,
+		OwnerID:        &player.ID,
 	}
 	return tx.Create(&asset).Error
 }
@@ -1455,6 +1624,7 @@ func (h *AuditorPanelHandler) processDepositDeal(tx *gorm.DB, gameID uuid.UUID, 
 		GameID:      &gameID,
 		Name:        deal.Name,
 		Type:        "deposit_certificate",
+		Extra:       datatypes.JSON("{}"),
 		Price:       required,
 		Income:      deal.Cashflow,
 		DownPayment: required,
@@ -1485,9 +1655,18 @@ func (h *AuditorPanelHandler) SmallDealPurchase(c *gin.Context) {
 	}
 
 	if err := h.db.Transaction(func(tx *gorm.DB) error {
+		var game models.GameSession
+		if err := tx.Select("id", "active_small_deal_id", "active_small_deal_opened_by").
+			First(&game, "id = ?", gameID).Error; err != nil {
+			return err
+		}
+
 		var deal models.SmallDeal
 		if err := tx.First(&deal, "id = ?", *req.DealID).Error; err != nil {
 			return err
+		}
+		if game.ActiveSmallDealID == nil || *game.ActiveSmallDealID != deal.ID {
+			return errors.New("deal_not_active")
 		}
 		dealType := resolveSmallDealType(deal)
 
@@ -1520,6 +1699,9 @@ func (h *AuditorPanelHandler) SmallDealPurchase(c *gin.Context) {
 		actionType := "buy"
 		switch dealType {
 		case "stock":
+			if game.ActiveSmallDealOpenedBy != nil && *game.ActiveSmallDealOpenedBy != req.PlayerID {
+				return errors.New("only_opener_can_buy_stock")
+			}
 			if err := h.processStockDeal(tx, gameID, &p, deal, req.Shares, req.AllowLoan); err != nil {
 				return err
 			}
@@ -1581,6 +1763,28 @@ func (h *AuditorPanelHandler) BigDealPurchase(c *gin.Context) {
 			return err
 		}
 
+		// RE “news” cards: one-time cash cost, no asset (unlike land or property purchases).
+		isNewsCost := deal.DealType == "big_deal_real_estate_news" ||
+			(deal.DealType == "expense" && deal.Price == 0 && deal.Mortgage == 0 && deal.Cashflow == 0 && deal.DownPayment > 0)
+		if isNewsCost {
+			cost := deal.DownPayment
+			if cost <= 0 {
+				return errors.New("invalid_big_deal_news_cost")
+			}
+			if p.Cash < cost {
+				return errors.New("insufficient_cash")
+			}
+			p.Cash -= cost
+			h.recalculatePlayerFinancials(&p, p.Profession)
+			if err := tx.Save(&p).Error; err != nil {
+				return err
+			}
+			if err := h.auditPlayerFinancials(tx, &p, p.Profession); err != nil {
+				return err
+			}
+			return h.createFinancialLog(tx, gameID, p.ID, "big_deal_news", before, p, "Big deal RE expense: "+deal.Title)
+		}
+
 		p.Cash -= deal.DownPayment
 		p.PassiveIncome += deal.Cashflow
 		p.AssetsTotal += deal.Price
@@ -1590,16 +1794,26 @@ func (h *AuditorPanelHandler) BigDealPurchase(c *gin.Context) {
 			return err
 		}
 
+		assetType := "business"
+		switch deal.DealType {
+		case "real_estate":
+			assetType = "real_estate"
+		case "business":
+			assetType = "business"
+		}
 		asset := models.Asset{
-			ID:          uuid.New(),
-			GameID:      &gameID,
-			Name:        deal.Name,
-			Type:        "business",
-			Price:       deal.Price,
-			Income:      deal.Cashflow,
-			DownPayment: deal.DownPayment,
-			Mortgage:    deal.Mortgage,
-			OwnerID:     &p.ID,
+			ID:             uuid.New(),
+			GameID:         &gameID,
+			Name:           deal.Name,
+			Type:           assetType,
+			Extra:          deal.Extra,
+			BuildingUnits:  services.BuildingUnitsFromExtra(deal.Extra),
+			DealExternalID: deal.ExternalID,
+			Price:          deal.Price,
+			Income:         deal.Cashflow,
+			DownPayment:    deal.DownPayment,
+			Mortgage:       deal.Mortgage,
+			OwnerID:        &p.ID,
 		}
 		if err := tx.Create(&asset).Error; err != nil {
 			return err
@@ -1733,104 +1947,126 @@ func (h *AuditorPanelHandler) ApproveTx(c *gin.Context) {
 	}
 
 	if err := h.db.Transaction(func(txDB *gorm.DB) error {
-		agreed := tx.OfferPrice
-		if tx.CounterOffer != nil {
-			agreed = *tx.CounterOffer
-		}
-
-		// Load locked player rows
-		var buyer models.Player
-		if err := txDB.Clauses(clause.Locking{Strength: "UPDATE"}).
-			Preload("Profession").
-			First(&buyer, "id = ?", tx.BuyerID).Error; err != nil {
-			return err
-		}
-		var seller models.Player
-		if err := txDB.Clauses(clause.Locking{Strength: "UPDATE"}).
-			Preload("Profession").
-			First(&seller, "id = ?", tx.MarketOffer.SellerID).Error; err != nil {
-			return err
-		}
-		beforeBuyer := snapshotFinance(buyer)
-		beforeSeller := snapshotFinance(seller)
-
-		var asset models.Asset
-		if err := txDB.First(&asset, "id = ?", tx.MarketOffer.AssetID).Error; err != nil {
-			return err
-		}
-
-		if buyer.Cash < agreed {
-			return errors.New("insufficient_cash")
-		}
-
-		// BUYER: payment + passive income/liabilities transfer.
-		buyer.Cash -= agreed
-		buyer.PassiveIncome += asset.Income
-		buyer.LiabilitiesTotal += asset.Mortgage + asset.LoanAmount
-		h.recalculatePlayerFinancials(&buyer, buyer.Profession)
-
-		// SELLER: remove asset economics, then add sale proceeds net of debt.
-		seller.PassiveIncome -= asset.Income
-		seller.LiabilitiesTotal -= asset.Mortgage + asset.LoanAmount
-		seller.LoanBalance -= asset.LoanAmount
-		seller.LoanExpense -= asset.LoanExpense
-		profit := agreed - asset.Mortgage - asset.LoanAmount
-		seller.Cash += profit
-		h.recalculatePlayerFinancials(&seller, seller.Profession)
-
-		if seller.LiabilitiesTotal < 0 {
-			seller.LiabilitiesTotal = 0
-		}
-		if seller.LoanBalance < 0 {
-			seller.LoanBalance = 0
-		}
-		if seller.LoanExpense < 0 {
-			seller.LoanExpense = 0
-		}
-		if err := txDB.Save(&buyer).Error; err != nil {
-			return err
-		}
-		if err := txDB.Save(&seller).Error; err != nil {
-			return err
-		}
-
-		// Transfer ownership
-		asset.OwnerID = &buyer.ID
-		if err := txDB.Save(&asset).Error; err != nil {
-			return err
-		}
-
-		// Mark transaction approved
-		if err := txDB.Model(&models.Transaction{}).Where("id = ?", tx.ID).Updates(map[string]any{
-			"status":       "approved",
-			"agreed_price": agreed,
-		}).Error; err != nil {
-			return err
-		}
-		if err := txDB.Model(&models.MarketOffer{}).Where("id = ?", tx.MarketOfferID).Update("status", "closed").Error; err != nil {
-			return err
-		}
-
-		if err := h.auditPlayerFinancials(txDB, &buyer, buyer.Profession); err != nil {
-			return err
-		}
-		if err := h.auditPlayerFinancials(txDB, &seller, seller.Profession); err != nil {
-			return err
-		}
-		if err := h.createFinancialLog(txDB, gameID, seller.ID, "sell", beforeSeller, seller, "Approved market sell"); err != nil {
-			return err
-		}
-		if err := h.createFinancialLog(txDB, gameID, buyer.ID, "buy", beforeBuyer, buyer, "Approved market buy"); err != nil {
-			return err
-		}
-
-		return nil
+		return h.settlePlayerToPlayerTrade(txDB, gameID, tx.ID, true)
 	}); err != nil {
 		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+// settlePlayerToPlayerTrade executes an approved player→player asset sale (same economics as ApproveTx).
+// If rejectOtherPending is true, other pending transactions on the same market offer are rejected.
+func (h *AuditorPanelHandler) settlePlayerToPlayerTrade(txDB *gorm.DB, gameID uuid.UUID, txID uuid.UUID, rejectOtherPending bool) error {
+	var tx models.Transaction
+	if err := txDB.Where("id = ? AND game_id = ? AND status = ?", txID, gameID, "pending").
+		Preload("Buyer").
+		Preload("MarketOffer.Asset").
+		Preload("MarketOffer.Seller").
+		First(&tx).Error; err != nil {
+		return err
+	}
+
+	agreed := tx.OfferPrice
+	if tx.CounterOffer != nil {
+		agreed = *tx.CounterOffer
+	}
+
+	if rejectOtherPending {
+		if err := txDB.Model(&models.Transaction{}).
+			Where("market_offer_id = ? AND id <> ? AND status = ?", tx.MarketOfferID, tx.ID, "pending").
+			Update("status", "rejected").Error; err != nil {
+			return err
+		}
+	}
+
+	var buyer models.Player
+	if err := txDB.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Preload("Profession").
+		First(&buyer, "id = ?", tx.BuyerID).Error; err != nil {
+		return err
+	}
+	var seller models.Player
+	if err := txDB.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Preload("Profession").
+		First(&seller, "id = ?", tx.MarketOffer.SellerID).Error; err != nil {
+		return err
+	}
+	beforeBuyer := snapshotFinance(buyer)
+	beforeSeller := snapshotFinance(seller)
+
+	var asset models.Asset
+	if err := txDB.Clauses(clause.Locking{Strength: "UPDATE"}).
+		First(&asset, "id = ? AND game_id = ?", tx.MarketOffer.AssetID, gameID).Error; err != nil {
+		return err
+	}
+	if asset.OwnerID == nil || *asset.OwnerID != seller.ID {
+		return errors.New("asset_not_owned_by_seller")
+	}
+
+	if buyer.Cash < agreed {
+		return errors.New("insufficient_cash")
+	}
+
+	buyer.Cash -= agreed
+	buyer.PassiveIncome += asset.Income
+	buyer.LiabilitiesTotal += asset.Mortgage + asset.LoanAmount
+	h.recalculatePlayerFinancials(&buyer, buyer.Profession)
+
+	seller.PassiveIncome -= asset.Income
+	seller.LiabilitiesTotal -= asset.Mortgage + asset.LoanAmount
+	seller.LoanBalance -= asset.LoanAmount
+	seller.LoanExpense -= asset.LoanExpense
+	profit := agreed - asset.Mortgage - asset.LoanAmount
+	seller.Cash += profit
+	h.recalculatePlayerFinancials(&seller, seller.Profession)
+
+	if seller.LiabilitiesTotal < 0 {
+		seller.LiabilitiesTotal = 0
+	}
+	if seller.LoanBalance < 0 {
+		seller.LoanBalance = 0
+	}
+	if seller.LoanExpense < 0 {
+		seller.LoanExpense = 0
+	}
+	if err := txDB.Save(&buyer).Error; err != nil {
+		return err
+	}
+	if err := txDB.Save(&seller).Error; err != nil {
+		return err
+	}
+
+	asset.OwnerID = &buyer.ID
+	if err := txDB.Save(&asset).Error; err != nil {
+		return err
+	}
+
+	if err := txDB.Model(&models.Transaction{}).Where("id = ?", tx.ID).Updates(map[string]any{
+		"status":       "approved",
+		"agreed_price": agreed,
+	}).Error; err != nil {
+		return err
+	}
+	if err := txDB.Model(&models.MarketOffer{}).Where("id = ?", tx.MarketOfferID).Update("status", "closed").Error; err != nil {
+		return err
+	}
+
+	if err := h.auditPlayerFinancials(txDB, &buyer, buyer.Profession); err != nil {
+		return err
+	}
+	if err := h.auditPlayerFinancials(txDB, &seller, seller.Profession); err != nil {
+		return err
+	}
+	if err := h.createFinancialLog(txDB, gameID, seller.ID, "sell", beforeSeller, seller, "Player market sell (settled)"); err != nil {
+		return err
+	}
+	if err := h.createFinancialLog(txDB, gameID, buyer.ID, "buy", beforeBuyer, buyer, "Player market buy (settled)"); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (h *AuditorPanelHandler) RejectTx(c *gin.Context) {

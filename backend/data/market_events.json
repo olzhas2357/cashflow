@@ -375,5 +375,41 @@
     "title": "Процентные ставки падают",
     "description": "Ставки упали до 5%. Вы можете продать дома 3/2 на 50 000$ дороже.",
     "is_global": false
+  },
+  {
+    "id": "mkt_re_apt12_280k",
+    "type": "REAL_ESTATE_BUYER",
+    "sub_type": "APT_12",
+    "title": "Покупатель 12-квартирного дома ($280k)",
+    "offer_price": 280000,
+    "description": "Внешний покупатель предлагает $280 000 за ваш многоквартирный дом на 12 квартир (ипотека гасится из суммы сделки).",
+    "is_global": true
+  },
+  {
+    "id": "mkt_re_apt24_450k",
+    "type": "REAL_ESTATE_BUYER",
+    "sub_type": "APT_24",
+    "title": "Покупатель 24-квартирного дома ($450k)",
+    "offer_price": 450000,
+    "description": "Внешний покупатель предлагает $450 000 за ваш многоквартирный дом на 24 квартиры.",
+    "is_global": true
+  },
+  {
+    "id": "mkt_re_apt_large_generic",
+    "type": "REAL_ESTATE_BUYER",
+    "sub_type": "APT_OVER_12",
+    "title": "Покупатель крупного апарт-комплекса ($320k)",
+    "offer_price": 320000,
+    "description": "Предложение для любого апарт-комплекса от 12 квартир с совпадающим типом актива.",
+    "is_global": true
+  },
+  {
+    "id": "mkt_re_4plex_120k",
+    "type": "REAL_ESTATE_BUYER",
+    "sub_type": "PLEX_4",
+    "title": "Покупатель 4-plex ($120k)",
+    "offer_price": 120000,
+    "description": "Внешний покупатель ищет объект типа 4-plex. Выплата игроку: цена карты минус ипотека по объекту.",
+    "is_global": true
   }
 ]

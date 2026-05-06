@@ -2,6 +2,7 @@ package seeds
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -59,18 +60,11 @@ func seedSmallDeals(db *gorm.DB, fileName, category, logLabel string) error {
 		return err
 	}
 
-	loaded := 0
+	inserted := 0
+	updated := 0
 	for _, row := range rows {
 		unique := strings.TrimSpace(row.ID)
 		if unique == "" {
-			continue
-		}
-
-		var exists int64
-		if err := db.Model(&models.SmallDeal{}).Where("external_id = ?", unique).Count(&exists).Error; err != nil {
-			return err
-		}
-		if exists > 0 {
 			continue
 		}
 		dealCategory := row.Category
@@ -112,12 +106,38 @@ func seedSmallDeals(db *gorm.DB, fileName, category, logLabel string) error {
 			item.Name = item.Title
 		}
 
+		var existing models.SmallDeal
+		findErr := db.Where("external_id = ?", unique).First(&existing).Error
+		if findErr == nil {
+			if err := db.Model(&existing).Updates(map[string]interface{}{
+				"deal_type":    item.DealType,
+				"category":     item.Category,
+				"name":         item.Name,
+				"title":        item.Title,
+				"symbol":       item.Symbol,
+				"description":  item.Description,
+				"price":        item.Price,
+				"down_payment": item.DownPayment,
+				"mortgage":     item.Mortgage,
+				"cashflow":     item.Cashflow,
+				"roi":          item.ROI,
+				"extra":        item.Extra,
+			}).Error; err != nil {
+				return err
+			}
+			updated++
+			continue
+		}
+		if !errors.Is(findErr, gorm.ErrRecordNotFound) {
+			return findErr
+		}
+
 		if err := db.Create(&item).Error; err != nil {
 			return err
 		}
-		loaded++
+		inserted++
 	}
 
-	fmt.Printf("Loaded %d %s\n", loaded, logLabel)
+	fmt.Printf("Loaded %d new, synced %d existing %s\n", inserted, updated, logLabel)
 	return nil
 }
