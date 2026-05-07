@@ -13,7 +13,7 @@
     "savings": 400
   },
   {
-    "name": "Авиа Пилот",
+    "name": "Пилот Авиалиний",
     "salary": 9500,
     "tax": 2350,
     "mortgage_payment": 1330,
@@ -26,7 +26,7 @@
     "savings": 400
   },
   {
-    "name": "Авто механик",
+    "name": "Автомеханик",
     "salary": 2000,
     "tax": 360,
     "mortgage_payment": 300,
@@ -52,7 +52,7 @@
     "savings": 400
   },
   {
-    "name": "Полиция офицер",
+    "name": "Офицер полиции",
     "salary": 3000,
     "tax": 580,
     "mortgage_payment": 400,
@@ -65,7 +65,7 @@
     "savings": 520
   },
   {
-    "name": "Грузчик",
+    "name": "Водитель грузовика",
     "salary": 2500,
     "tax": 460,
     "mortgage_payment": 400,
@@ -78,7 +78,7 @@
     "savings": 750
   },
   {
-    "name": "Уборщик",
+    "name": "Дворник",
     "salary": 1600,
     "tax": 280,
     "mortgage_payment": 200,
@@ -130,7 +130,7 @@
     "savings": 480
   },
   {
-    "name": "Юрист",
+    "name": "Адвокат",
     "salary": 7500,
     "tax": 1830,
     "mortgage_payment": 1100,

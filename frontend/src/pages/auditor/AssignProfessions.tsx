@@ -208,6 +208,12 @@ export default function AssignProfessions() {
 
 function ProfessionCard({ profession: pr }: { profession: Profession }) {
   const totalEx = professionTotalExpenses(pr)
+  const totalLiabilities =
+    (pr.home_mortgage ?? 0) +
+    (pr.school_loans ?? 0) +
+    (pr.car_loans ?? 0) +
+    (pr.credit_cards ?? 0) +
+    (pr.retail_debt ?? 0)
   return (
     <div className="rounded-lg border border-border bg-muted/20 p-3 text-sm">
       <div className="font-semibold">{pr.name}</div>
@@ -220,6 +226,8 @@ function ProfessionCard({ profession: pr }: { profession: Profession }) {
         <span className="text-emerald-400/90">${pr.savings.toLocaleString()}</span>
         <span>Child / baby</span>
         <span>${pr.child_expense.toLocaleString()}</span>
+        <span>Liabilities total</span>
+        <span>${totalLiabilities.toLocaleString()}</span>
       </div>
       <Badge variant="outline" className="mt-2">
         Net {pr.salary - totalEx >= 0 ? '+' : ''}

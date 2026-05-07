@@ -176,6 +176,11 @@ type Profession struct {
 	OtherExpenses     int64 `gorm:"not null;default:0" json:"other_expenses"`
 	ChildExpense      int64 `gorm:"not null;default:0" json:"child_expense"`
 	Savings           int64 `gorm:"not null;default:0" json:"savings"`
+	HomeMortgage      int64 `gorm:"not null;default:0" json:"home_mortgage"`
+	SchoolLoans       int64 `gorm:"not null;default:0" json:"school_loans"`
+	CarLoans          int64 `gorm:"not null;default:0" json:"car_loans"`
+	CreditCards       int64 `gorm:"not null;default:0" json:"credit_cards"`
+	RetailDebt        int64 `gorm:"not null;default:0" json:"retail_debt"`
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`

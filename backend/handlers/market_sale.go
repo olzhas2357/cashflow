@@ -13,10 +13,12 @@ import (
 // sellAssetToMarket выполняет продажу актива внешнему покупателю по правилам настольного Cashflow (строго).
 //
 // Шаги по спецификации:
-//   profit = marketPrice - asset.Mortgage
-//   player.Cash += profit
-//   player.LiabilitiesTotal -= asset.Mortgage
-//   player.PassiveIncome -= asset.Income (cashflow с актива)
+//
+//	profit = marketPrice - asset.Mortgage
+//	player.Cash += profit
+//	player.LiabilitiesTotal -= asset.Mortgage
+//	player.PassiveIncome -= asset.Income (cashflow с актива)
+//
 // снимается долг по банковскому займу на покупку этого актива (LoanAmount / LoanExpense), актив удаляется,
 // затем reconcile по оставшимся активам и пересчёт месячных полей.
 //
@@ -47,7 +49,7 @@ func (h *AuditorPanelHandler) sellAssetToMarket(tx *gorm.DB, gameID uuid.UUID, s
 		seller.LoanExpense = 0
 	}
 	if seller.LiabilitiesTotal < 0 {
-		seller.LiabilitiesTotal = 0
+		seller.LiabilitiesTotal = professionBaseLiabilities(seller.Profession)
 	}
 
 	if err := tx.Delete(asset).Error; err != nil {

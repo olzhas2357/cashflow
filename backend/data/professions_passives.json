@@ -1,0 +1,266 @@
+{
+  "Учитель": {
+    "mortgage": {
+      "amount": 50000,
+      "monthly_payment": 500
+    },
+    "education_loan": {
+      "amount": 12000,
+      "monthly_payment": 60
+    },
+    "car_loan": {
+      "amount": 5000,
+      "monthly_payment": 100
+    },
+    "credit_cards": {
+      "amount": 3000,
+      "monthly_payment": 90
+    },
+    "small_loans": {
+      "amount": 1000,
+      "monthly_payment": 50
+    }
+  },
+  "Пилот Авиалиний": {
+    "mortgage": {
+      "amount": 143000,
+      "monthly_payment": 1330
+    },
+    "education_loan": {
+      "amount": 0,
+      "monthly_payment": 0
+    },
+    "car_loan": {
+      "amount": 15000,
+      "monthly_payment": 300
+    },
+    "credit_cards": {
+      "amount": 22000,
+      "monthly_payment": 660
+    },
+    "small_loans": {
+      "amount": 1000,
+      "monthly_payment": 50
+    }
+  },
+  "Автомеханик": {
+    "mortgage": {
+      "amount": 31000,
+      "monthly_payment": 300
+    },
+    "education_loan": {
+      "amount": 0,
+      "monthly_payment": 0
+    },
+    "car_loan": {
+      "amount": 3000,
+      "monthly_payment": 60
+    },
+    "credit_cards": {
+      "amount": 2000,
+      "monthly_payment": 60
+    },
+    "small_loans": {
+      "amount": 1000,
+      "monthly_payment": 50
+    }
+  },
+  "Менеджер": {
+    "mortgage": {
+      "amount": 75000,
+      "monthly_payment": 700
+    },
+    "education_loan": {
+      "amount": 12000,
+      "monthly_payment": 60
+    },
+    "car_loan": {
+      "amount": 6000,
+      "monthly_payment": 120
+    },
+    "credit_cards": {
+      "amount": 3000,
+      "monthly_payment": 90
+    },
+    "small_loans": {
+      "amount": 1000,
+      "monthly_payment": 50
+    }
+  },
+  "Офицер полиции": {
+    "mortgage": {
+      "amount": 46000,
+      "monthly_payment": 400
+    },
+    "education_loan": {
+      "amount": 0,
+      "monthly_payment": 0
+    },
+    "car_loan": {
+      "amount": 5000,
+      "monthly_payment": 100
+    },
+    "credit_cards": {
+      "amount": 2000,
+      "monthly_payment": 60
+    },
+    "small_loans": {
+      "amount": 1000,
+      "monthly_payment": 50
+    }
+  },
+  "Водитель грузовика": {
+    "mortgage": {
+      "amount": 38000,
+      "monthly_payment": 400
+    },
+    "education_loan": {
+      "amount": 0,
+      "monthly_payment": 0
+    },
+    "car_loan": {
+      "amount": 4000,
+      "monthly_payment": 80
+    },
+    "credit_cards": {
+      "amount": 2000,
+      "monthly_payment": 60
+    },
+    "small_loans": {
+      "amount": 1000,
+      "monthly_payment": 50
+    }
+  },
+  "Дворник": {
+    "mortgage": {
+      "amount": 20000,
+      "monthly_payment": 200
+    },
+    "education_loan": {
+      "amount": 0,
+      "monthly_payment": 0
+    },
+    "car_loan": {
+      "amount": 4000,
+      "monthly_payment": 60
+    },
+    "credit_cards": {
+      "amount": 2000,
+      "monthly_payment": 60
+    },
+    "small_loans": {
+      "amount": 1000,
+      "monthly_payment": 50
+    }
+  },
+  "Секретарь": {
+    "mortgage": {
+      "amount": 38000,
+      "monthly_payment": 400
+    },
+    "education_loan": {
+      "amount": 0,
+      "monthly_payment": 0
+    },
+    "car_loan": {
+      "amount": 4000,
+      "monthly_payment": 80
+    },
+    "credit_cards": {
+      "amount": 2000,
+      "monthly_payment": 60
+    },
+    "small_loans": {
+      "amount": 1000,
+      "monthly_payment": 50
+    }
+  },
+  "Инженер": {
+    "mortgage": {
+      "amount": 75000,
+      "monthly_payment": 700
+    },
+    "education_loan": {
+      "amount": 12000,
+      "monthly_payment": 60
+    },
+    "car_loan": {
+      "amount": 7000,
+      "monthly_payment": 140
+    },
+    "credit_cards": {
+      "amount": 4000,
+      "monthly_payment": 120
+    },
+    "small_loans": {
+      "amount": 1000,
+      "monthly_payment": 50
+    }
+  },
+  "Медсестра": {
+    "mortgage": {
+      "amount": 47000,
+      "monthly_payment": 400
+    },
+    "education_loan": {
+      "amount": 6000,
+      "monthly_payment": 30
+    },
+    "car_loan": {
+      "amount": 5000,
+      "monthly_payment": 100
+    },
+    "credit_cards": {
+      "amount": 3000,
+      "monthly_payment": 90
+    },
+    "small_loans": {
+      "amount": 1000,
+      "monthly_payment": 50
+    }
+  },
+  "Адвокат": {
+    "mortgage": {
+      "amount": 115000,
+      "monthly_payment": 1100
+    },
+    "education_loan": {
+      "amount": 78000,
+      "monthly_payment": 390
+    },
+    "car_loan": {
+      "amount": 11000,
+      "monthly_payment": 220
+    },
+    "credit_cards": {
+      "amount": 6000,
+      "monthly_payment": 180
+    },
+    "small_loans": {
+      "amount": 1000,
+      "monthly_payment": 50
+    }
+  },
+  "Врач": {
+    "mortgage": {
+      "amount": 202000,
+      "monthly_payment": 9000
+    },
+    "education_loan": {
+      "amount": 150000,
+      "monthly_payment": 750
+    },
+    "car_loan": {
+      "amount": 19000,
+      "monthly_payment": 380
+    },
+    "credit_cards": {
+      "amount": 9000,
+      "monthly_payment": 270
+    },
+    "small_loans": {
+      "amount": 1000,
+      "monthly_payment": 50
+    }
+  }
+}

@@ -103,6 +103,13 @@ func (h *AuditorPanelHandler) recalculatePlayerFinancials(p *models.Player, prof
 	p.FinanciallyFree = p.PassiveIncome > p.TotalExpenses
 }
 
+func professionBaseLiabilities(prof *models.Profession) int64 {
+	if prof == nil {
+		return 0
+	}
+	return prof.HomeMortgage + prof.SchoolLoans + prof.CarLoans + prof.CreditCards + prof.RetailDebt
+}
+
 func (h *AuditorPanelHandler) reconcilePlayerFromAssets(tx *gorm.DB, p *models.Player) error {
 	var assets []models.Asset
 	if err := tx.Where("owner_id = ?", p.ID).Find(&assets).Error; err != nil {
@@ -118,9 +125,10 @@ func (h *AuditorPanelHandler) reconcilePlayerFromAssets(tx *gorm.DB, p *models.P
 		mortgages += a.Mortgage
 	}
 
+	baseLiabilities := professionBaseLiabilities(p.Profession)
 	p.AssetsTotal = assetsTotal
 	p.PassiveIncome = passiveIncome
-	p.LiabilitiesTotal = mortgages + p.LoanBalance
+	p.LiabilitiesTotal = baseLiabilities + mortgages + p.LoanBalance
 	return nil
 }
 
@@ -144,7 +152,7 @@ func (h *AuditorPanelHandler) auditPlayerFinancials(tx *gorm.DB, p *models.Playe
 	if p.PassiveIncome != expectedPassiveIncome {
 		return errors.New("audit failed")
 	}
-	if p.LiabilitiesTotal != expectedMortgages+p.LoanBalance {
+	if p.LiabilitiesTotal != professionBaseLiabilities(prof)+expectedMortgages+p.LoanBalance {
 		return errors.New("audit failed")
 	}
 
@@ -402,7 +410,7 @@ func (h *AuditorPanelHandler) AssignProfession(c *gin.Context) {
 	player.Cash = prof.Savings
 	player.PassiveIncome = 0
 	player.AssetsTotal = 0
-	player.LiabilitiesTotal = 0
+	player.LiabilitiesTotal = professionBaseLiabilities(&prof)
 	player.LoanBalance = 0
 	player.LoanExpense = 0
 	h.recalculatePlayerFinancials(&player, &prof)
@@ -2023,7 +2031,7 @@ func (h *AuditorPanelHandler) settlePlayerToPlayerTrade(txDB *gorm.DB, gameID uu
 	h.recalculatePlayerFinancials(&seller, seller.Profession)
 
 	if seller.LiabilitiesTotal < 0 {
-		seller.LiabilitiesTotal = 0
+		seller.LiabilitiesTotal = professionBaseLiabilities(seller.Profession)
 	}
 	if seller.LoanBalance < 0 {
 		seller.LoanBalance = 0

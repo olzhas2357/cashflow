@@ -20,6 +20,8 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 const money = (n: number) =>
   n.toLocaleString(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
 
+const n = (value: number | undefined) => value ?? 0
+
 export default function PlayerDetail() {
   const token = useAuthStore((s) => s.token)
   const { gameId, playerId } = useParams()
@@ -103,10 +105,13 @@ export default function PlayerDetail() {
         <Card>
           <CardHeader>
             <CardTitle>Profession: {prof.name}</CardTitle>
-            <CardDescription>Starting card totals (before extra assets).</CardDescription>
+            <CardDescription>Starting card totals matching the paper statement.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-2 font-mono text-sm sm:grid-cols-2">
             <Row label="Salary" value={money(prof.salary)} />
+            <Row label="Interest" value={money(0)} />
+            <Row label="Dividends" value={money(0)} />
+            <Row label="Real estate / business income" value={money(0)} />
             <Row label="Taxes" value={money(prof.tax)} />
             <Row label="Mortgage payment" value={money(prof.mortgage_payment)} />
             <Row label="School loan" value={money(prof.school_loan_payment)} />
@@ -117,6 +122,11 @@ export default function PlayerDetail() {
             <Row label="Child expense (each)" value={money(prof.child_expense)} />
             <Row label="Total expenses (excl. children)" value={money(professionTotalExpenses(prof))} highlight />
             <Row label="Savings (starting cash)" value={money(prof.savings)} highlight />
+            <Row label="Home mortgage (liability)" value={money(n(prof.home_mortgage))} />
+            <Row label="School loans (liability)" value={money(n(prof.school_loans))} />
+            <Row label="Car loans (liability)" value={money(n(prof.car_loans))} />
+            <Row label="Credit cards (liability)" value={money(n(prof.credit_cards))} />
+            <Row label="Retail debt (liability)" value={money(n(prof.retail_debt))} />
           </CardContent>
         </Card>
       )}

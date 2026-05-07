@@ -48,6 +48,11 @@ export type Profession = {
   other_expenses: number
   child_expense: number
   savings: number
+  home_mortgage: number
+  school_loans: number
+  car_loans: number
+  credit_cards: number
+  retail_debt: number
 }
 
 export function professionTotalExpenses(p: Profession): number {
