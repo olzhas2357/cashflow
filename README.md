@@ -266,6 +266,8 @@ docker logs -f cashflow_backend
 * [ ] кредитная система (несколько займов)
 * [ ] аналитика игроков
 
+![Описание фото](cashflow_platform_architecture.png)
+
 ---
 
 ## 🧠 Идея проекта
