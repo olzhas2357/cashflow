@@ -173,6 +173,9 @@ total = price * shares
 
 ---
 
+[cashflow_monopoly_style_board.html]
+
+
 ## 👶 События
 
 ### Ребёнок
@@ -227,6 +230,8 @@ data/
 * small deals
 * big deals
 * market
+
+![Описание фото](financial_statement_structure.png)
 
 ❗ Важно:
 
