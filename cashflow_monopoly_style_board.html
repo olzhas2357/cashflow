@@ -1,0 +1,73 @@
+
+<div style="display:flex; justify-content:center; padding:1rem 0;">
+<div style="display:grid; grid-template-columns: 70px repeat(7, 1fr) 70px; grid-template-rows: 70px repeat(7, 1fr) 70px; width:100%; max-width:620px; aspect-ratio:1; gap:2px; background:var(--border); border:0.5px solid var(--border-strong); border-radius:8px; padding:2px;">
+
+<div style="grid-column:1; grid-row:1; background:var(--surface-1); display:flex; align-items:center; justify-content:center; border-radius:4px;">
+  <i class="ti ti-flag" style="font-size:22px; color:var(--text-accent);" aria-hidden="true"></i>
+</div>
+
+<div class="cell c-amber" style="grid-column:2; grid-row:1;"><span class="cn">2</span><span class="ct">Small deal</span></div>
+<div class="cell c-blue" style="grid-column:3; grid-row:1;"><span class="cn">3</span><span class="ct">Doodad</span></div>
+<div class="cell c-green" style="grid-column:4; grid-row:1;"><span class="cn">4</span><span class="ct">Market</span></div>
+<div class="cell c-amber" style="grid-column:5; grid-row:1;"><span class="cn">5</span><span class="ct">Big deal</span></div>
+<div class="cell c-red" style="grid-column:6; grid-row:1;"><span class="cn">6</span><span class="ct">Downsized</span></div>
+<div class="cell c-blue" style="grid-column:7; grid-row:1;"><span class="cn">7</span><span class="ct">Doodad</span></div>
+
+<div style="grid-column:8; grid-row:1; background:var(--surface-1); display:flex; align-items:center; justify-content:center; border-radius:4px;">
+  <i class="ti ti-baby-carriage" style="font-size:20px; color:var(--text-secondary);" aria-hidden="true"></i>
+</div>
+
+<div class="cell c-amber" style="grid-column:8; grid-row:2;"><span class="cn">8</span><span class="ct">Small deal</span></div>
+<div class="cell c-purple" style="grid-column:8; grid-row:3;"><span class="cn">9</span><span class="ct">Charity</span></div>
+<div class="cell c-amber" style="grid-column:8; grid-row:4;"><span class="cn">10</span><span class="ct">Big deal</span></div>
+<div class="cell c-blue" style="grid-column:8; grid-row:5;"><span class="cn">11</span><span class="ct">Doodad</span></div>
+<div class="cell c-green" style="grid-column:8; grid-row:6;"><span class="cn">12</span><span class="ct">Market</span></div>
+<div class="cell c-amber" style="grid-column:8; grid-row:7;"><span class="cn">13</span><span class="ct">Small deal</span></div>
+
+<div style="grid-column:8; grid-row:8; background:var(--surface-1); display:flex; align-items:center; justify-content:center; border-radius:4px;">
+  <i class="ti ti-cash" style="font-size:22px; color:var(--text-success);" aria-hidden="true"></i>
+</div>
+
+<div class="cell c-red" style="grid-column:7; grid-row:8;"><span class="cn">14</span><span class="ct">Downsized</span></div>
+<div class="cell c-amber" style="grid-column:6; grid-row:8;"><span class="cn">15</span><span class="ct">Big deal</span></div>
+<div class="cell c-blue" style="grid-column:5; grid-row:8;"><span class="cn">16</span><span class="ct">Doodad</span></div>
+<div class="cell c-amber" style="grid-column:4; grid-row:8;"><span class="cn">17</span><span class="ct">Small deal</span></div>
+<div class="cell c-green" style="grid-column:3; grid-row:8;"><span class="cn">18</span><span class="ct">Market</span></div>
+<div class="cell c-blue" style="grid-column:2; grid-row:8;"><span class="cn">19</span><span class="ct">Doodad</span></div>
+
+<div style="grid-column:1; grid-row:8; background:var(--surface-1); display:flex; align-items:center; justify-content:center; border-radius:4px;">
+  <i class="ti ti-building-bank" style="font-size:20px; color:var(--text-secondary);" aria-hidden="true"></i>
+</div>
+
+<div class="cell c-amber" style="grid-column:1; grid-row:7;"><span class="cn">20</span><span class="ct">Big deal</span></div>
+<div class="cell c-purple" style="grid-column:1; grid-row:6;"><span class="cn">21</span><span class="ct">Charity</span></div>
+<div class="cell c-amber" style="grid-column:1; grid-row:5;"><span class="cn">22</span><span class="ct">Small deal</span></div>
+<div class="cell c-blue" style="grid-column:1; grid-row:4;"><span class="cn">23</span><span class="ct">Doodad</span></div>
+<div class="cell c-green" style="grid-column:1; grid-row:3;"><span class="cn">24</span><span class="ct">Market</span></div>
+<div class="cell c-amber" style="grid-column:1; grid-row:2;"><span class="cn">1</span><span class="ct">Small deal</span></div>
+
+<div style="grid-column:2/8; grid-row:2/8; background:var(--surface-0); border-radius:6px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;">
+  <i class="ti ti-coin" style="font-size:32px; color:var(--text-muted);" aria-hidden="true"></i>
+  <span style="font-size:15px; font-weight:500; color:var(--text-primary);">CashFlow</span>
+  <span style="font-size:12px; color:var(--text-muted);">24 cells, Monopoly-style layout</span>
+</div>
+
+</div>
+</div>
+
+<style>
+.cell { position:relative; background:var(--surface-2); border-radius:4px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; padding:2px; overflow:hidden; cursor:pointer; transition:transform .12s; }
+.cell:hover { transform:scale(1.04); z-index:2; }
+.cn { font-size:10px; color:var(--text-muted); font-weight:500; }
+.ct { font-size:9px; text-align:center; line-height:1.15; padding:0 2px; }
+.c-amber .ct, .c-amber .cn { color: var(--text-warning); }
+.c-blue .ct, .c-blue .cn { color: var(--text-accent); }
+.c-green .ct, .c-green .cn { color: var(--text-success); }
+.c-red .ct, .c-red .cn { color: var(--text-danger); }
+.c-purple .ct, .c-purple .cn { color: var(--text-pro); }
+.c-amber { background: var(--bg-warning); }
+.c-blue { background: var(--bg-accent); }
+.c-green { background: var(--bg-success); }
+.c-red { background: var(--bg-danger); }
+.c-purple { background: var(--bg-pro); }
+</style>
