@@ -1,0 +1,301 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.wrap{padding:16px 0;font-family:var(--font-sans)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px}
+.tab{padding:6px 14px;border-radius:20px;border:1px solid var(--color-border-secondary);background:var(--color-background-secondary);color:var(--color-text-secondary);font-size:13px;cursor:pointer;transition:all .2s;font-family:var(--font-sans)}
+.tab.active{background:var(--color-background-primary);color:var(--color-text-primary);border-color:var(--color-border-primary);font-weight:500}
+.panel{display:none}.panel.active{display:block}
+.sec{font-size:11px;font-weight:500;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:.05em;margin:18px 0 8px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.card{background:var(--color-background-secondary);border:1px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:12px 14px}
+.card-t{font-size:14px;font-weight:500;color:var(--color-text-primary);margin-bottom:4px}
+.card-d{font-size:12px;color:var(--color-text-secondary);line-height:1.65}
+.tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:10px;margin-top:6px;font-weight:500}
+.tg{background:#EAF3DE;color:#27500A}.tr{background:#FCEBEB;color:#791F1F}
+.tb{background:#E6F1FB;color:#0C447C}.ta{background:#FAEEDA;color:#633806}
+.tp{background:#EEEDFE;color:#3C3489}
+@media(prefers-color-scheme:dark){
+.tg{background:#173404;color:#C0DD97}.tr{background:#501313;color:#F7C1C1}
+.tb{background:#042C53;color:#B5D4F4}.ta{background:#412402;color:#FAC775}
+.tp{background:#26215C;color:#CECBF6}}
+.flow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:8px 0}
+.fb{background:var(--color-background-secondary);border:1px solid var(--color-border-secondary);border-radius:8px;padding:7px 11px;font-size:12px;color:var(--color-text-primary)}
+.fa{color:var(--color-text-tertiary);font-size:16px}
+.formula{background:var(--color-background-secondary);border-left:3px solid #185FA5;padding:9px 13px;border-radius:0 8px 8px 0;font-size:12px;color:var(--color-text-primary);margin:6px 0;font-family:var(--font-mono);line-height:1.7}
+.state-row{display:flex;gap:8px;margin:8px 0;align-items:stretch}
+.state{flex:1;border-radius:8px;padding:10px 12px;border:1px solid var(--color-border-tertiary)}
+.state-label{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+.state-desc{font-size:12px;color:var(--color-text-secondary);line-height:1.6}
+.s-open{border-color:#185FA5;background:#E6F1FB}.s-open .state-label{color:#0C447C}
+.s-bid{border-color:#854F0B;background:#FAEEDA}.s-bid .state-label{color:#633806}
+.s-pend{border-color:#534AB7;background:#EEEDFE}.s-pend .state-label{color:#3C3489}
+.s-done{border-color:#3B6D11;background:#EAF3DE}.s-done .state-label{color:#27500A}
+.s-exp{border-color:#A32D2D;background:#FCEBEB}.s-exp .state-label{color:#791F1F}
+@media(prefers-color-scheme:dark){
+.s-open{border-color:#185FA5;background:#042C53}.s-open .state-label{color:#B5D4F4}
+.s-bid{border-color:#854F0B;background:#412402}.s-bid .state-label{color:#FAC775}
+.s-pend{border-color:#534AB7;background:#26215C}.s-pend .state-label{color:#CECBF6}
+.s-done{border-color:#3B6D11;background:#173404}.s-done .state-label{color:#C0DD97}
+.s-exp{border-color:#A32D2D;background:#501313}.s-exp .state-label{color:#F7C1C1}}
+ul.li{padding-left:16px}ul.li li{font-size:12px;color:var(--color-text-secondary);line-height:1.8}
+ul.li li span{color:var(--color-text-primary);font-weight:500}
+.code{font-family:var(--font-mono);font-size:11px;background:var(--color-background-secondary);border:1px solid var(--color-border-tertiary);border-radius:8px;padding:12px 14px;color:var(--color-text-primary);line-height:1.8;overflow-x:auto}
+.kw{color:#185FA5}.st{color:#3B6D11}.cm{color:var(--color-text-tertiary)}
+.rule{border:1px solid var(--color-border-tertiary);border-radius:8px;padding:10px 14px;margin:6px 0;display:flex;gap:10px;align-items:flex-start}
+.rule-num{font-size:18px;font-weight:500;color:var(--color-text-tertiary);min-width:24px}
+.rule-body{flex:1}
+.rule-t{font-size:13px;font-weight:500;color:var(--color-text-primary);margin-bottom:2px}
+.rule-d{font-size:12px;color:var(--color-text-secondary);line-height:1.6}
+</style>
+
+<div class="wrap">
+<div class="tabs">
+  <button class="tab active" onclick="show('overview')">Overview</button>
+  <button class="tab" onclick="show('auction')">Auction mode</button>
+  <button class="tab" onclick="show('direct')">Direct trade</button>
+  <button class="tab" onclick="show('states')">Deal states</button>
+  <button class="tab" onclick="show('auditor')">Auditor flow</button>
+  <button class="tab" onclick="show('api')">API + DB</button>
+</div>
+
+<div id="p-overview" class="panel active">
+  <div class="sec">Two market modes</div>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-t">Auction mode</div>
+      <div class="card-d">Triggered when a player draws a Deal card (small or big). The card is shown to all players. All players can bid. Highest bidder wins. Card holder can also accept original card price (no auction needed).</div>
+      <div class="tag tb">Card-triggered</div>
+    </div>
+    <div class="card">
+      <div class="card-t">Direct trade</div>
+      <div class="card-d">Card holder passes on a deal but offers it to one specific other player at a negotiated price. Bilateral agreement — both must confirm. Auditor then approves.</div>
+      <div class="tag tp">Player-to-player</div>
+    </div>
+  </div>
+
+  <div class="sec">Who can initiate a market event</div>
+  <div class="card">
+    <div class="card-d">Only the player who drew the deal card can start a market event — either by opening an auction OR by offering the deal directly to another player. Other players cannot list or sell assets they already own. The market is purely deal-card driven.</div>
+    <div class="tag ta">Card holder only</div>
+  </div>
+
+  <div class="sec">Auditor's role in all transactions</div>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-t">What auditor controls</div>
+      <div class="card-d">Approves or rejects every completed deal (auction win or direct trade confirmation). Verifies buyer has enough cash. Applies financial changes to both players' sheets.</div>
+      <div class="tag tg">Final authority</div>
+    </div>
+    <div class="card">
+      <div class="card-t">What auditor does NOT control</div>
+      <div class="card-d">Setting bid amounts, opening prices, or negotiated prices — that's between players. The auditor only validates the final agreed transaction.</div>
+      <div class="tag tr">Not a price setter</div>
+    </div>
+  </div>
+
+  <div class="sec">Key constraint</div>
+  <div class="formula">buyer.cash >= deal.down_payment  →  transaction allowed
+buyer.cash  &lt;  deal.down_payment  →  auditor must REJECT</div>
+</div>
+
+<div id="p-auction" class="panel">
+  <div class="sec">When auction starts</div>
+  <div class="flow">
+    <div class="fb">Player draws Deal card</div><div class="fa">→</div>
+    <div class="fb">Card holder decides: Keep / Auction / Direct offer</div><div class="fa">→</div>
+    <div class="fb">If Auction → auditor opens auction</div><div class="fa">→</div>
+    <div class="fb">All players see card + bid</div>
+  </div>
+
+  <div class="sec">Auction rules</div>
+  <div class="rule"><div class="rule-num">1</div><div class="rule-body"><div class="rule-t">Opening price = card's listed price</div><div class="rule-d">The deal card has a printed cost and down_payment. The auction opening bid starts at down_payment (what buyer actually pays in cash). Card holder can also just accept the printed price themselves — no auction needed.</div></div></div>
+  <div class="rule"><div class="rule-num">2</div><div class="rule-body"><div class="rule-t">Card holder cannot bid in their own auction</div><div class="rule-d">They already had first right to take the deal. If they open auction, they pass — only other players can bid.</div></div></div>
+  <div class="rule"><div class="rule-num">3</div><div class="rule-body"><div class="rule-t">Each bid must exceed the previous bid</div><div class="rule-d">Min increment can be set by auditor (e.g. $500 or $1,000). Bids are visible to all players in real time via WebSocket.</div></div></div>
+  <div class="rule"><div class="rule-num">4</div><div class="rule-body"><div class="rule-t">Auction timer or auditor closes it</div><div class="rule-d">Either a countdown timer (e.g. 60 seconds of inactivity) or the auditor manually closes bidding. When closed: highest bidder wins.</div></div></div>
+  <div class="rule"><div class="rule-num">5</div><div class="rule-body"><div class="rule-t">Card holder gets cash from winning bid</div><div class="rule-d">The card holder receives the winning bid amount as cash. This simulates "flipping" a deal. The card asset transfers to the winning bidder at the bid price (their down_payment = bid amount).</div></div></div>
+  <div class="rule"><div class="rule-num">6</div><div class="rule-body"><div class="rule-t">No bids = auditor cancels or card holder keeps it</div><div class="rule-d">If no one bids, the deal is cancelled or card holder can choose to take it themselves.</div></div></div>
+
+  <div class="sec">Financial effect (auction win)</div>
+  <div class="formula">Card holder:  cash += winning_bid_amount
+Winning bidder: cash -= winning_bid_amount
+                assets += deal (with cashflow, liability if any)
+                if deal has mortgage: liabilities += mortgage_amount
+                                      expenses += monthly_payment</div>
+</div>
+
+<div id="p-direct" class="panel">
+  <div class="sec">Direct trade flow</div>
+  <div class="flow">
+    <div class="fb">Card holder passes on deal</div><div class="fa">→</div>
+    <div class="fb">Selects a specific player to offer to</div><div class="fa">→</div>
+    <div class="fb">Sets offer price (can be any amount)</div><div class="fa">→</div>
+    <div class="fb">Target player: Accept / Reject</div><div class="fa">→</div>
+    <div class="fb">Both confirmed → auditor approves</div>
+  </div>
+
+  <div class="sec">Rules for direct trade</div>
+  <div class="rule"><div class="rule-num">1</div><div class="rule-body"><div class="rule-t">Card holder sets the price freely</div><div class="rule-d">No minimum. Card holder can offer the deal below, at, or above the printed card price. This simulates negotiation and charity deals between friends.</div></div></div>
+  <div class="rule"><div class="rule-num">2</div><div class="rule-body"><div class="rule-t">Only one offer at a time</div><div class="rule-d">Card holder can only offer to one player at a time. If rejected, they can then offer to someone else OR open an auction OR take the deal themselves.</div></div></div>
+  <div class="rule"><div class="rule-num">3</div><div class="rule-body"><div class="rule-t">Offer expires after a time limit or rejection</div><div class="rule-d">Target player must respond within e.g. 2 minutes or the offer auto-expires and returns to card holder.</div></div></div>
+  <div class="rule"><div class="rule-num">4</div><div class="rule-body"><div class="rule-t">Card holder receives negotiated price</div><div class="rule-d">Same as auction — card holder gets cash equal to the agreed price. The deal asset transfers to the buyer.</div></div></div>
+
+  <div class="sec">Financial effect (direct trade)</div>
+  <div class="formula">Card holder:  cash += agreed_price
+Buyer:        cash -= agreed_price
+              assets += deal
+              if deal has mortgage: liabilities += mortgage_amount
+                                    expenses += monthly_payment</div>
+
+  <div class="sec">Edge case: card holder keeps the deal</div>
+  <div class="card">
+    <div class="card-d">At any point the card holder can say "I'll take it myself" — they pay the printed down_payment, get the asset, and no market event happens. This is the default behavior from the original game. Market events are optional on top.</div>
+    <div class="tag tg">Always available as fallback</div>
+  </div>
+</div>
+
+<div id="p-states" class="panel">
+  <div class="sec">Market deal lifecycle</div>
+  <div class="state-row">
+    <div class="state s-open"><div class="state-label">open</div><div class="state-desc">Card drawn, card holder deciding: keep / auction / offer</div></div>
+    <div class="fa" style="font-size:20px;padding-top:20px">→</div>
+    <div class="state s-bid"><div class="state-label">bidding</div><div class="state-desc">Auction active, players placing bids, timer running</div></div>
+    <div class="fa" style="font-size:20px;padding-top:20px">→</div>
+    <div class="state s-pend"><div class="state-label">pending</div><div class="state-desc">Winner/buyer chosen, waiting for auditor approval</div></div>
+  </div>
+  <div style="display:flex;gap:8px;margin:8px 0">
+    <div style="flex:1"></div>
+    <div style="flex:1"></div>
+    <div style="flex:1;display:flex;gap:8px;flex-direction:column">
+      <div class="state s-done"><div class="state-label">completed</div><div class="state-desc">Auditor approved, financials applied to both players</div></div>
+      <div class="state s-exp"><div class="state-label">rejected / expired</div><div class="state-desc">Auditor rejected, no bids, or offer timed out</div></div>
+    </div>
+  </div>
+
+  <div class="sec">State transitions</div>
+  <ul class="li">
+    <li><span>open → bidding</span> — auditor clicks "Open auction" on the active deal card</li>
+    <li><span>open → pending</span> — card holder makes direct offer AND target player accepts</li>
+    <li><span>open → completed</span> — card holder takes deal themselves (no market event needed)</li>
+    <li><span>bidding → pending</span> — auditor closes auction, highest bidder identified</li>
+    <li><span>bidding → expired</span> — no bids placed, auditor closes with no winner</li>
+    <li><span>pending → completed</span> — auditor approves: cash/assets updated for both players</li>
+    <li><span>pending → rejected</span> — auditor rejects: buyer didn't have cash, or auditor cancels</li>
+    <li><span>rejected → open</span> — card holder can retry: new auction or different offer</li>
+  </ul>
+
+  <div class="sec">Who can trigger each transition</div>
+  <div class="grid2">
+    <div class="card"><div class="card-t">Card holder actions</div><div class="card-d">Open auction · Make direct offer · Take deal themselves · Cancel their own offer (before acceptance)</div></div>
+    <div class="card"><div class="card-t">Target player actions</div><div class="card-d">Accept direct offer · Reject direct offer · Place bid (auction only)</div></div>
+    <div class="card"><div class="card-t">Auditor actions</div><div class="card-d">Open auction · Close auction · Approve pending deal · Reject pending deal · Force cancel any deal</div></div>
+    <div class="card"><div class="card-t">System (auto)</div><div class="card-d">Expire offer after timeout · Auto-close auction after inactivity timer · Validate cash on every bid</div></div>
+  </div>
+</div>
+
+<div id="p-auditor" class="panel">
+  <div class="sec">What auditor sees in the UI (your session page)</div>
+  <div class="card" style="margin-bottom:10px">
+    <div class="card-t">Active deal panel (add to session page)</div>
+    <div class="card-d">Shows: card name, printed price, down_payment, monthly_cashflow, who drew it, current state, list of bids or direct offer details. Auditor has action buttons that change by state.</div>
+  </div>
+  <div class="grid2">
+    <div class="card"><div class="card-t">State: open</div><div class="card-d">Auditor sees:<br>"Open auction" button<br>OR watches card holder make a direct offer<br>OR card holder takes it themselves</div><div class="tag tb">Auditor opens auction</div></div>
+    <div class="card"><div class="card-t">State: bidding</div><div class="card-d">Auditor sees live bid list (player, amount, timestamp). Can extend timer or close bidding manually at any moment.</div><div class="tag ta">Auditor controls timing</div></div>
+    <div class="card"><div class="card-t">State: pending</div><div class="card-d">Auditor sees: winner/buyer name, final price, buyer's current cash. Approves if cash ≥ down_payment. Rejects otherwise.</div><div class="tag tp">Most important step</div></div>
+    <div class="card"><div class="card-t">State: completed</div><div class="card-d">Auditor sees log entry. Financial changes already applied. Shown in Recent activity feed (you already have this).</div><div class="tag tg">Auto-logged</div></div>
+  </div>
+
+  <div class="sec">Auditor approval checklist (before clicking Approve)</div>
+  <div class="rule"><div class="rule-num">1</div><div class="rule-body"><div class="rule-t">Buyer has enough cash</div><div class="rule-d">buyer.cash >= deal.down_payment. If auction, down_payment = winning_bid. If direct trade, down_payment = agreed_price.</div></div></div>
+  <div class="rule"><div class="rule-num">2</div><div class="rule-body"><div class="rule-t">Card holder is still in the game</div><div class="rule-d">Edge case: if card holder went bankrupt between deal open and approval, auditor cancels.</div></div></div>
+  <div class="rule"><div class="rule-num">3</div><div class="rule-body"><div class="rule-t">Deal card is still "open" (not already taken)</div><div class="rule-d">Prevents double-approval race condition.</div></div></div>
+  <div class="rule"><div class="rule-num">4</div><div class="rule-body"><div class="rule-t">Check passive income after approval</div><div class="rule-d">After applying changes, system checks if buyer's passive_income >= total_expenses → escape rat race trigger.</div></div></div>
+</div>
+
+<div id="p-api" class="panel">
+  <div class="sec">New DB table: market_deals</div>
+  <div class="code">
+<span class="kw">CREATE TABLE</span> market_deals (<br>
+&nbsp;&nbsp;id&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="st">UUID PRIMARY KEY</span>,<br>
+&nbsp;&nbsp;game_id&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="st">UUID REFERENCES games(id)</span>,<br>
+&nbsp;&nbsp;card_holder_id <span class="st">UUID REFERENCES players(id)</span>,<br>
+&nbsp;&nbsp;card_id&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="st">UUID REFERENCES deal_cards(id)</span>,<br>
+&nbsp;&nbsp;mode&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="st">TEXT</span>, <span class="cm">-- 'auction' | 'direct'</span><br>
+&nbsp;&nbsp;status&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="st">TEXT</span>, <span class="cm">-- 'open'|'bidding'|'pending'|'completed'|'rejected'|'expired'</span><br>
+&nbsp;&nbsp;target_player_id <span class="st">UUID REFERENCES players(id)</span>, <span class="cm">-- direct trade only</span><br>
+&nbsp;&nbsp;offered_price&nbsp;<span class="st">INTEGER</span>,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">-- direct trade price</span><br>
+&nbsp;&nbsp;winning_bid&nbsp;&nbsp;&nbsp;<span class="st">INTEGER</span>,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">-- auction winner amount</span><br>
+&nbsp;&nbsp;winner_id&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="st">UUID REFERENCES players(id)</span>,<br>
+&nbsp;&nbsp;auditor_note&nbsp;&nbsp;<span class="st">TEXT</span>,<br>
+&nbsp;&nbsp;expires_at&nbsp;&nbsp;&nbsp;&nbsp;<span class="st">TIMESTAMPTZ</span>,<br>
+&nbsp;&nbsp;created_at&nbsp;&nbsp;&nbsp;&nbsp;<span class="st">TIMESTAMPTZ DEFAULT now()</span>,<br>
+&nbsp;&nbsp;resolved_at&nbsp;&nbsp;&nbsp;<span class="st">TIMESTAMPTZ</span><br>
+);
+  </div>
+
+  <div class="sec">New DB table: auction_bids</div>
+  <div class="code">
+<span class="kw">CREATE TABLE</span> auction_bids (<br>
+&nbsp;&nbsp;id&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="st">UUID PRIMARY KEY</span>,<br>
+&nbsp;&nbsp;market_deal_id <span class="st">UUID REFERENCES market_deals(id)</span>,<br>
+&nbsp;&nbsp;player_id&nbsp;&nbsp;&nbsp;&nbsp;<span class="st">UUID REFERENCES players(id)</span>,<br>
+&nbsp;&nbsp;amount&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="st">INTEGER NOT NULL</span>,<br>
+&nbsp;&nbsp;created_at&nbsp;&nbsp;&nbsp;<span class="st">TIMESTAMPTZ DEFAULT now()</span><br>
+);
+  </div>
+
+  <div class="sec">Go API endpoints (add to your handlers)</div>
+  <div class="code">
+<span class="cm">// Card holder opens market event</span><br>
+<span class="kw">POST</span>  /games/:id/market/open<br>
+&nbsp;&nbsp;body: { card_id, mode: "auction"|"direct", target_player_id?, offered_price? }<br><br>
+
+<span class="cm">// Auditor opens bidding (auction only)</span><br>
+<span class="kw">POST</span>  /games/:id/market/:deal_id/start-auction<br><br>
+
+<span class="cm">// Player places bid</span><br>
+<span class="kw">POST</span>  /games/:id/market/:deal_id/bid<br>
+&nbsp;&nbsp;body: { player_id, amount }<br>
+&nbsp;&nbsp;validate: amount > current_highest_bid && player != card_holder<br><br>
+
+<span class="cm">// Target player responds to direct offer</span><br>
+<span class="kw">POST</span>  /games/:id/market/:deal_id/respond<br>
+&nbsp;&nbsp;body: { player_id, action: "accept"|"reject" }<br><br>
+
+<span class="cm">// Auditor closes auction → sets winner</span><br>
+<span class="kw">POST</span>  /games/:id/market/:deal_id/close-auction<br><br>
+
+<span class="cm">// Auditor approves → applies financials</span><br>
+<span class="kw">POST</span>  /games/:id/market/:deal_id/approve<br>
+&nbsp;&nbsp;validates: buyer.cash >= final_price<br>
+&nbsp;&nbsp;applies: cash delta both players, asset to buyer, check escape condition<br><br>
+
+<span class="cm">// Auditor rejects</span><br>
+<span class="kw">POST</span>  /games/:id/market/:deal_id/reject<br>
+&nbsp;&nbsp;body: { note? }
+  </div>
+
+  <div class="sec">WebSocket events to broadcast</div>
+  <div class="code">
+MARKET_OPENED&nbsp;&nbsp;&nbsp;→ all players (show deal card + mode)<br>
+AUCTION_STARTED → all players (show bid UI)<br>
+BID_PLACED&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ all players (update bid list live)<br>
+AUCTION_CLOSED&nbsp;&nbsp;→ all players (show winner, waiting approval)<br>
+OFFER_SENT&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ target player only<br>
+OFFER_ACCEPTED&nbsp;&nbsp;→ all players<br>
+DEAL_APPROVED&nbsp;&nbsp;&nbsp;→ all players (financials updated)<br>
+DEAL_REJECTED&nbsp;&nbsp;&nbsp;→ all players (deal back to open)<br>
+  </div>
+</div>
+</div>
+
+<script>
+function show(id){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('p-'+id).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>

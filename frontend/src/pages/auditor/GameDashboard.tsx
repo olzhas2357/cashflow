@@ -89,6 +89,7 @@ const LEGACY_SMALL_CAT_MAP: Record<string, string[]> = {
 const BIG_CATS = [
   { value: 'real_estate', label: 'Real estate' },
   { value: 'business', label: 'Business' },
+  { value: 'land', label: 'Land' },
   { value: 'expense', label: 'RE expenses / news' },
 ] as const
 
