@@ -102,7 +102,6 @@ DB_NAME: cashflow
 * ипотека
 
 ---
-![cashflow_monopoly_style_board.html]
 
 ## 💰 Финансовая логика
 
@@ -173,9 +172,6 @@ total = price * shares
 ```
 
 ---
-
-[cashflow_monopoly_style_board.html]
-
 
 ## 👶 События
 
