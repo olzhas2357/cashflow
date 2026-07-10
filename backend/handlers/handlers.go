@@ -14,19 +14,24 @@ type Handlers struct {
 	Transactions *TransactionsHandler
 	Auditor      *AuditorPanelHandler
 	Realtime     *RealtimeHandler
+	Lobby        *LobbyHandler
+	Turn         *TurnHandler
 }
 
 func NewHandlers(db *gorm.DB, jwtCfg services.JWTConfig, hub *services.RealtimeHub) *Handlers {
 	// Services that require DB can be re-used by handlers.
 	authSvc := services.NewAuthService(db)
+	auditorHandler := &AuditorPanelHandler{db: db, hub: hub}
 	return &Handlers{
 		Auth:         &AuthHandler{auth: authSvc},
 		Players:      &PlayerHandler{db: db},
 		Assets:       &AssetHandler{db: db},
 		Market:       &MarketHandler{db: db, hub: hub},
 		Transactions: &TransactionsHandler{db: db, hub: hub},
-		Auditor:      &AuditorPanelHandler{db: db},
-		Realtime:     &RealtimeHandler{jwtCfg: jwtCfg, hub: hub},
+		Auditor:      auditorHandler,
+		Realtime:     &RealtimeHandler{db: db, jwtCfg: jwtCfg, hub: hub},
+		Lobby:        &LobbyHandler{db: db, hub: hub},
+		Turn:         &TurnHandler{db: db, hub: hub, auditor: auditorHandler},
 	}
 }
 

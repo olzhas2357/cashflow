@@ -170,7 +170,11 @@ func (h *TransactionsHandler) ApproveTransaction(c *gin.Context) {
 		return
 	}
 	if h.hub != nil {
-		h.hub.Broadcast("transaction_approved", gin.H{
+		gameID := ""
+		if tx.MarketOffer.Asset.GameID != nil {
+			gameID = tx.MarketOffer.Asset.GameID.String()
+		}
+		h.hub.Broadcast(gameID, "transaction_approved", gin.H{
 			"transaction_id": tx.ID.String(),
 			"agreed_price":   agreed,
 		})
@@ -201,6 +205,7 @@ func (h *TransactionsHandler) RejectTransaction(c *gin.Context) {
 	var tx models.Transaction
 	if err := h.db.Where("id = ?", txID).
 		Preload("MarketOffer.Seller").
+		Preload("MarketOffer.Asset").
 		First(&tx).Error; err != nil {
 		c.JSON(http.StatusNotFound, typ.ErrorResponse{Error: "transaction_not_found"})
 		return
@@ -239,7 +244,11 @@ func (h *TransactionsHandler) RejectTransaction(c *gin.Context) {
 		return
 	}
 	if h.hub != nil {
-		h.hub.Broadcast("transaction_rejected", gin.H{
+		gameID := ""
+		if tx.MarketOffer.Asset.GameID != nil {
+			gameID = tx.MarketOffer.Asset.GameID.String()
+		}
+		h.hub.Broadcast(gameID, "transaction_rejected", gin.H{
 			"transaction_id": tx.ID.String(),
 		})
 	}

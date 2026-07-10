@@ -56,6 +56,7 @@ func NewServer(cfg ServerConfig) *gin.Engine {
 	// Public routes
 	engine.POST("/api/register", h.Auth.Register)
 	engine.POST("/api/login", h.Auth.Login)
+	engine.POST("/api/join", h.Lobby.Join)
 	engine.GET("/ws/negotiation", h.Realtime.NegotiationWS)
 
 	// Auth routes
@@ -88,6 +89,7 @@ func NewServer(cfg ServerConfig) *gin.Engine {
 	auditor.GET("/games/:id/finance", h.Auditor.FinanceOverview)
 	auditor.GET("/games/:id/logs", h.Auditor.GameLogs)
 	auditor.GET("/games/:id/assets", h.Auditor.GameAssets)
+	auditor.POST("/games/:id/start", h.Auditor.StartGame)
 
 	auditor.POST("/games/:id/events/baby", h.Auditor.Baby)
 	auditor.POST("/games/:id/events/charity", h.Auditor.Charity)
@@ -117,10 +119,16 @@ func NewServer(cfg ServerConfig) *gin.Engine {
 	auth.GET("/players/:id", h.Players.GetPlayer)
 	auth.GET("/players/:id/finance", h.Players.GetPlayerFinance)
 
+	auth.POST("/games/:id/ready", h.Lobby.Ready)
+	auth.GET("/games/:id/lobby", h.Lobby.LobbyState)
+	auth.POST("/games/:id/turn/roll", h.Turn.Roll)
+	auth.POST("/games/:id/turn/decision", h.Turn.Decision)
+
 	auth.GET("/assets", h.Assets.ListAssets)
 	auth.POST("/assets", h.Assets.CreateAsset)
 	auth.POST("/assets/:id/sell", h.Assets.SellAsset)
 	auth.GET("/small-deals", h.Auditor.ListSmallDeals)
+	auth.GET("/professions", h.Auditor.ListProfessions)
 
 	auth.GET("/market", h.Market.ListMarket)
 	auth.POST("/market", h.Market.CreateMarketOrProposal)

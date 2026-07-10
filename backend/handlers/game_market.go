@@ -128,24 +128,35 @@ func (h *AuditorPanelHandler) GameMarketState(c *gin.Context) {
 		return
 	}
 
-	out := GameMarketStateDTO{Eligible: []MarketEligiblePlayerDTO{}}
 	if game.ActiveMarketEvent == nil || game.ActiveMarketEventID == nil {
-		c.JSON(http.StatusOK, out)
+		c.JSON(http.StatusOK, GameMarketStateDTO{Eligible: []MarketEligiblePlayerDTO{}})
 		return
 	}
-	ev := *game.ActiveMarketEvent
-	out.ActiveEvent = game.ActiveMarketEvent
+
+	out, err := computeMarketEligibility(h.db, gameID, *game.ActiveMarketEvent)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "market_eligibility_failed"})
+		return
+	}
+	c.JSON(http.StatusOK, out)
+}
+
+// computeMarketEligibility lists, for the given active market card, every
+// player who owns at least one matching asset, with the net profit
+// (offerPrice - mortgage) they'd receive for each. Shared by the manual
+// auditor endpoint (GameMarketState) and the automated turn engine
+// (turn.go's CellMarket resolution and LobbyState's mid-round reload).
+func computeMarketEligibility(db *gorm.DB, gameID uuid.UUID, ev models.MarketEvent) (GameMarketStateDTO, error) {
+	out := GameMarketStateDTO{ActiveEvent: &ev, Eligible: []MarketEligiblePlayerDTO{}}
 
 	var players []models.Player
-	if err := h.db.Where("game_id = ?", gameID).Order("position asc").Find(&players).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "market_players_failed"})
-		return
+	if err := db.Where("game_id = ?", gameID).Order("position asc").Find(&players).Error; err != nil {
+		return out, err
 	}
 
 	var assets []models.Asset
-	if err := h.db.Where("game_id = ? AND owner_id IS NOT NULL", gameID).Find(&assets).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "market_assets_failed"})
-		return
+	if err := db.Where("game_id = ? AND owner_id IS NOT NULL", gameID).Find(&assets).Error; err != nil {
+		return out, err
 	}
 
 	offerPrice := ev.OfferPrice
@@ -180,7 +191,7 @@ func (h *AuditorPanelHandler) GameMarketState(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, out)
+	return out, nil
 }
 
 // MarketExternalSell — добровольная продажа внешнему покупателю: cash += offerPrice − mortgage, гасится ипотека и банковский займ на сделку, актив удаляется.
@@ -205,31 +216,47 @@ func (h *AuditorPanelHandler) MarketExternalSell(c *gin.Context) {
 		return
 	}
 	var game models.GameSession
-	if err := h.db.Preload("ActiveMarketEvent").First(&game, "id = ? AND created_by = ?", gameID, userID).Error; err != nil {
+	if err := h.db.First(&game, "id = ? AND created_by = ?", gameID, userID).Error; err != nil {
 		c.JSON(http.StatusNotFound, typ.ErrorResponse{Error: "game_not_found"})
 		return
 	}
-	if game.ActiveMarketEvent == nil || game.ActiveMarketEventID == nil {
-		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "no_active_market"})
-		return
-	}
-	ev := game.ActiveMarketEvent
-	if !services.MarketNPCOfferSupported(*ev) {
-		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "market_event_not_npc_offer"})
+
+	if err := h.applyMarketSell(gameID, req.PlayerID, req.AssetID); err != nil {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: err.Error()})
 		return
 	}
 
-	if err := h.db.Transaction(func(tx *gorm.DB) error {
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+// applyMarketSell executes a player's voluntary sale of a matching asset to
+// the game's currently active NPC market event — shared by the manual
+// auditor endpoint (MarketExternalSell) and the automated turn engine
+// (turn.go's Decision, action=market_sell).
+func (h *AuditorPanelHandler) applyMarketSell(gameID, playerID, assetID uuid.UUID) error {
+	return h.db.Transaction(func(tx *gorm.DB) error {
+		var game models.GameSession
+		if err := tx.Preload("ActiveMarketEvent").First(&game, "id = ?", gameID).Error; err != nil {
+			return err
+		}
+		if game.ActiveMarketEvent == nil || game.ActiveMarketEventID == nil {
+			return errors.New("no_active_market")
+		}
+		ev := game.ActiveMarketEvent
+		if !services.MarketNPCOfferSupported(*ev) {
+			return errors.New("market_event_not_npc_offer")
+		}
+
 		var seller models.Player
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
 			Preload("Profession").
-			First(&seller, "id = ? AND game_id = ?", req.PlayerID, gameID).Error; err != nil {
+			First(&seller, "id = ? AND game_id = ?", playerID, gameID).Error; err != nil {
 			return err
 		}
 
 		var asset models.Asset
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-			Where("id = ? AND owner_id = ? AND game_id = ?", req.AssetID, req.PlayerID, gameID).
+			Where("id = ? AND owner_id = ? AND game_id = ?", assetID, playerID, gameID).
 			First(&asset).Error; err != nil {
 			return errors.New("asset_not_found_or_not_owned")
 		}
@@ -250,15 +277,6 @@ func (h *AuditorPanelHandler) MarketExternalSell(c *gin.Context) {
 			return err
 		}
 		desc := fmt.Sprintf("Market sale (NPC): %s offer=%d mortgage=%d profit=%d", assetName, marketPrice, mortgageAtSale, saleProfit)
-		if err := h.createFinancialLog(tx, gameID, seller.ID, "market_npc_sell", before, seller, desc); err != nil {
-			return err
-		}
-
-		return nil
-	}); err != nil {
-		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"ok": true})
+		return h.createFinancialLog(tx, gameID, seller.ID, "market_npc_sell", before, seller, desc)
+	})
 }

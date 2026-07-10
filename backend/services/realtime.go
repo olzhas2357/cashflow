@@ -19,6 +19,7 @@ type wsClient struct {
 	conn     *websocket.Conn
 	playerID string
 	role     string
+	gameID   string
 	send     chan []byte
 }
 
@@ -33,11 +34,12 @@ func NewRealtimeHub() *RealtimeHub {
 	}
 }
 
-func (h *RealtimeHub) Register(conn *websocket.Conn, playerID, role string) *wsClient {
+func (h *RealtimeHub) Register(conn *websocket.Conn, playerID, role, gameID string) *wsClient {
 	c := &wsClient{
 		conn:     conn,
 		playerID: playerID,
 		role:     role,
+		gameID:   gameID,
 		send:     make(chan []byte, 32),
 	}
 
@@ -78,7 +80,8 @@ func (h *RealtimeHub) unregister(c *wsClient) {
 	h.mu.Unlock()
 }
 
-func (h *RealtimeHub) Broadcast(eventType string, payload interface{}) {
+// Broadcast delivers an event only to clients registered for the given gameID.
+func (h *RealtimeHub) Broadcast(gameID string, eventType string, payload interface{}) {
 	event := NegotiationEvent{
 		Type:      eventType,
 		Timestamp: time.Now().UTC(),
@@ -93,6 +96,9 @@ func (h *RealtimeHub) Broadcast(eventType string, payload interface{}) {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	for c := range h.clients {
+		if c.gameID != gameID {
+			continue
+		}
 		select {
 		case c.send <- b:
 		default:

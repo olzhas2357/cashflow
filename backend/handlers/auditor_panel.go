@@ -21,7 +21,8 @@ import (
 )
 
 type AuditorPanelHandler struct {
-	db *gorm.DB
+	db  *gorm.DB
+	hub *services.RealtimeHub
 }
 
 type CreateGameRequest struct {
@@ -94,7 +95,7 @@ func snapshotFinance(p models.Player) financeSnapshot {
 	}
 }
 
-func (h *AuditorPanelHandler) recalculatePlayerFinancials(p *models.Player, prof *models.Profession) {
+func recalculatePlayerFinancials(p *models.Player, prof *models.Profession) {
 	fields := services.ComputeMonthlyFinanceFields(*p, prof)
 	p.Expenses = fields.BaseExpenses
 	p.TotalExpenses = fields.TotalExpenses
@@ -108,6 +109,25 @@ func professionBaseLiabilities(prof *models.Profession) int64 {
 		return 0
 	}
 	return prof.HomeMortgage + prof.SchoolLoans + prof.CarLoans + prof.CreditCards + prof.RetailDebt
+}
+
+// autoBankLoanIfNegative takes an automatic bank loan (rounded up to the
+// nearest $1000) to cover negative cash — the same self-correction
+// applyPayday has always done — so that Doodad/Charity/Downsized don't leave
+// a player stuck negative, which later fails auditPlayerFinancials's cash
+// invariant on any subsequent audited event.
+func autoBankLoanIfNegative(p *models.Player) {
+	if p.Cash >= 0 {
+		return
+	}
+	loanNeeded := -p.Cash
+	if loanNeeded%1000 != 0 {
+		loanNeeded = ((loanNeeded / 1000) + 1) * 1000
+	}
+	p.Cash += loanNeeded
+	p.LoanBalance += loanNeeded
+	p.LiabilitiesTotal += loanNeeded
+	p.LoanExpense += loanNeeded / 10
 }
 
 func (h *AuditorPanelHandler) reconcilePlayerFromAssets(tx *gorm.DB, p *models.Player) error {
@@ -215,13 +235,36 @@ func (h *AuditorPanelHandler) CreateGame(c *gin.Context) {
 		return
 	}
 
+	joinCode, err := services.GenerateJoinCode()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "join_code_generation_failed"})
+		return
+	}
+
 	game := models.GameSession{
 		ID:         uuid.New(),
 		Name:       req.Name,
 		MaxPlayers: req.MaxPlayers,
 		CreatedBy:  userID,
+		JoinCode:   joinCode,
 	}
-	if err := h.db.Create(&game).Error; err != nil {
+	// Retry on the rare join_code collision (unique constraint).
+	for attempt := 0; attempt < 5; attempt++ {
+		err = h.db.Create(&game).Error
+		if err == nil {
+			break
+		}
+		if !strings.Contains(err.Error(), "idx_game_sessions_join_code") {
+			c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "create_game_failed"})
+			return
+		}
+		game.JoinCode, err = services.GenerateJoinCode()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "join_code_generation_failed"})
+			return
+		}
+	}
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "create_game_failed"})
 		return
 	}
@@ -254,6 +297,63 @@ func (h *AuditorPanelHandler) GetGame(c *gin.Context) {
 		c.JSON(http.StatusNotFound, typ.ErrorResponse{Error: "game_not_found"})
 		return
 	}
+	c.JSON(http.StatusOK, game)
+}
+
+// StartGame transitions a lobby into the turn engine once every player has
+// picked a profession (see LobbyHandler.Ready), setting the first player's turn.
+func (h *AuditorPanelHandler) StartGame(c *gin.Context) {
+	gameID, ok := parseGameID(c)
+	if !ok {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "invalid_game_id"})
+		return
+	}
+
+	var game models.GameSession
+	if err := h.db.First(&game, "id = ?", gameID).Error; err != nil {
+		c.JSON(http.StatusNotFound, typ.ErrorResponse{Error: "game_not_found"})
+		return
+	}
+	if game.Status != "lobby" {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "game_not_in_lobby"})
+		return
+	}
+
+	var players []models.Player
+	if err := h.db.Where("game_id = ?", gameID).Order("created_at asc").Find(&players).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "players_failed"})
+		return
+	}
+	if len(players) < 2 {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "not_enough_players"})
+		return
+	}
+	for _, p := range players {
+		if p.ProfessionID == nil {
+			c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "all_players_must_be_ready"})
+			return
+		}
+	}
+
+	firstPlayer := players[0]
+	game.Status = "in_progress"
+	game.TurnStatus = "WAITING_ROLL"
+	game.TurnNumber = 1
+	game.CurrentTurnPlayerID = &firstPlayer.ID
+	if err := h.db.Save(&game).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "start_game_failed"})
+		return
+	}
+
+	if h.hub != nil {
+		h.hub.Broadcast(gameID.String(), "GAME_STARTED", gin.H{
+			"current_turn_player_id": firstPlayer.ID.String(),
+		})
+		h.hub.Broadcast(gameID.String(), "TURN_CHANGED", gin.H{
+			"next_player_id": firstPlayer.ID.String(),
+		})
+	}
+
 	c.JSON(http.StatusOK, game)
 }
 
@@ -413,7 +513,7 @@ func (h *AuditorPanelHandler) AssignProfession(c *gin.Context) {
 	player.LiabilitiesTotal = professionBaseLiabilities(&prof)
 	player.LoanBalance = 0
 	player.LoanExpense = 0
-	h.recalculatePlayerFinancials(&player, &prof)
+	recalculatePlayerFinancials(&player, &prof)
 
 	if err := h.db.Save(&player).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "assign_profession_failed"})
@@ -940,7 +1040,7 @@ func (h *AuditorPanelHandler) applyPayday(gameID uuid.UUID, playerID uuid.UUID) 
 		}
 		before := snapshotFinance(p)
 
-		h.recalculatePlayerFinancials(&p, p.Profession)
+		recalculatePlayerFinancials(&p, p.Profession)
 
 		if p.SkipTurns > 0 {
 			p.SkipTurns--
@@ -948,16 +1048,7 @@ func (h *AuditorPanelHandler) applyPayday(gameID uuid.UUID, playerID uuid.UUID) 
 			p.Cash += p.MonthlyCashflow
 		}
 		// Keep ledger valid: if player is cash-negative while skipping payday, auto-apply minimal bank loan.
-		if p.Cash < 0 {
-			loanNeeded := -p.Cash
-			if loanNeeded%1000 != 0 {
-				loanNeeded = ((loanNeeded / 1000) + 1) * 1000
-			}
-			p.Cash += loanNeeded
-			p.LoanBalance += loanNeeded
-			p.LiabilitiesTotal += loanNeeded
-			p.LoanExpense += loanNeeded / 10
-		}
+		autoBankLoanIfNegative(&p)
 		// charity turns count down per payday
 		if p.CharityTurns > 0 {
 			p.CharityTurns--
@@ -982,7 +1073,7 @@ func (h *AuditorPanelHandler) applyPayday(gameID uuid.UUID, playerID uuid.UUID) 
 			}
 		}
 
-		h.recalculatePlayerFinancials(&p, p.Profession)
+		recalculatePlayerFinancials(&p, p.Profession)
 		if err := tx.Save(&p).Error; err != nil {
 			return err
 		}
@@ -1011,9 +1102,18 @@ func (h *AuditorPanelHandler) Baby(c *gin.Context) {
 		return
 	}
 
-	if err := h.db.Transaction(func(tx *gorm.DB) error {
+	if err := h.applyBaby(gameID, req.PlayerID); err != nil {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+func (h *AuditorPanelHandler) applyBaby(gameID uuid.UUID, playerID uuid.UUID) error {
+	return h.db.Transaction(func(tx *gorm.DB) error {
 		var p models.Player
-		if err := tx.Preload("Profession").First(&p, "id = ? AND game_id = ?", req.PlayerID, gameID).Error; err != nil {
+		if err := tx.Preload("Profession").First(&p, "id = ? AND game_id = ?", playerID, gameID).Error; err != nil {
 			return err
 		}
 		if err := h.reconcilePlayerFromAssets(tx, &p); err != nil {
@@ -1028,7 +1128,7 @@ func (h *AuditorPanelHandler) Baby(c *gin.Context) {
 		}
 
 		p.ChildrenCount++
-		h.recalculatePlayerFinancials(&p, p.Profession)
+		recalculatePlayerFinancials(&p, p.Profession)
 		if err := tx.Save(&p).Error; err != nil {
 			return err
 		}
@@ -1036,12 +1136,7 @@ func (h *AuditorPanelHandler) Baby(c *gin.Context) {
 			return err
 		}
 		return h.createFinancialLog(tx, gameID, p.ID, "child", before, p, "Baby added; increased child expense.")
-	}); err != nil {
-		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"ok": true})
+	})
 }
 
 func (h *AuditorPanelHandler) Charity(c *gin.Context) {
@@ -1060,15 +1155,25 @@ func (h *AuditorPanelHandler) Charity(c *gin.Context) {
 		return
 	}
 
-	if err := h.db.Transaction(func(tx *gorm.DB) error {
+	if err := h.applyCharity(gameID, req.PlayerID); err != nil {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+func (h *AuditorPanelHandler) applyCharity(gameID uuid.UUID, playerID uuid.UUID) error {
+	return h.db.Transaction(func(tx *gorm.DB) error {
 		var p models.Player
-		if err := tx.First(&p, "id = ? AND game_id = ?", req.PlayerID, gameID).Error; err != nil {
+		if err := tx.Preload("Profession").First(&p, "id = ? AND game_id = ?", playerID, gameID).Error; err != nil {
 			return err
 		}
 		totalIncome := p.Salary + p.PassiveIncome
 		pay := totalIncome / 10
 		p.Cash -= pay
 		p.CharityTurns = 3
+		autoBankLoanIfNegative(&p)
+		recalculatePlayerFinancials(&p, p.Profession)
 		if err := tx.Save(&p).Error; err != nil {
 			return err
 		}
@@ -1079,11 +1184,7 @@ func (h *AuditorPanelHandler) Charity(c *gin.Context) {
 			Amount: -pay, Type: ev, Description: &desc,
 		}
 		return tx.Create(&log).Error
-	}); err != nil {
-		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"ok": true})
+	})
 }
 
 func (h *AuditorPanelHandler) Downsized(c *gin.Context) {
@@ -1102,14 +1203,24 @@ func (h *AuditorPanelHandler) Downsized(c *gin.Context) {
 		return
 	}
 
-	if err := h.db.Transaction(func(tx *gorm.DB) error {
+	if err := h.applyDownsized(gameID, req.PlayerID); err != nil {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+func (h *AuditorPanelHandler) applyDownsized(gameID uuid.UUID, playerID uuid.UUID) error {
+	return h.db.Transaction(func(tx *gorm.DB) error {
 		var p models.Player
-		if err := tx.Preload("Profession").First(&p, "id = ? AND game_id = ?", req.PlayerID, gameID).Error; err != nil {
+		if err := tx.Preload("Profession").First(&p, "id = ? AND game_id = ?", playerID, gameID).Error; err != nil {
 			return err
 		}
 		fields := services.ComputeMonthlyFinanceFields(p, p.Profession)
 		p.Cash -= fields.TotalExpenses
 		p.SkipTurns = 2
+		autoBankLoanIfNegative(&p)
+		recalculatePlayerFinancials(&p, p.Profession)
 		if err := tx.Save(&p).Error; err != nil {
 			return err
 		}
@@ -1120,11 +1231,7 @@ func (h *AuditorPanelHandler) Downsized(c *gin.Context) {
 			Amount: -fields.TotalExpenses, Type: ev, Description: &desc,
 		}
 		return tx.Create(&log).Error
-	}); err != nil {
-		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"ok": true})
+	})
 }
 
 func (h *AuditorPanelHandler) Doodad(c *gin.Context) {
@@ -1143,16 +1250,26 @@ func (h *AuditorPanelHandler) Doodad(c *gin.Context) {
 		return
 	}
 
-	if err := h.db.Transaction(func(tx *gorm.DB) error {
+	if err := h.applyDoodad(gameID, req.PlayerID, *req.DoodadID); err != nil {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+func (h *AuditorPanelHandler) applyDoodad(gameID uuid.UUID, playerID uuid.UUID, doodadID uuid.UUID) error {
+	return h.db.Transaction(func(tx *gorm.DB) error {
 		var p models.Player
-		if err := tx.First(&p, "id = ? AND game_id = ?", req.PlayerID, gameID).Error; err != nil {
+		if err := tx.Preload("Profession").First(&p, "id = ? AND game_id = ?", playerID, gameID).Error; err != nil {
 			return err
 		}
 		var dd models.Doodad
-		if err := tx.First(&dd, "id = ?", *req.DoodadID).Error; err != nil {
+		if err := tx.First(&dd, "id = ?", doodadID).Error; err != nil {
 			return err
 		}
 		p.Cash -= dd.Cost
+		autoBankLoanIfNegative(&p)
+		recalculatePlayerFinancials(&p, p.Profession)
 		if err := tx.Save(&p).Error; err != nil {
 			return err
 		}
@@ -1163,11 +1280,7 @@ func (h *AuditorPanelHandler) Doodad(c *gin.Context) {
 			Amount: -dd.Cost, Type: ev, Description: &desc,
 		}
 		return tx.Create(&log).Error
-	}); err != nil {
-		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"ok": true})
+	})
 }
 
 func (h *AuditorPanelHandler) BankLoan(c *gin.Context) {
@@ -1201,7 +1314,7 @@ func (h *AuditorPanelHandler) BankLoan(c *gin.Context) {
 		p.LoanBalance += req.LoanAmount
 		p.LiabilitiesTotal += req.LoanAmount
 		p.LoanExpense += req.LoanAmount / 10
-		h.recalculatePlayerFinancials(&p, p.Profession)
+		recalculatePlayerFinancials(&p, p.Profession)
 
 		if err := tx.Save(&p).Error; err != nil {
 			return err
@@ -1268,7 +1381,7 @@ func (h *AuditorPanelHandler) RepayLoan(c *gin.Context) {
 			p.LoanExpense = 0
 		}
 
-		h.recalculatePlayerFinancials(&p, p.Profession)
+		recalculatePlayerFinancials(&p, p.Profession)
 
 		if err := tx.Save(&p).Error; err != nil {
 			return err
@@ -1538,7 +1651,7 @@ func (h *AuditorPanelHandler) StockSellToBank(c *gin.Context) {
 		if err := h.reconcilePlayerFromAssets(tx, &p); err != nil {
 			return err
 		}
-		h.recalculatePlayerFinancials(&p, p.Profession)
+		recalculatePlayerFinancials(&p, p.Profession)
 		if err := tx.Save(&p).Error; err != nil {
 			return err
 		}
@@ -1662,7 +1775,15 @@ func (h *AuditorPanelHandler) SmallDealPurchase(c *gin.Context) {
 		return
 	}
 
-	if err := h.db.Transaction(func(tx *gorm.DB) error {
+	if err := h.applySmallDealPurchase(gameID, req); err != nil {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+func (h *AuditorPanelHandler) applySmallDealPurchase(gameID uuid.UUID, req EventRequest) error {
+	return h.db.Transaction(func(tx *gorm.DB) error {
 		var game models.GameSession
 		if err := tx.Select("id", "active_small_deal_id", "active_small_deal_opened_by").
 			First(&game, "id = ?", gameID).Error; err != nil {
@@ -1729,7 +1850,7 @@ func (h *AuditorPanelHandler) SmallDealPurchase(c *gin.Context) {
 			return errors.New("unsupported_small_deal_type")
 		}
 
-		h.recalculatePlayerFinancials(&p, p.Profession)
+		recalculatePlayerFinancials(&p, p.Profession)
 		if err := tx.Save(&p).Error; err != nil {
 			return err
 		}
@@ -1737,11 +1858,7 @@ func (h *AuditorPanelHandler) SmallDealPurchase(c *gin.Context) {
 			return err
 		}
 		return h.createFinancialLog(tx, gameID, p.ID, actionType, before, p, "Small deal purchase: "+deal.Name)
-	}); err != nil {
-		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"ok": true})
+	})
 }
 
 func (h *AuditorPanelHandler) BigDealPurchase(c *gin.Context) {
@@ -1760,14 +1877,22 @@ func (h *AuditorPanelHandler) BigDealPurchase(c *gin.Context) {
 		return
 	}
 
-	if err := h.db.Transaction(func(tx *gorm.DB) error {
+	if err := h.applyBigDealPurchase(gameID, req.PlayerID, *req.DealID); err != nil {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+func (h *AuditorPanelHandler) applyBigDealPurchase(gameID uuid.UUID, playerID uuid.UUID, dealID uuid.UUID) error {
+	return h.db.Transaction(func(tx *gorm.DB) error {
 		var p models.Player
-		if err := tx.Preload("Profession").First(&p, "id = ? AND game_id = ?", req.PlayerID, gameID).Error; err != nil {
+		if err := tx.Preload("Profession").First(&p, "id = ? AND game_id = ?", playerID, gameID).Error; err != nil {
 			return err
 		}
 		before := snapshotFinance(p)
 		var deal models.BigDeal
-		if err := tx.First(&deal, "id = ?", *req.DealID).Error; err != nil {
+		if err := tx.First(&deal, "id = ?", dealID).Error; err != nil {
 			return err
 		}
 
@@ -1783,7 +1908,7 @@ func (h *AuditorPanelHandler) BigDealPurchase(c *gin.Context) {
 				return errors.New("insufficient_cash")
 			}
 			p.Cash -= cost
-			h.recalculatePlayerFinancials(&p, p.Profession)
+			recalculatePlayerFinancials(&p, p.Profession)
 			if err := tx.Save(&p).Error; err != nil {
 				return err
 			}
@@ -1797,7 +1922,7 @@ func (h *AuditorPanelHandler) BigDealPurchase(c *gin.Context) {
 		p.PassiveIncome += deal.Cashflow
 		p.AssetsTotal += deal.Price
 		p.LiabilitiesTotal += deal.Mortgage
-		h.recalculatePlayerFinancials(&p, p.Profession)
+		recalculatePlayerFinancials(&p, p.Profession)
 		if err := tx.Save(&p).Error; err != nil {
 			return err
 		}
@@ -1831,11 +1956,7 @@ func (h *AuditorPanelHandler) BigDealPurchase(c *gin.Context) {
 			return err
 		}
 		return h.createFinancialLog(tx, gameID, p.ID, "buy", before, p, "Big deal purchase: "+deal.Name)
-	}); err != nil {
-		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"ok": true})
+	})
 }
 
 // MarketSell creates a pending market offer + transaction for buyer/seller.
@@ -2020,7 +2141,7 @@ func (h *AuditorPanelHandler) settlePlayerToPlayerTrade(txDB *gorm.DB, gameID uu
 	buyer.Cash -= agreed
 	buyer.PassiveIncome += asset.Income
 	buyer.LiabilitiesTotal += asset.Mortgage + asset.LoanAmount
-	h.recalculatePlayerFinancials(&buyer, buyer.Profession)
+	recalculatePlayerFinancials(&buyer, buyer.Profession)
 
 	seller.PassiveIncome -= asset.Income
 	seller.LiabilitiesTotal -= asset.Mortgage + asset.LoanAmount
@@ -2028,7 +2149,7 @@ func (h *AuditorPanelHandler) settlePlayerToPlayerTrade(txDB *gorm.DB, gameID uu
 	seller.LoanExpense -= asset.LoanExpense
 	profit := agreed - asset.Mortgage - asset.LoanAmount
 	seller.Cash += profit
-	h.recalculatePlayerFinancials(&seller, seller.Profession)
+	recalculatePlayerFinancials(&seller, seller.Profession)
 
 	if seller.LiabilitiesTotal < 0 {
 		seller.LiabilitiesTotal = professionBaseLiabilities(seller.Profession)

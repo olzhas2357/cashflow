@@ -25,3 +25,12 @@ export async function register(email: string, password: string) {
   })
 }
 
+export type JoinResponse = AuthResponse & { game_id: string }
+
+export async function join(joinCode: string, name: string) {
+  return apiFetch<JoinResponse>('/api/join', {
+    method: 'POST',
+    body: JSON.stringify({ join_code: joinCode, name }),
+  })
+}
+

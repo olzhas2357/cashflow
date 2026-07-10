@@ -60,7 +60,7 @@ func (h *AuditorPanelHandler) sellAssetToMarket(tx *gorm.DB, gameID uuid.UUID, s
 		return err
 	}
 
-	h.recalculatePlayerFinancials(seller, seller.Profession)
+	recalculatePlayerFinancials(seller, seller.Profession)
 
 	return tx.Save(seller).Error
 }

@@ -46,6 +46,7 @@ import {
   postEventSmallDeal,
   postEventStockSellBank,
   rejectTransaction,
+  startGame,
   transactionPlayerConfirm,
   type GameAsset,
   type MarketEvent,
@@ -412,6 +413,13 @@ export default function GameDashboard() {
       alert((err as Error).message || 'Payday failed')
     },
   })
+  const startGameM = useMutation({
+    mutationFn: () => startGame(token!, gameId!),
+    onSuccess: refresh,
+    onError: (err) => {
+      alert((err as Error).message || 'Could not start game')
+    },
+  })
   const babyM = useMutation({
     mutationFn: () => postEventBaby(token!, gameId!, targetId),
     onSuccess: refresh,
@@ -568,9 +576,16 @@ export default function GameDashboard() {
               </p>
             ) : null}
           </div>
-          <Button variant="outline" size="sm" asChild>
-            <Link to={`/auditor/games/${gameId}/players`}>Manage players</Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            {gameQ.data?.status === 'lobby' && (
+              <Button size="sm" onClick={() => startGameM.mutate()} disabled={startGameM.isPending}>
+                {startGameM.isPending ? 'Starting…' : 'Start game'}
+              </Button>
+            )}
+            <Button variant="outline" size="sm" asChild>
+              <Link to={`/auditor/games/${gameId}/players`}>Manage players</Link>
+            </Button>
+          </div>
         </div>
 
         <Card>

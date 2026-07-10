@@ -9,6 +9,20 @@ export type GameSession = {
   active_small_deal_opened_by?: string | null
   active_market_event_id?: string | null
   active_market_event?: MarketEvent | null
+  active_big_deal_id?: string | null
+  active_big_deal?: BigDeal | null
+  join_code: string
+  status: 'lobby' | 'in_progress' | 'completed'
+  current_turn_player_id?: string | null
+  turn_status:
+    | 'WAITING_ROLL'
+    | 'RESOLVING_CELL'
+    | 'AWAITING_DECISION'
+    | 'AWAITING_DEAL_CHOICE'
+    | 'AWAITING_MARKET_DECISIONS'
+    | 'TURN_COMPLETE'
+  turn_number: number
+  last_dice_roll?: number | null
   created_at?: string
   updated_at?: string
   created_by?: string
@@ -230,6 +244,13 @@ export async function createGame(token: string, payload: { name: string; max_pla
     token,
     method: 'POST',
     body: JSON.stringify(payload),
+  })
+}
+
+export async function startGame(token: string, gameId: string) {
+  return apiFetch<GameSession>(`${A}/games/${gameId}/start`, {
+    token,
+    method: 'POST',
   })
 }
 

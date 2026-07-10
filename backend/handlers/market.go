@@ -112,7 +112,11 @@ func (h *MarketHandler) CreateMarketOrProposal(c *gin.Context) {
 			return
 		}
 		if h.hub != nil {
-			h.hub.Broadcast("market_offer_created", gin.H{
+			gameID := ""
+			if asset.GameID != nil {
+				gameID = asset.GameID.String()
+			}
+			h.hub.Broadcast(gameID, "market_offer_created", gin.H{
 				"offer_id":   offer.ID.String(),
 				"asset_id":   offer.AssetID.String(),
 				"seller_id":  offer.SellerID.String(),
@@ -134,7 +138,7 @@ func (h *MarketHandler) CreateMarketOrProposal(c *gin.Context) {
 		}
 
 		var offer models.MarketOffer
-		if err := h.db.Where("id = ?", *req.MarketOfferID).Preload("Seller").First(&offer).Error; err != nil {
+		if err := h.db.Where("id = ?", *req.MarketOfferID).Preload("Seller").Preload("Asset").First(&offer).Error; err != nil {
 			c.JSON(http.StatusNotFound, typ.ErrorResponse{Error: "market_offer_not_found"})
 			return
 		}
@@ -165,7 +169,11 @@ func (h *MarketHandler) CreateMarketOrProposal(c *gin.Context) {
 			return
 		}
 		if h.hub != nil {
-			h.hub.Broadcast("negotiation_proposal", gin.H{
+			gameID := ""
+			if offer.Asset.GameID != nil {
+				gameID = offer.Asset.GameID.String()
+			}
+			h.hub.Broadcast(gameID, "negotiation_proposal", gin.H{
 				"transaction_id":  txn.ID.String(),
 				"market_offer_id": txn.MarketOfferID.String(),
 				"buyer_id":        txn.BuyerID.String(),

@@ -68,6 +68,10 @@ func (h *AuthHandler) Login(c *gin.Context) {
 }
 
 func getenvDefault(key, def string) string {
+	v := os.Getenv(key)
+	if v != "" {
+		return v
+	}
 	return def
 }
 

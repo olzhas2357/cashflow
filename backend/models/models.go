@@ -156,6 +156,26 @@ type GameSession struct {
 
 	ActiveMarketEventID *uuid.UUID   `gorm:"type:uuid;index" json:"active_market_event_id,omitempty"`
 	ActiveMarketEvent   *MarketEvent `gorm:"foreignKey:ActiveMarketEventID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL" json:"active_market_event,omitempty"`
+	// MarketRespondedPlayerIDs: player IDs (JSON array of strings) who have
+	// already answered sell/skip for the currently-open ActiveMarketEvent —
+	// the turn engine needs this to know when every eligible player has
+	// responded, unlike the manual auditor-driven market flow.
+	MarketRespondedPlayerIDs datatypes.JSON `gorm:"type:jsonb;not null;default:'[]'" json:"market_responded_player_ids"`
+
+	// JoinCode lets players self-join the lobby without the auditor adding them manually.
+	JoinCode string `gorm:"type:varchar(10);not null;uniqueIndex" json:"join_code"`
+	// Status: lobby | in_progress | completed.
+	Status string `gorm:"type:varchar(20);not null;default:'lobby'" json:"status"`
+
+	CurrentTurnPlayerID *uuid.UUID `gorm:"type:uuid;index" json:"current_turn_player_id,omitempty"`
+	CurrentTurnPlayer   *Player    `gorm:"foreignKey:CurrentTurnPlayerID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL" json:"current_turn_player,omitempty"`
+	// TurnStatus: WAITING_ROLL | RESOLVING_CELL | AWAITING_DECISION | TURN_COMPLETE.
+	TurnStatus   string `gorm:"type:varchar(30);not null;default:'WAITING_ROLL'" json:"turn_status"`
+	TurnNumber   int    `gorm:"not null;default:0" json:"turn_number"`
+	LastDiceRoll *int   `json:"last_dice_roll,omitempty"`
+
+	ActiveBigDealID *uuid.UUID `gorm:"type:uuid;index" json:"active_big_deal_id,omitempty"`
+	ActiveBigDeal   *BigDeal   `gorm:"foreignKey:ActiveBigDealID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL" json:"active_big_deal,omitempty"`
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`

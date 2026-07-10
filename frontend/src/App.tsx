@@ -1,7 +1,9 @@
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
+import { usePlayStore } from '@/store/usePlayStore'
 import type { AuthUser } from '@/api/auth'
 import { AuditorLayout } from '@/components/auditor/AuditorLayout'
+import { PlayLayout } from '@/components/play/PlayLayout'
 
 import AuditorLogin from '@/pages/auditor/AuditorLogin'
 import AuditorDashboard from '@/pages/auditor/Dashboard'
@@ -17,6 +19,10 @@ import SmallDealsPage from '@/pages/auditor/SmallDealsPage'
 import PlayersDirectory from '@/pages/auditor/PlayersDirectory'
 import SettingsPage from '@/pages/auditor/SettingsPage'
 
+import JoinGame from '@/pages/play/JoinGame'
+import Lobby from '@/pages/play/Lobby'
+import Board from '@/pages/play/Board'
+
 function RequireAuditor() {
   const token = useAuthStore((s) => s.token)
   const user = useAuthStore((s) => s.user)
@@ -26,9 +32,19 @@ function RequireAuditor() {
   return <Outlet />
 }
 
+function RequirePlayer() {
+  const token = useAuthStore((s) => s.token)
+  const user = useAuthStore((s) => s.user)
+  const gameId = usePlayStore((s) => s.gameId)
+  if (!token || user?.role !== 'player') return <Navigate to="/login" replace />
+  if (!gameId) return <Navigate to="/play/join" replace />
+  return <Outlet />
+}
+
 function RootRedirect({ user }: { user: AuthUser | null }) {
   if (!user) return <Navigate to="/login" replace />
   if (user.role === 'auditor' || user.role === 'admin') return <Navigate to="/auditor/dashboard" replace />
+  if (user.role === 'player') return <Navigate to="/play/lobby" replace />
   return <Navigate to="/login" replace />
 }
 
@@ -56,6 +72,14 @@ export default function App() {
           <Route path="/auditor/logs" element={<LogsPage />} />
           <Route path="/auditor/players" element={<PlayersDirectory />} />
           <Route path="/auditor/settings" element={<SettingsPage />} />
+        </Route>
+      </Route>
+
+      <Route path="/play/join" element={<JoinGame />} />
+      <Route element={<RequirePlayer />}>
+        <Route element={<PlayLayout />}>
+          <Route path="/play/lobby" element={<Lobby />} />
+          <Route path="/play/board" element={<Board />} />
         </Route>
       </Route>
 
