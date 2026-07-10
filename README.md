@@ -230,6 +230,9 @@ data/
 
 ![Описание фото](financial_statement_structure.png)
 
+![Player Page](page_player.png)
+![Player Page](page_auditor.png)
+
 ❗ Важно:
 
 Seed не перезаписывает данные автоматически
