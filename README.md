@@ -219,22 +219,6 @@ data/
 
 ---
 
-## 📦 Seed данные
-
-Данные загружаются из JSON:
-
-* professions
-* small deals
-* big deals
-* market
-
-![Описание фото](financial_statement_structure.png)
-
-/auditor/games
-![Player Page](page_players.png)
-
-/play/join
-![Player Page](page_auditor.png)
 
 ❗ Важно:
 
@@ -264,6 +248,24 @@ docker logs -f cashflow_backend
 ```
 
 ---
+
+## 📦 Seed данные
+
+Данные загружаются из JSON:
+
+* professions
+* small deals
+* big deals
+* market
+
+![Описание фото](financial_statement_structure.png)
+
+/auditor/games
+![Player Page](page_players.png)
+
+/play/join
+![Player Page](page_auditor.png)
+
 
 ## 🎯 Планы развития
 
