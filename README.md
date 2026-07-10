@@ -230,7 +230,10 @@ data/
 
 ![Описание фото](financial_statement_structure.png)
 
+/auditor/games
 ![Player Page](page_players.png)
+
+/play/join
 ![Player Page](page_auditor.png)
 
 ❗ Важно:
