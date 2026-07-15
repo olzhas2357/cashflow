@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 
 	"cashflow/middleware"
@@ -60,24 +62,44 @@ func (h *TurnHandler) Roll(c *gin.Context) {
 		return
 	}
 
-	die, err := services.RollDie()
+	// Charity grants 3 turns of rolling 2 dice (see decideCharity) — consumed
+	// one roll at a time here, not on Payday (a prior version decremented
+	// CharityTurns per Payday landing, which is the wrong cadence: the board
+	// game rule is "your next 3 rolls", not "your next 3 paydays").
+	rollingDouble := player.CharityTurns > 0
+
+	die1, err := services.RollDie()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "dice_roll_failed"})
 		return
 	}
+	total := die1
+	var die2 *int
+	if rollingDouble {
+		d2, err := services.RollDie()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "dice_roll_failed"})
+			return
+		}
+		die2 = &d2
+		total += d2
+		player.CharityTurns--
+	}
+
 	oldPosition := player.Position
-	newPosition := (oldPosition + die) % services.BoardSize
+	newPosition := (oldPosition + total) % services.BoardSize
 	player.Position = newPosition
 	if err := h.db.Save(&player).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "move_failed"})
 		return
 	}
 
-	die1 := die
 	if h.hub != nil {
 		h.hub.Broadcast(gameID.String(), "DICE_ROLLED", gin.H{
 			"player_id":    callerID.String(),
 			"die":          die1,
+			"die2":         die2,
+			"total":        total,
 			"old_position": oldPosition,
 			"new_position": newPosition,
 		})
@@ -87,6 +109,22 @@ func (h *TurnHandler) Roll(c *gin.Context) {
 	if err := h.db.Save(&game).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "turn_update_failed"})
 		return
+	}
+
+	// Collect Payday for every Payday cell crossed mid-move, not just the one
+	// landed on (the landing cell itself, if Payday, is handled below by the
+	// normal switch) — otherwise a roll that jumps clean over a Payday space
+	// (e.g. 4 -> 7 skipping 5) would wrongly pay nothing that turn.
+	if passed := services.CountPaydayPasses(oldPosition, total); passed > 0 {
+		for range passed {
+			if err := h.auditor.applyPayday(gameID, callerID); err != nil {
+				c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: err.Error()})
+				return
+			}
+		}
+		if h.hub != nil {
+			h.hub.Broadcast(gameID.String(), "PAYDAY_RECEIVED", gin.H{"player_id": callerID.String(), "passed": true})
+		}
 	}
 
 	cell := services.CellAt(newPosition)
@@ -122,14 +160,17 @@ func (h *TurnHandler) Roll(c *gin.Context) {
 		h.finishResolution(c, gameID, callerID)
 
 	case services.CellCharity:
-		if err := h.auditor.applyCharity(gameID, callerID); err != nil {
-			c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: err.Error()})
+		// Player chooses: donate 10% of total income (get 3 turns of rolling
+		// 2 dice) or skip — see decideCharity, dispatched from Decision().
+		game.TurnStatus = "AWAITING_CHARITY_DECISION"
+		if err := h.db.Save(&game).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "charity_state_save_failed"})
 			return
 		}
 		if h.hub != nil {
-			h.hub.Broadcast(gameID.String(), "CHARITY_PAID", gin.H{"player_id": callerID.String()})
+			h.hub.Broadcast(gameID.String(), "CHARITY_CHOICE_REQUIRED", gin.H{"player_id": callerID.String()})
 		}
-		h.finishResolution(c, gameID, callerID)
+		c.JSON(http.StatusOK, gin.H{"ok": true, "awaiting_charity_decision": true})
 
 	case services.CellDoodad:
 		var count int64
@@ -156,74 +197,6 @@ func (h *TurnHandler) Roll(c *gin.Context) {
 		}
 		h.finishResolution(c, gameID, callerID)
 
-	// case services.CellSmallDeal:
-	// 	var count int64
-	// 	if err := h.db.Model(&models.SmallDeal{}).Count(&count).Error; err != nil || count == 0 {
-	// 		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "no_small_deals_available"})
-	// 		return
-	// 	}
-	// 	idx, err := services.RandomIndex(int(count))
-	// 	if err != nil {
-	// 		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "small_deal_draw_failed"})
-	// 		return
-	// 	}
-	// 	var deal models.SmallDeal
-	// 	if err := h.db.Order("id").Offset(idx).Limit(1).First(&deal).Error; err != nil {
-	// 		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "small_deal_draw_failed"})
-	// 		return
-	// 	}
-
-	// 	if resolveSmallDealType(deal) == "stock_news" {
-	// 		if err := h.autoResolveStockNews(gameID, deal); err != nil {
-	// 			c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: err.Error()})
-	// 			return
-	// 		}
-	// 		if h.hub != nil {
-	// 			h.hub.Broadcast(gameID.String(), "DEAL_DRAWN", gin.H{"player_id": callerID.String(), "card": deal, "auto_resolved": true})
-	// 		}
-	// 		h.finishResolution(c, gameID, callerID)
-	// 		return
-	// 	}
-
-	// 	game.ActiveSmallDealID = &deal.ID
-	// 	game.ActiveSmallDealOpenedBy = &callerID
-	// 	game.TurnStatus = "AWAITING_DECISION"
-	// 	if err := h.db.Save(&game).Error; err != nil {
-	// 		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "deal_state_save_failed"})
-	// 		return
-	// 	}
-	// 	if h.hub != nil {
-	// 		h.hub.Broadcast(gameID.String(), "DEAL_DRAWN", gin.H{"player_id": callerID.String(), "card": deal})
-	// 	}
-	// 	c.JSON(http.StatusOK, gin.H{"ok": true, "awaiting_decision": true, "deal": deal})
-
-	// case services.CellBigDeal:
-	// 	var count int64
-	// 	if err := h.db.Model(&models.BigDeal{}).Count(&count).Error; err != nil || count == 0 {
-	// 		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "no_big_deals_available"})
-	// 		return
-	// 	}
-	// 	idx, err := services.RandomIndex(int(count))
-	// 	if err != nil {
-	// 		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "big_deal_draw_failed"})
-	// 		return
-	// 	}
-	// 	var deal models.BigDeal
-	// 	if err := h.db.Order("id").Offset(idx).Limit(1).First(&deal).Error; err != nil {
-	// 		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "big_deal_draw_failed"})
-	// 		return
-	// 	}
-
-	// 	game.ActiveBigDealID = &deal.ID
-	// 	game.TurnStatus = "AWAITING_DECISION"
-	// 	if err := h.db.Save(&game).Error; err != nil {
-	// 		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "deal_state_save_failed"})
-	// 		return
-	// 	}
-	// 	if h.hub != nil {
-	// 		h.hub.Broadcast(gameID.String(), "DEAL_DRAWN", gin.H{"player_id": callerID.String(), "card": deal})
-	// 	}
-	// 	c.JSON(http.StatusOK, gin.H{"ok": true, "awaiting_decision": true, "deal": deal})
 	case services.CellDeal:
 		// Игрок выбирает: Small Deal или Big Deal
 		// Переводим в состояние ожидания выбора
@@ -258,7 +231,7 @@ func (h *TurnHandler) Roll(c *gin.Context) {
 			return
 		}
 
-		eligibility, err := computeMarketEligibility(h.db, gameID, marketCard)
+		eligible, err := services.ComputeMarketEligibility(h.db, gameID, marketCard)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "market_eligibility_failed"})
 			return
@@ -266,12 +239,14 @@ func (h *TurnHandler) Roll(c *gin.Context) {
 
 		// Nobody owns a matching asset — nothing to decide, auto-skip so the
 		// game never hangs (same rule already applied to Doodad/Payday/etc).
-		if len(eligibility.Eligible) == 0 {
+		// Broadcast a distinct event (not MARKET_OPEN, which the frontend
+		// takes as "show the decision dialog") so players see *something*
+		// happened instead of silently passing the turn.
+		if len(eligible) == 0 {
 			if h.hub != nil {
-				h.hub.Broadcast(gameID.String(), "MARKET_OPEN", gin.H{
-					"player_id":        callerID.String(),
-					"card":             marketCard,
-					"eligible_players": []MarketEligiblePlayerDTO{},
+				h.hub.Broadcast(gameID.String(), "MARKET_SKIPPED", gin.H{
+					"player_id": callerID.String(),
+					"card":      marketCard,
 				})
 			}
 			h.finishResolution(c, gameID, callerID)
@@ -294,18 +269,19 @@ func (h *TurnHandler) Roll(c *gin.Context) {
 			h.hub.Broadcast(gameID.String(), "MARKET_OPEN", gin.H{
 				"player_id":        callerID.String(),
 				"card":             marketCard,
-				"eligible_players": eligibility.Eligible,
+				"eligible_players": eligible,
 			})
 		}
 		c.JSON(http.StatusOK, gin.H{
 			"ok":                        true,
 			"awaiting_market_decisions": true,
 			"market_card":               marketCard,
-			"eligible_players":          eligibility.Eligible,
+			"eligible_players":          eligible,
 		})
 
 	default:
-		// MARKET cells have no automated resolution yet.
+		// Every services.CellType has a case above; this only fires if a new
+		// cell type is added to board.go without a matching case here.
 		c.JSON(http.StatusNotImplemented, typ.ErrorResponse{Error: "cell_type_not_yet_supported"})
 	}
 }
@@ -389,10 +365,11 @@ func (h *TurnHandler) finishResolution(c *gin.Context, gameID uuid.UUID, playerI
 }
 
 type DecisionRequest struct {
-	Action    string     `json:"action" binding:"required"` // "buy"|"pass"|"small"|"big"|"market_sell"|"market_skip"
-	Shares    int64      `json:"shares"`
-	AllowLoan bool       `json:"allow_loan"`
-	AssetID   *uuid.UUID `json:"asset_id"`
+	Action      string     `json:"action" binding:"required"` // "buy"|"pass"|"small"|"big"|"market_sell"|"market_skip"|"market_auction_start"|"stock_news_sell"|"stock_news_skip"|"charity_donate"|"charity_skip"
+	Shares      int64      `json:"shares"`
+	AllowLoan   bool       `json:"allow_loan"`
+	AssetID     *uuid.UUID `json:"asset_id"`
+	AskingPrice *int64     `json:"asking_price"`
 }
 
 // Decision resolves whatever the current player (or, for market cards, any
@@ -430,6 +407,10 @@ func (h *TurnHandler) Decision(c *gin.Context) {
 		h.decideDealChoice(c, gameID, callerID, game, req)
 	case "AWAITING_MARKET_DECISIONS":
 		h.decideMarket(c, gameID, callerID, game, req)
+	case "AWAITING_STOCK_NEWS_DECISIONS":
+		h.decideStockNews(c, gameID, callerID, game, req)
+	case "AWAITING_CHARITY_DECISION":
+		h.decideCharity(c, gameID, callerID, game, req)
 	default:
 		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "not_awaiting_decision"})
 	}
@@ -519,6 +500,10 @@ func (h *TurnHandler) decideDealChoice(c *gin.Context, gameID uuid.UUID, callerI
 		}
 
 		if resolveSmallDealType(deal) == "stock_news" {
+			// The split/reverse-split itself is forced (no player choice),
+			// but whoever still holds the symbol afterward gets a chance to
+			// sell at the new price — same is_global/auto-skip-if-nobody
+			// shape as CellMarket below.
 			if err := h.autoResolveStockNews(gameID, deal); err != nil {
 				c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: err.Error()})
 				return
@@ -526,7 +511,42 @@ func (h *TurnHandler) decideDealChoice(c *gin.Context, gameID uuid.UUID, callerI
 			if h.hub != nil {
 				h.hub.Broadcast(gameID.String(), "DEAL_DRAWN", gin.H{"player_id": callerID.String(), "card": deal, "auto_resolved": true})
 			}
-			h.finishResolution(c, gameID, callerID)
+
+			eligible, err := services.ComputeStockNewsEligibility(h.db, gameID, deal.Symbol)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "stock_news_eligibility_failed"})
+				return
+			}
+			if len(eligible) == 0 {
+				h.finishResolution(c, gameID, callerID)
+				return
+			}
+
+			respondedJSON, err := json.Marshal([]string{})
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "stock_news_state_save_failed"})
+				return
+			}
+			game.ActiveStockNewsDealID = &deal.ID
+			game.StockNewsRespondedPlayerIDs = respondedJSON
+			game.TurnStatus = "AWAITING_STOCK_NEWS_DECISIONS"
+			if err := h.db.Save(&game).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "stock_news_state_save_failed"})
+				return
+			}
+			if h.hub != nil {
+				h.hub.Broadcast(gameID.String(), "STOCK_NEWS_OPEN", gin.H{
+					"player_id":        callerID.String(),
+					"card":             deal,
+					"eligible_players": eligible,
+				})
+			}
+			c.JSON(http.StatusOK, gin.H{
+				"ok":                            true,
+				"awaiting_stock_news_decisions": true,
+				"stock_news_card":               deal,
+				"eligible_players":              eligible,
+			})
 			return
 		}
 
@@ -579,7 +599,7 @@ func (h *TurnHandler) decideDealChoice(c *gin.Context, gameID uuid.UUID, callerI
 // advances from the original roller (game.CurrentTurnPlayerID), not
 // whichever player happened to answer last.
 func (h *TurnHandler) decideMarket(c *gin.Context, gameID uuid.UUID, callerID uuid.UUID, game models.GameSession, req DecisionRequest) {
-	if req.Action != "market_sell" && req.Action != "market_skip" {
+	if req.Action != "market_sell" && req.Action != "market_skip" && req.Action != "market_auction_start" {
 		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "invalid_request"})
 		return
 	}
@@ -594,13 +614,13 @@ func (h *TurnHandler) decideMarket(c *gin.Context, gameID uuid.UUID, callerID uu
 		return
 	}
 
-	eligibility, err := computeMarketEligibility(h.db, gameID, marketEvent)
+	eligible, err := services.ComputeMarketEligibility(h.db, gameID, marketEvent)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "market_eligibility_failed"})
 		return
 	}
 	isEligible := false
-	for _, ep := range eligibility.Eligible {
+	for _, ep := range eligible {
 		if ep.PlayerID == callerID {
 			isEligible = true
 			break
@@ -611,7 +631,8 @@ func (h *TurnHandler) decideMarket(c *gin.Context, gameID uuid.UUID, callerID uu
 		return
 	}
 
-	if req.Action == "market_sell" {
+	switch req.Action {
+	case "market_sell":
 		if req.AssetID == nil {
 			c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "asset_id_required"})
 			return
@@ -619,6 +640,32 @@ func (h *TurnHandler) decideMarket(c *gin.Context, gameID uuid.UUID, callerID uu
 		if err := h.auditor.applyMarketSell(gameID, callerID, *req.AssetID); err != nil {
 			c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: err.Error()})
 			return
+		}
+	case "market_auction_start":
+		if req.AssetID == nil {
+			c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "asset_id_required"})
+			return
+		}
+		askingPrice := int64(0)
+		if req.AskingPrice != nil {
+			askingPrice = *req.AskingPrice
+		}
+		var offer *models.MarketOffer
+		if err := h.db.Transaction(func(tx *gorm.DB) error {
+			var err error
+			offer, err = listAssetForAuction(tx, gameID, callerID, *req.AssetID, askingPrice)
+			return err
+		}); err != nil {
+			c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: err.Error()})
+			return
+		}
+		if h.hub != nil {
+			h.hub.Broadcast(gameID.String(), "AUCTION_STARTED", gin.H{
+				"player_id":       callerID.String(),
+				"market_offer_id": offer.ID.String(),
+				"asset_id":        offer.AssetID.String(),
+				"expires_at":      offer.ExpiresAt,
+			})
 		}
 	}
 
@@ -650,12 +697,12 @@ func (h *TurnHandler) decideMarket(c *gin.Context, gameID uuid.UUID, callerID uu
 			respondedSet[r] = true
 		}
 
-		freshEligibility, err := computeMarketEligibility(tx, gameID, marketEvent)
+		freshEligible, err := services.ComputeMarketEligibility(tx, gameID, marketEvent)
 		if err != nil {
 			return err
 		}
 		allResponded := true
-		for _, ep := range freshEligibility.Eligible {
+		for _, ep := range freshEligible {
 			if !respondedSet[ep.PlayerID.String()] {
 				allResponded = false
 				break
@@ -695,4 +742,177 @@ func (h *TurnHandler) decideMarket(c *gin.Context, gameID uuid.UUID, callerID uu
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+// decideStockNews resolves one eligible holder's sell/hold answer for the
+// currently open ActiveStockNewsDeal — the split/reverse-split itself
+// already ran (see decideDealChoice's stock_news branch); this only offers a
+// chance to cash out at the resulting price. Like Market, ANY current
+// holder of the affected symbol may answer, not just whoever rolled, and the
+// turn only advances once every currently-eligible holder has responded,
+// resuming from the original roller.
+func (h *TurnHandler) decideStockNews(c *gin.Context, gameID uuid.UUID, callerID uuid.UUID, game models.GameSession, req DecisionRequest) {
+	if req.Action != "stock_news_sell" && req.Action != "stock_news_skip" {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "invalid_request"})
+		return
+	}
+	if game.ActiveStockNewsDealID == nil {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "no_active_stock_news"})
+		return
+	}
+
+	var deal models.SmallDeal
+	if err := h.db.First(&deal, "id = ?", *game.ActiveStockNewsDealID).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "stock_news_load_failed"})
+		return
+	}
+
+	eligible, err := services.ComputeStockNewsEligibility(h.db, gameID, deal.Symbol)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "stock_news_eligibility_failed"})
+		return
+	}
+	var mine *services.StockNewsEligiblePlayer
+	for i := range eligible {
+		if eligible[i].PlayerID == callerID {
+			mine = &eligible[i]
+			break
+		}
+	}
+	if mine == nil {
+		c.JSON(http.StatusForbidden, typ.ErrorResponse{Error: "not_eligible_for_stock_news"})
+		return
+	}
+
+	if req.Action == "stock_news_sell" {
+		if req.Shares <= 0 || req.Shares > mine.Shares {
+			c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "invalid_shares"})
+			return
+		}
+		if err := h.db.Transaction(func(tx *gorm.DB) error {
+			var p models.Player
+			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+				Preload("Profession").
+				First(&p, "id = ? AND game_id = ?", callerID, gameID).Error; err != nil {
+				return err
+			}
+			before := snapshotFinance(p)
+
+			var stock models.Asset
+			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+				Where("game_id = ? AND owner_id = ? AND type = ? AND symbol = ?", gameID, p.ID, "stock", deal.Symbol).
+				First(&stock).Error; err != nil {
+				return errors.New("stock_not_found")
+			}
+			if stock.Shares < req.Shares {
+				return errors.New("insufficient_shares")
+			}
+			return h.auditor.sellStockSharesToBank(tx, &p, &stock, before, stock.UnitPrice, req.Shares,
+				"stock_news_sell", fmt.Sprintf("Sold %d %s shares after stock news at %d", req.Shares, deal.Symbol, stock.UnitPrice))
+		}); err != nil {
+			c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: err.Error()})
+			return
+		}
+	}
+
+	var allDone bool
+	var rollerID uuid.UUID
+	if err := h.db.Transaction(func(tx *gorm.DB) error {
+		var g models.GameSession
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&g, "id = ?", gameID).Error; err != nil {
+			return err
+		}
+		if g.CurrentTurnPlayerID != nil {
+			rollerID = *g.CurrentTurnPlayerID
+		}
+
+		var responded []string
+		_ = json.Unmarshal(g.StockNewsRespondedPlayerIDs, &responded)
+		alreadyResponded := false
+		for _, r := range responded {
+			if r == callerID.String() {
+				alreadyResponded = true
+				break
+			}
+		}
+		if !alreadyResponded {
+			responded = append(responded, callerID.String())
+		}
+		respondedSet := make(map[string]bool, len(responded))
+		for _, r := range responded {
+			respondedSet[r] = true
+		}
+
+		freshEligible, err := services.ComputeStockNewsEligibility(tx, gameID, deal.Symbol)
+		if err != nil {
+			return err
+		}
+		allResponded := true
+		for _, ep := range freshEligible {
+			if !respondedSet[ep.PlayerID.String()] {
+				allResponded = false
+				break
+			}
+		}
+
+		if allResponded {
+			g.ActiveStockNewsDealID = nil
+			emptyJSON, err := json.Marshal([]string{})
+			if err != nil {
+				return err
+			}
+			g.StockNewsRespondedPlayerIDs = emptyJSON
+			allDone = true
+		} else {
+			respondedJSON, err := json.Marshal(responded)
+			if err != nil {
+				return err
+			}
+			g.StockNewsRespondedPlayerIDs = respondedJSON
+		}
+		return tx.Save(&g).Error
+	}); err != nil {
+		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "stock_news_response_save_failed"})
+		return
+	}
+
+	if h.hub != nil {
+		h.hub.Broadcast(gameID.String(), "STOCK_NEWS_DECISION", gin.H{
+			"player_id": callerID.String(),
+			"action":    req.Action,
+		})
+	}
+
+	if allDone {
+		h.finishResolution(c, gameID, rollerID)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+// decideCharity resolves the Charity-cell choice — only the current-turn
+// player may answer, same as decideBuyOrPass. Donating pays 10% of total
+// income and grants 3 turns of rolling 2 dice (consumed one at a time in
+// Roll); skipping does nothing.
+func (h *TurnHandler) decideCharity(c *gin.Context, gameID uuid.UUID, callerID uuid.UUID, game models.GameSession, req DecisionRequest) {
+	if req.Action != "charity_donate" && req.Action != "charity_skip" {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "invalid_request"})
+		return
+	}
+	if game.CurrentTurnPlayerID == nil || *game.CurrentTurnPlayerID != callerID {
+		c.JSON(http.StatusForbidden, typ.ErrorResponse{Error: "not_your_turn"})
+		return
+	}
+
+	if req.Action == "charity_donate" {
+		if err := h.auditor.applyCharity(gameID, callerID); err != nil {
+			c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: err.Error()})
+			return
+		}
+		if h.hub != nil {
+			h.hub.Broadcast(gameID.String(), "CHARITY_PAID", gin.H{"player_id": callerID.String()})
+		}
+	}
+
+	h.finishResolution(c, gameID, callerID)
 }

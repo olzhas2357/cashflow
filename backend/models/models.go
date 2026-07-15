@@ -58,8 +58,8 @@ type Player struct {
 type Asset struct {
 	ID uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
 
-	Name   string `gorm:"type:varchar(255);not null" json:"name"`
-	Type   string `gorm:"type:varchar(30);not null;index" json:"type"` // stocks, real_estate, business, other
+	Name string `gorm:"type:varchar(255);not null" json:"name"`
+	Type string `gorm:"type:varchar(30);not null;index" json:"type"` // stocks, real_estate, business, other
 	// BuildingUnits: from deal JSON (e.g. 12 / 24) for Market matching; 0 if unknown.
 	BuildingUnits int64 `gorm:"not null;default:0" json:"building_units"`
 	// DealExternalID: seed id of the deal card that created this asset (big/small), for debugging / future rules.
@@ -67,8 +67,8 @@ type Asset struct {
 	// Extra: deal metadata (beds, baths, units, …) for Market matching — mirrors board card JSON.
 	Extra datatypes.JSON `gorm:"type:jsonb;not null;default:'{}'" json:"extra"`
 
-	Price int64 `gorm:"not null" json:"price"`
-	Income int64  `gorm:"not null;default:0" json:"income"` // treat as monthly cashflow from this asset
+	Price  int64 `gorm:"not null" json:"price"`
+	Income int64 `gorm:"not null;default:0" json:"income"` // treat as monthly cashflow from this asset
 
 	GameID      *uuid.UUID `gorm:"type:uuid;index" json:"game_id,omitempty"`
 	DownPayment int64      `gorm:"not null;default:0" json:"down_payment"`
@@ -101,6 +101,10 @@ type MarketOffer struct {
 	Price  int64  `gorm:"not null" json:"price"`
 	Status string `gorm:"type:varchar(20);not null;index" json:"status"` // open, negotiation, closed
 
+	// ExpiresAt: set when this offer is a timed player auction (2 minutes from
+	// AuctionStart) — nil for a plain manual listing. See market_auction.go.
+	ExpiresAt *time.Time `json:"expires_at,omitempty"`
+
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
@@ -125,7 +129,7 @@ type Transaction struct {
 
 	MarketOffer MarketOffer `gorm:"foreignKey:MarketOfferID;references:ID" json:"market_offer,omitempty"`
 	Buyer       Player      `gorm:"foreignKey:BuyerID;references:ID" json:"buyer,omitempty"`
-	Seller      Player      `gorm:"-:migration" json:"seller,omitempty"` // derived
+	Seller      Player      `gorm:"-" json:"seller,omitempty"` // derived, unused — fully ignored by GORM (see market_auction.go's listOpenAuctionOffers, which does a plain Find on []Transaction; -:migration alone doesn't stop GORM's association auto-detection outside AutoMigrate)
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -161,6 +165,14 @@ type GameSession struct {
 	// the turn engine needs this to know when every eligible player has
 	// responded, unlike the manual auditor-driven market flow.
 	MarketRespondedPlayerIDs datatypes.JSON `gorm:"type:jsonb;not null;default:'[]'" json:"market_responded_player_ids"`
+
+	// ActiveStockNewsDealID: the Stock News small-deal card whose split/
+	// reverse-split effect was just auto-applied — every owner of the
+	// affected symbol may choose to sell at the new price while this is set
+	// (mirrors ActiveMarketEventID/MarketRespondedPlayerIDs above).
+	ActiveStockNewsDealID       *uuid.UUID     `gorm:"type:uuid;index" json:"active_stock_news_deal_id,omitempty"`
+	ActiveStockNewsDeal         *SmallDeal     `gorm:"foreignKey:ActiveStockNewsDealID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL" json:"active_stock_news_deal,omitempty"`
+	StockNewsRespondedPlayerIDs datatypes.JSON `gorm:"type:jsonb;not null;default:'[]'" json:"stock_news_responded_player_ids"`
 
 	// JoinCode lets players self-join the lobby without the auditor adding them manually.
 	JoinCode string `gorm:"type:varchar(10);not null;uniqueIndex" json:"join_code"`
@@ -225,17 +237,17 @@ type SmallDeal struct {
 }
 
 type BigDeal struct {
-	ID          uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
-	ExternalID  string    `gorm:"type:varchar(128);not null;default:'';index" json:"external_id,omitempty"`
-	DealType    string    `gorm:"type:varchar(30);not null;default:'';index" json:"deal_type"`
-	Name        string    `gorm:"type:varchar(255);not null;index" json:"name"`
-	Title       string    `gorm:"type:varchar(255);not null;default:''" json:"title"`
-	Description string    `gorm:"type:text;not null;default:''" json:"description"`
-	Price       int64     `gorm:"not null" json:"price"`
-	DownPayment int64     `gorm:"not null;default:0" json:"down_payment"`
-	Mortgage    int64     `gorm:"not null;default:0" json:"mortgage"`
-	Cashflow    int64     `gorm:"not null;default:0" json:"cashflow"`
-	ROI         float64   `gorm:"type:numeric(10,2);not null;default:0" json:"roi"`
+	ID          uuid.UUID      `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+	ExternalID  string         `gorm:"type:varchar(128);not null;default:'';index" json:"external_id,omitempty"`
+	DealType    string         `gorm:"type:varchar(30);not null;default:'';index" json:"deal_type"`
+	Name        string         `gorm:"type:varchar(255);not null;index" json:"name"`
+	Title       string         `gorm:"type:varchar(255);not null;default:''" json:"title"`
+	Description string         `gorm:"type:text;not null;default:''" json:"description"`
+	Price       int64          `gorm:"not null" json:"price"`
+	DownPayment int64          `gorm:"not null;default:0" json:"down_payment"`
+	Mortgage    int64          `gorm:"not null;default:0" json:"mortgage"`
+	Cashflow    int64          `gorm:"not null;default:0" json:"cashflow"`
+	ROI         float64        `gorm:"type:numeric(10,2);not null;default:0" json:"roi"`
 	Extra       datatypes.JSON `gorm:"type:jsonb;not null;default:'{}'" json:"extra"`
 }
 
@@ -267,14 +279,14 @@ type FinancialLog struct {
 	GameID   uuid.UUID `gorm:"type:uuid;not null;index" json:"game_id"`
 	PlayerID uuid.UUID `gorm:"type:uuid;not null;index" json:"player_id"`
 
-	Amount              int64   `gorm:"not null;default:0" json:"amount"`
-	Type                string  `gorm:"type:varchar(50);not null;index" json:"type"`
-	ActionType          string  `gorm:"type:varchar(50);not null;default:'';index" json:"action_type"`
-	DeltaSavings        int64   `gorm:"not null;default:0" json:"delta_savings"`
-	DeltaPassiveIncome  int64   `gorm:"not null;default:0" json:"delta_passive_income"`
-	DeltaExpenses       int64   `gorm:"not null;default:0" json:"delta_expenses"`
-	ResultingCashflow   int64   `gorm:"not null;default:0" json:"resulting_cashflow"`
-	Description         *string `gorm:"type:text" json:"description,omitempty"`
+	Amount             int64   `gorm:"not null;default:0" json:"amount"`
+	Type               string  `gorm:"type:varchar(50);not null;index" json:"type"`
+	ActionType         string  `gorm:"type:varchar(50);not null;default:'';index" json:"action_type"`
+	DeltaSavings       int64   `gorm:"not null;default:0" json:"delta_savings"`
+	DeltaPassiveIncome int64   `gorm:"not null;default:0" json:"delta_passive_income"`
+	DeltaExpenses      int64   `gorm:"not null;default:0" json:"delta_expenses"`
+	ResultingCashflow  int64   `gorm:"not null;default:0" json:"resulting_cashflow"`
+	Description        *string `gorm:"type:text" json:"description,omitempty"`
 
 	CreatedAt time.Time `json:"created_at"`
 }

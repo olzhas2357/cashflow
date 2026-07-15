@@ -300,6 +300,89 @@ func (h *AuditorPanelHandler) GetGame(c *gin.Context) {
 	c.JSON(http.StatusOK, game)
 }
 
+// deleteGameTx deletes a single game's cascade (players, assets, market
+// offers, transactions, financial logs — all ON DELETE CASCADE at the DB
+// level, see migration 0002) plus the dummy User accounts created for
+// join-code players (see LobbyHandler.Join), which aren't covered by that
+// cascade since Player -> User isn't a FK in that direction. Caller must
+// already be inside a transaction and have verified ownership.
+func deleteGameTx(tx *gorm.DB, game models.GameSession) error {
+	var userIDs []uuid.UUID
+	if err := tx.Model(&models.Player{}).Where("game_id = ?", game.ID).Pluck("user_id", &userIDs).Error; err != nil {
+		return err
+	}
+	if err := tx.Delete(&game).Error; err != nil {
+		return err
+	}
+	if len(userIDs) > 0 {
+		if err := tx.Where("id IN ?", userIDs).Delete(&models.User{}).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// DeleteGame permanently removes a single game session the caller owns.
+func (h *AuditorPanelHandler) DeleteGame(c *gin.Context) {
+	gameID, ok := parseGameID(c)
+	if !ok {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "invalid_game_id"})
+		return
+	}
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, typ.ErrorResponse{Error: "unauthorized"})
+		return
+	}
+
+	if err := h.db.Transaction(func(tx *gorm.DB) error {
+		var game models.GameSession
+		if err := tx.First(&game, "id = ? AND created_by = ?", gameID, userID).Error; err != nil {
+			return errors.New("game_not_found")
+		}
+		return deleteGameTx(tx, game)
+	}); err != nil {
+		if err.Error() == "game_not_found" {
+			c.JSON(http.StatusNotFound, typ.ErrorResponse{Error: "game_not_found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "delete_game_failed"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+// DeleteAllGames permanently removes every game session the caller owns —
+// scoped to created_by so one auditor can never wipe another's games.
+func (h *AuditorPanelHandler) DeleteAllGames(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, typ.ErrorResponse{Error: "unauthorized"})
+		return
+	}
+
+	var deleted int
+	if err := h.db.Transaction(func(tx *gorm.DB) error {
+		var games []models.GameSession
+		if err := tx.Where("created_by = ?", userID).Find(&games).Error; err != nil {
+			return err
+		}
+		for _, game := range games {
+			if err := deleteGameTx(tx, game); err != nil {
+				return err
+			}
+		}
+		deleted = len(games)
+		return nil
+	}); err != nil {
+		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "delete_all_games_failed"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"ok": true, "deleted": deleted})
+}
+
 // StartGame transitions a lobby into the turn engine once every player has
 // picked a profession (see LobbyHandler.Ready), setting the first player's turn.
 func (h *AuditorPanelHandler) StartGame(c *gin.Context) {
@@ -1049,11 +1132,6 @@ func (h *AuditorPanelHandler) applyPayday(gameID uuid.UUID, playerID uuid.UUID) 
 		}
 		// Keep ledger valid: if player is cash-negative while skipping payday, auto-apply minimal bank loan.
 		autoBankLoanIfNegative(&p)
-		// charity turns count down per payday
-		if p.CharityTurns > 0 {
-			p.CharityTurns--
-		}
-
 		// Deposit certificates mature on payday turns.
 		var deposits []models.Asset
 		if err := tx.Where("game_id = ? AND owner_id = ? AND type = ? AND turns_left > 0", gameID, p.ID, "deposit_certificate").Find(&deposits).Error; err != nil {
@@ -1219,13 +1297,17 @@ func (h *AuditorPanelHandler) applyDownsized(gameID uuid.UUID, playerID uuid.UUI
 		fields := services.ComputeMonthlyFinanceFields(p, p.Profession)
 		p.Cash -= fields.TotalExpenses
 		p.SkipTurns = 2
+		// Getting downsized cancels an active Charity double-dice streak — per
+		// the board game rule: a crisis resets your strategic acceleration
+		// back to base survival (see info/logic_game.md, section 2/4).
+		p.CharityTurns = 0
 		autoBankLoanIfNegative(&p)
 		recalculatePlayerFinancials(&p, p.Profession)
 		if err := tx.Save(&p).Error; err != nil {
 			return err
 		}
 		ev := "downsized"
-		desc := "Downsized: cash decreased by total expenses; skip turns set to 2."
+		desc := "Downsized: cash decreased by total expenses; skip turns set to 2; charity double-dice cancelled."
 		log := models.FinancialLog{
 			ID: uuid.New(), GameID: gameID, PlayerID: p.ID,
 			Amount: -fields.TotalExpenses, Type: ev, Description: &desc,
@@ -1304,25 +1386,70 @@ func (h *AuditorPanelHandler) BankLoan(c *gin.Context) {
 	}
 
 	if err := h.db.Transaction(func(tx *gorm.DB) error {
-		var p models.Player
-		if err := tx.Preload("Profession").First(&p, "id = ? AND game_id = ?", req.PlayerID, gameID).Error; err != nil {
-			return err
-		}
-		before := snapshotFinance(p)
+		return h.takeBankLoan(tx, gameID, req.PlayerID, req.LoanAmount)
+	}); err != nil {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
 
-		p.Cash += req.LoanAmount
-		p.LoanBalance += req.LoanAmount
-		p.LiabilitiesTotal += req.LoanAmount
-		p.LoanExpense += req.LoanAmount / 10
-		recalculatePlayerFinancials(&p, p.Profession)
+// takeBankLoan issues a voluntary bank loan (multiple of $1000, 10%/month
+// interest baked into LoanExpense) — shared by the auditor's manual endpoint
+// (BankLoan) and the player-facing equivalent (PlayerBankLoan).
+func (h *AuditorPanelHandler) takeBankLoan(tx *gorm.DB, gameID, playerID uuid.UUID, amount int64) error {
+	var p models.Player
+	if err := tx.Preload("Profession").First(&p, "id = ? AND game_id = ?", playerID, gameID).Error; err != nil {
+		return err
+	}
+	before := snapshotFinance(p)
 
-		if err := tx.Save(&p).Error; err != nil {
+	p.Cash += amount
+	p.LoanBalance += amount
+	p.LiabilitiesTotal += amount
+	p.LoanExpense += amount / 10
+	recalculatePlayerFinancials(&p, p.Profession)
+
+	if err := tx.Save(&p).Error; err != nil {
+		return err
+	}
+	if err := h.auditPlayerFinancials(tx, &p, p.Profession); err != nil {
+		return err
+	}
+	return h.createFinancialLog(tx, gameID, p.ID, "loan", before, p, "Bank loan issued")
+}
+
+// PlayerBankLoan lets the caller take a voluntary bank loan on their own
+// behalf (identity from JWT) — same $1000-multiple / 10%-per-month rule as
+// the auditor's BankLoan.
+func (h *AuditorPanelHandler) PlayerBankLoan(c *gin.Context) {
+	gameID, ok := parseGameID(c)
+	if !ok {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "invalid_game_id"})
+		return
+	}
+	playerID, ok := middleware.GetPlayerID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, typ.ErrorResponse{Error: "unauthorized"})
+		return
+	}
+	var req struct {
+		LoanAmount int64 `json:"loan_amount" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || req.LoanAmount <= 0 {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "invalid_request"})
+		return
+	}
+	if req.LoanAmount%1000 != 0 {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "loan_must_be_multiple_of_1000"})
+		return
+	}
+
+	if err := h.db.Transaction(func(tx *gorm.DB) error {
+		if err := requirePlayerInGame(tx, playerID, gameID); err != nil {
 			return err
 		}
-		if err := h.auditPlayerFinancials(tx, &p, p.Profession); err != nil {
-			return err
-		}
-		return h.createFinancialLog(tx, gameID, p.ID, "loan", before, p, "Bank loan issued")
+		return h.takeBankLoan(tx, gameID, playerID, req.LoanAmount)
 	}); err != nil {
 		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: err.Error()})
 		return
@@ -1354,47 +1481,89 @@ func (h *AuditorPanelHandler) RepayLoan(c *gin.Context) {
 	}
 
 	if err := h.db.Transaction(func(tx *gorm.DB) error {
-		var p models.Player
-
-		if err := tx.Preload("Profession").
-			First(&p, "id = ? AND game_id = ?", req.PlayerID, gameID).Error; err != nil {
-			return err
-		}
-
-		if req.LoanAmount > p.LoanBalance {
-			return errors.New("repay_exceeds_loan")
-		}
-
-		if req.LoanAmount > p.Cash {
-			return errors.New("insufficient_cash")
-		}
-
-		before := snapshotFinance(p)
-
-		p.Cash -= req.LoanAmount
-		p.LoanBalance -= req.LoanAmount
-		p.LiabilitiesTotal -= req.LoanAmount
-
-		expenseReduction := req.LoanAmount / 10
-		p.LoanExpense -= expenseReduction
-		if p.LoanExpense < 0 {
-			p.LoanExpense = 0
-		}
-
-		recalculatePlayerFinancials(&p, p.Profession)
-
-		if err := tx.Save(&p).Error; err != nil {
-			return err
-		}
-		if err := h.auditPlayerFinancials(tx, &p, p.Profession); err != nil {
-			return err
-		}
-		return h.createFinancialLog(tx, gameID, p.ID, "repay_loan", before, p, "Loan repayment")
+		return h.repayBankLoan(tx, gameID, req.PlayerID, req.LoanAmount)
 	}); err != nil {
 		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: err.Error()})
 		return
 	}
 
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+// repayBankLoan pays down loan principal early (multiple of $1000) and
+// proportionally reduces LoanExpense — shared by the auditor's manual
+// endpoint (RepayLoan) and the player-facing equivalent (PlayerRepayLoan).
+func (h *AuditorPanelHandler) repayBankLoan(tx *gorm.DB, gameID, playerID uuid.UUID, amount int64) error {
+	var p models.Player
+	if err := tx.Preload("Profession").
+		First(&p, "id = ? AND game_id = ?", playerID, gameID).Error; err != nil {
+		return err
+	}
+
+	if amount > p.LoanBalance {
+		return errors.New("repay_exceeds_loan")
+	}
+	if amount > p.Cash {
+		return errors.New("insufficient_cash")
+	}
+
+	before := snapshotFinance(p)
+
+	p.Cash -= amount
+	p.LoanBalance -= amount
+	p.LiabilitiesTotal -= amount
+
+	expenseReduction := amount / 10
+	p.LoanExpense -= expenseReduction
+	if p.LoanExpense < 0 {
+		p.LoanExpense = 0
+	}
+
+	recalculatePlayerFinancials(&p, p.Profession)
+
+	if err := tx.Save(&p).Error; err != nil {
+		return err
+	}
+	if err := h.auditPlayerFinancials(tx, &p, p.Profession); err != nil {
+		return err
+	}
+	return h.createFinancialLog(tx, gameID, p.ID, "repay_loan", before, p, "Loan repayment")
+}
+
+// PlayerRepayLoan lets the caller pay down their own loan principal early
+// (identity from JWT) — same rules as the auditor's RepayLoan.
+func (h *AuditorPanelHandler) PlayerRepayLoan(c *gin.Context) {
+	gameID, ok := parseGameID(c)
+	if !ok {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "invalid_game_id"})
+		return
+	}
+	playerID, ok := middleware.GetPlayerID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, typ.ErrorResponse{Error: "unauthorized"})
+		return
+	}
+	var req struct {
+		LoanAmount int64 `json:"loan_amount" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || req.LoanAmount <= 0 {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "invalid_request"})
+		return
+	}
+	if req.LoanAmount%1000 != 0 {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "amount_must_be_multiple_of_1000"})
+		return
+	}
+
+	if err := h.db.Transaction(func(tx *gorm.DB) error {
+		if err := requirePlayerInGame(tx, playerID, gameID); err != nil {
+			return err
+		}
+		return h.repayBankLoan(tx, gameID, playerID, req.LoanAmount)
+	}); err != nil {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: err.Error()})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
@@ -1505,6 +1674,29 @@ func (h *AuditorPanelHandler) processStockDeal(tx *gorm.DB, gameID uuid.UUID, pl
 	return nil
 }
 
+// processStockNews applies a stock_split/reverse_split Stock News card to
+// every owned holding of the affected symbol, then recalculates each owner's
+// financials so the change is actually reflected in their net worth.
+//
+// The two card types are NOT the same rule, despite sharing a formula in the
+// old (buggy) code:
+//
+//   - stock_split (business doing well, e.g. 2:1): a real split — shares
+//     scale up by the multiplier and unit_price scales down by the same
+//     ratio, so total holding value is unchanged. Matches the card's own
+//     text ("номинальная стоимость пакета не меняется" — nominal/total
+//     package value doesn't change).
+//   - reverse_split (a loss event, e.g. "теряют половину стоимости"): share
+//     count is unchanged, unit_price drops by the multiplier, so total value
+//     actually falls — and gives holders a concrete new per-share price to
+//     sell at (see decideStockNews). Previously this used the SAME formula
+//     as stock_split (shares scaled up, price scaled down inversely), which
+//     mathematically left total value unchanged for a "lost half the value"
+//     card — the bug fixed here.
+//
+// Asset.Price (what Player.AssetsTotal sums) was also never updated by the
+// old code — fixed here too, and the affected owner's full financials are
+// recalculated afterward so the change actually shows up in their totals.
 func (h *AuditorPanelHandler) processStockNews(
 	tx *gorm.DB,
 	gameID uuid.UUID,
@@ -1531,41 +1723,71 @@ func (h *AuditorPanelHandler) processStockNews(
 		multiplier = 1
 	}
 
-	affected := make([]uuid.UUID, 0, len(stocks))
+	if event != "stock_split" && event != "reverse_split" {
+		return nil, nil
+	}
+
+	affectedOwners := make(map[uuid.UUID]bool, len(stocks))
 
 	for _, stock := range stocks {
+		if stock.OwnerID == nil {
+			continue
+		}
 
 		oldShares := stock.Shares
 		oldPrice := stock.UnitPrice
 
-		newShares := oldShares
-		newPrice := oldPrice
-
+		var newShares, newPrice int64
 		switch event {
-
 		case "stock_split":
-			// 2:1
 			newShares = int64(float64(oldShares) * multiplier)
-			newPrice = int64(float64(oldPrice) / multiplier)
-
-		case "reverse_split":
-			// 1:2
-			newShares = int64(float64(oldShares) * multiplier)
-			newPrice = int64(float64(oldPrice) / multiplier)
-
 			if newShares < 1 {
 				newShares = 1
 			}
+			newPrice = int64(float64(oldPrice) / multiplier)
+			if newPrice < 1 {
+				newPrice = 1
+			}
+		case "reverse_split":
+			newShares = oldShares
+			newPrice = int64(float64(oldPrice) * multiplier)
+			if newPrice < 1 {
+				newPrice = 1
+			}
 		}
+		newAssetPrice := newShares * newPrice
 
 		if err := tx.Model(&stock).Updates(map[string]any{
 			"shares":     newShares,
 			"unit_price": newPrice,
+			"price":      newAssetPrice,
 		}).Error; err != nil {
 			return nil, err
 		}
 
-		affected = append(affected, *stock.OwnerID)
+		affectedOwners[*stock.OwnerID] = true
+	}
+
+	affected := make([]uuid.UUID, 0, len(affectedOwners))
+	for ownerID := range affectedOwners {
+		affected = append(affected, ownerID)
+
+		var owner models.Player
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Preload("Profession").
+			First(&owner, "id = ?", ownerID).Error; err != nil {
+			return nil, err
+		}
+		if err := h.reconcilePlayerFromAssets(tx, &owner); err != nil {
+			return nil, err
+		}
+		recalculatePlayerFinancials(&owner, owner.Profession)
+		if err := h.auditPlayerFinancials(tx, &owner, owner.Profession); err != nil {
+			return nil, err
+		}
+		if err := tx.Save(&owner).Error; err != nil {
+			return nil, err
+		}
 	}
 
 	return affected, nil
@@ -1628,42 +1850,137 @@ func (h *AuditorPanelHandler) StockSellToBank(c *gin.Context) {
 			return errors.New("insufficient_shares")
 		}
 
-		unitPrice := activeDeal.Price
-		proceeds := unitPrice * req.Shares
-		p.Cash += proceeds
-
-		stock.Shares -= req.Shares
-		stock.Price -= stock.UnitPrice * req.Shares
-		if stock.Price < 0 {
-			stock.Price = 0
-		}
-		stock.DownPayment = stock.Price
-		if stock.Shares == 0 {
-			if err := tx.Delete(&stock).Error; err != nil {
-				return err
-			}
-		} else {
-			if err := tx.Save(&stock).Error; err != nil {
-				return err
-			}
-		}
-
-		if err := h.reconcilePlayerFromAssets(tx, &p); err != nil {
-			return err
-		}
-		recalculatePlayerFinancials(&p, p.Profession)
-		if err := tx.Save(&p).Error; err != nil {
-			return err
-		}
-		if err := h.auditPlayerFinancials(tx, &p, p.Profession); err != nil {
-			return err
-		}
-		return h.createFinancialLog(tx, gameID, p.ID, "stock_sell_bank", before, p, fmt.Sprintf("Sold %d %s shares to bank at %d", req.Shares, req.Symbol, unitPrice))
+		return h.sellStockSharesToBank(tx, &p, &stock, before, activeDeal.Price, req.Shares,
+			"stock_sell_bank", fmt.Sprintf("Sold %d %s shares to bank at %d", req.Shares, req.Symbol, activeDeal.Price))
 	}); err != nil {
 		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+// PlayerStockSellToBank lets the caller sell their own shares to the bank
+// while a matching stock small-deal card is active — the "sell high" half
+// of buy-low/sell-high (buying happens through the normal Small Deal buy
+// flow). Any player holding a matching symbol may sell, not just whoever
+// drew the card — a stock price change affects every holder, same as
+// StockSellToBank's auditor-driven equivalent, just self-service and scoped
+// to the caller's own JWT identity instead of an arbitrary player_id.
+func (h *AuditorPanelHandler) PlayerStockSellToBank(c *gin.Context) {
+	gameID, ok := parseGameID(c)
+	if !ok {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "invalid_game_id"})
+		return
+	}
+	playerID, ok := middleware.GetPlayerID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, typ.ErrorResponse{Error: "unauthorized"})
+		return
+	}
+	var req struct {
+		Symbol string `json:"symbol" binding:"required"`
+		Shares int64  `json:"shares" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || req.Shares <= 0 {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "invalid_request"})
+		return
+	}
+
+	if err := h.db.Transaction(func(tx *gorm.DB) error {
+		if err := requirePlayerInGame(tx, playerID, gameID); err != nil {
+			return err
+		}
+
+		var game models.GameSession
+		if err := tx.Preload("ActiveSmallDeal").First(&game, "id = ?", gameID).Error; err != nil {
+			return err
+		}
+		if game.ActiveSmallDeal == nil {
+			return errors.New("no_active_small_deal")
+		}
+		activeDeal := *game.ActiveSmallDeal
+		if resolveSmallDealType(activeDeal) != "stock" {
+			return errors.New("active_deal_not_stock")
+		}
+		cardSymbol := activeDeal.Symbol
+		if cardSymbol == "" {
+			cardSymbol = req.Symbol
+		}
+		if !strings.EqualFold(cardSymbol, req.Symbol) {
+			return errors.New("symbol_not_active")
+		}
+
+		var p models.Player
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Preload("Profession").
+			First(&p, "id = ? AND game_id = ?", playerID, gameID).Error; err != nil {
+			return err
+		}
+		before := snapshotFinance(p)
+
+		var stock models.Asset
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("game_id = ? AND owner_id = ? AND type = ? AND symbol = ?", gameID, p.ID, "stock", req.Symbol).
+			First(&stock).Error; err != nil {
+			return errors.New("stock_not_found")
+		}
+		if stock.Shares < req.Shares {
+			return errors.New("insufficient_shares")
+		}
+
+		return h.sellStockSharesToBank(tx, &p, &stock, before, activeDeal.Price, req.Shares,
+			"stock_sell_bank", fmt.Sprintf("Sold %d %s shares to bank at %d", req.Shares, req.Symbol, activeDeal.Price))
+	}); err != nil {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: err.Error()})
+		return
+	}
+	if h.hub != nil {
+		h.hub.Broadcast(gameID.String(), "STOCK_SOLD", gin.H{
+			"player_id": playerID.String(),
+			"symbol":    req.Symbol,
+			"shares":    req.Shares,
+		})
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+// sellStockSharesToBank executes the money/asset side of selling shares to
+// the bank at a given per-share price — shared by StockSellToBank (manual,
+// while a stock small-deal card is active) and decideStockNews (Phase 3: a
+// Stock News card just changed this symbol's price, and the owner chooses to
+// cash out at it). Caller must have already loaded `p`/`stock` with
+// clause.Locking{Strength:"UPDATE"} and validated stock.Shares >= shares.
+func (h *AuditorPanelHandler) sellStockSharesToBank(tx *gorm.DB, p *models.Player, stock *models.Asset, before financeSnapshot, unitPrice, shares int64, actionType, description string) error {
+	proceeds := unitPrice * shares
+	p.Cash += proceeds
+
+	stock.Shares -= shares
+	stock.Price -= stock.UnitPrice * shares
+	if stock.Price < 0 {
+		stock.Price = 0
+	}
+	stock.DownPayment = stock.Price
+	if stock.Shares == 0 {
+		if err := tx.Delete(stock).Error; err != nil {
+			return err
+		}
+	} else {
+		if err := tx.Save(stock).Error; err != nil {
+			return err
+		}
+	}
+
+	if err := h.reconcilePlayerFromAssets(tx, p); err != nil {
+		return err
+	}
+	recalculatePlayerFinancials(p, p.Profession)
+	if err := tx.Save(p).Error; err != nil {
+		return err
+	}
+	if err := h.auditPlayerFinancials(tx, p, p.Profession); err != nil {
+		return err
+	}
+	return h.createFinancialLog(tx, *p.GameID, p.ID, actionType, before, *p, description)
 }
 
 func (h *AuditorPanelHandler) processRealEstateDeal(tx *gorm.DB, gameID uuid.UUID, player *models.Player, deal models.SmallDeal, allowLoan bool) error {
@@ -2140,10 +2457,12 @@ func (h *AuditorPanelHandler) settlePlayerToPlayerTrade(txDB *gorm.DB, gameID uu
 
 	buyer.Cash -= agreed
 	buyer.PassiveIncome += asset.Income
+	buyer.AssetsTotal += asset.Price
 	buyer.LiabilitiesTotal += asset.Mortgage + asset.LoanAmount
 	recalculatePlayerFinancials(&buyer, buyer.Profession)
 
 	seller.PassiveIncome -= asset.Income
+	seller.AssetsTotal -= asset.Price
 	seller.LiabilitiesTotal -= asset.Mortgage + asset.LoanAmount
 	seller.LoanBalance -= asset.LoanAmount
 	seller.LoanExpense -= asset.LoanExpense
@@ -2151,6 +2470,9 @@ func (h *AuditorPanelHandler) settlePlayerToPlayerTrade(txDB *gorm.DB, gameID uu
 	seller.Cash += profit
 	recalculatePlayerFinancials(&seller, seller.Profession)
 
+	if seller.AssetsTotal < 0 {
+		seller.AssetsTotal = 0
+	}
 	if seller.LiabilitiesTotal < 0 {
 		seller.LiabilitiesTotal = professionBaseLiabilities(seller.Profession)
 	}

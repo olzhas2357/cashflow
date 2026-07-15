@@ -4,6 +4,7 @@ import { useAuthStore } from '@/store/authStore'
 import { usePlayStore } from '@/store/usePlayStore'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
+import { GameNoticeToasts } from '@/components/play/GameNoticeToasts'
 import { cn } from '@/lib/utils'
 
 const nav = [
@@ -24,6 +25,7 @@ export function PlayLayout() {
 
   return (
     <div className="flex min-h-screen bg-background">
+      <GameNoticeToasts />
       <aside className="hidden w-56 flex-col border-r border-sidebar-border bg-sidebar md:flex">
         <div className="flex h-14 items-center gap-2 border-b border-sidebar-border px-4">
           <Dice5 className="h-6 w-6 text-primary" />

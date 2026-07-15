@@ -80,7 +80,9 @@ func NewServer(cfg ServerConfig) *gin.Engine {
 	auditor.GET("/market-events", h.Auditor.ListMarketEvents)
 	auditor.GET("/games", h.Auditor.ListGames)
 	auditor.POST("/games", h.Auditor.CreateGame)
+	auditor.DELETE("/games", h.Auditor.DeleteAllGames)
 	auditor.GET("/games/:id", h.Auditor.GetGame)
+	auditor.DELETE("/games/:id", h.Auditor.DeleteGame)
 	auditor.POST("/games/:id/players", h.Auditor.AddPlayers)
 	auditor.DELETE("/games/:id/players/:playerId", h.Auditor.RemovePlayer)
 	auditor.GET("/games/:id/players", h.Auditor.ListGamePlayers)
@@ -124,22 +126,30 @@ func NewServer(cfg ServerConfig) *gin.Engine {
 	auth.POST("/games/:id/turn/roll", h.Turn.Roll)
 	auth.POST("/games/:id/turn/decision", h.Turn.Decision)
 
+	// Player-facing auction routes — identity always comes from the JWT
+	// (middleware.GetPlayerID), unlike the auditor/* equivalents above which
+	// take an arbitrary player id in the body. market_auction_start itself is
+	// reached via turn/decision (action=market_auction_start) since it's part
+	// of the same Market-card response as market_sell/market_skip.
+	auth.GET("/games/:id/market/auction/offers", h.Auditor.PlayerAuctionOffers)
+	auth.POST("/games/:id/market/auction/bid", h.Auditor.PlayerAuctionBid)
+	auth.POST("/games/:id/transactions/:txId/player-confirm", h.Auditor.PlayerTransactionConfirm)
+
+	// Player-facing stock/loan self-service — same identity-from-JWT pattern
+	// as the auction routes above.
+	auth.POST("/games/:id/stock/sell-bank", h.Auditor.PlayerStockSellToBank)
+	auth.POST("/games/:id/loans", h.Auditor.PlayerBankLoan)
+	auth.POST("/games/:id/loans/repay", h.Auditor.PlayerRepayLoan)
+
 	auth.GET("/assets", h.Assets.ListAssets)
 	auth.POST("/assets", h.Assets.CreateAsset)
 	auth.POST("/assets/:id/sell", h.Assets.SellAsset)
 	auth.GET("/small-deals", h.Auditor.ListSmallDeals)
 	auth.GET("/professions", h.Auditor.ListProfessions)
 
-	auth.GET("/market", h.Market.ListMarket)
-	auth.POST("/market", h.Market.CreateMarketOrProposal)
-
 	game := auth.Group("/game")
 	game.Use(middleware.RoleRequired(models.RoleAuditor, models.RoleAdmin))
 	game.POST("/open-small-deal", h.Auditor.OpenSmallDeal)
-
-	auth.GET("/transactions/pending", h.Transactions.ListPendingTransactions)
-	auth.POST("/transactions/:id/approve", h.Transactions.ApproveTransaction)
-	auth.POST("/transactions/:id/reject", h.Transactions.RejectTransaction)
 
 	engine.NoRoute(func(c *gin.Context) {
 		c.JSON(http.StatusNotFound, typ.ErrorResponse{Error: "not_found"})

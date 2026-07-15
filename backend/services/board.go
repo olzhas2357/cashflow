@@ -73,3 +73,18 @@ func CellAt(position int) BoardCell {
 	}
 	return board[idx]
 }
+
+// CountPaydayPasses returns how many Payday cells are crossed while moving
+// `steps` forward from oldPosition, EXCLUDING the final landing cell (that
+// one is already handled by the normal per-cell resolution switch in
+// turn.go's Roll). Mirrors the standard Cashflow/Monopoly-style "pass
+// Payday, collect" rule for cells jumped over mid-move, not just landed on.
+func CountPaydayPasses(oldPosition, steps int) int {
+	count := 0
+	for s := 1; s < steps; s++ {
+		if CellAt(oldPosition+s).Type == CellPayday {
+			count++
+		}
+	}
+	return count
+}

@@ -29,13 +29,17 @@ export function DealDecisionDialog({ game }: { game: GameSession }) {
   const isSmallDeal = !!game.active_small_deal
   const deal = game.active_small_deal ?? game.active_big_deal
   const isStock = isSmallDeal && game.active_small_deal?.category === 'stock'
+  // Defaults to false — a purchase that can't be covered by cash on hand
+  // should fail with "insufficient cash" unless the player explicitly opts
+  // into a bank loan, not take one out silently on their behalf.
+  const [allowLoan, setAllowLoan] = useState(false)
 
   const decisionMut = useMutation({
     mutationFn: (action: 'buy' | 'pass') =>
       makeDecision(token!, gameId!, {
         action,
         shares: isStock ? shares : undefined,
-        allow_loan: true,
+        allow_loan: allowLoan,
       }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['play_lobby', gameId] }),
   })
@@ -79,6 +83,16 @@ export function DealDecisionDialog({ game }: { game: GameSession }) {
             />
           </div>
         )}
+
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={allowLoan}
+            onChange={(e) => setAllowLoan(e.target.checked)}
+            className="h-4 w-4 rounded border-border"
+          />
+          Take a bank loan if I don't have enough cash
+        </label>
 
         {decisionMut.isError && (
           <p className="text-sm text-destructive">

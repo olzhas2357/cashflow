@@ -20,11 +20,37 @@ const EVENT_LABELS: Record<string, string> = {
   DOODAD_PAID: 'Doodad expense paid',
   BABY_BORN: 'A baby was born',
   PLAYER_DOWNSIZED: 'A player was downsized',
+  CHARITY_CHOICE_REQUIRED: 'Charity: donate 10% for double dice, or skip',
   CHARITY_PAID: 'Charity donation made',
   DEAL_DRAWN: 'A deal card was drawn',
+  DEAL_CHOICE_REQUIRED: 'Choose Small Deal or Big Deal',
+  MARKET_OPEN: 'Market card opened — check if you can sell',
+  MARKET_SKIPPED: 'Market card skipped — nobody owned a matching asset',
+  MARKET_DECISION: 'A player answered the Market card',
+  STOCK_NEWS_OPEN: 'Stock News: price changed, sell if you want',
+  STOCK_NEWS_DECISION: 'A player answered the Stock News card',
+  AUCTION_STARTED: 'Player auction started',
+  AUCTION_BID: 'New bid in a player auction',
+  AUCTION_ENDED: 'Player auction settled',
+  STOCK_SOLD: 'A player sold stock to the bank',
   DECISION_MADE: 'Decision made',
   TURN_CHANGED: "Next player's turn",
   PLAYER_WON: 'A player won the game!',
+}
+
+// A few events carry enough payload context to name the card/symbol — falls
+// back to the static label above when the field isn't present.
+function describeEvent(type: string, payload: Record<string, unknown>): string {
+  const card = payload.card as { name?: string; title?: string; symbol?: string } | undefined
+  switch (type) {
+    case 'MARKET_OPEN':
+    case 'MARKET_SKIPPED':
+      return card?.name ? `${EVENT_LABELS[type]}: ${card.name}` : EVENT_LABELS[type]
+    case 'STOCK_NEWS_OPEN':
+      return card?.symbol ? `${EVENT_LABELS[type]} (${card.symbol})` : EVENT_LABELS[type]
+    default:
+      return EVENT_LABELS[type] ?? type
+  }
 }
 
 // Connects to the game-scoped realtime channel with exponential-backoff
@@ -63,7 +89,7 @@ export function usePlayGameSocket(token: string | null, gameId: string | null, h
           return
         }
         if (!data?.type) return
-        push({ type: data.type, message: EVENT_LABELS[data.type] ?? data.type })
+        push({ type: data.type, message: describeEvent(data.type, data.payload ?? {}) })
         handlersRef.current[data.type]?.(data.payload ?? {})
       }
 

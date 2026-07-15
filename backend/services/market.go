@@ -6,7 +6,9 @@ import (
 
 	"cashflow/models"
 
+	"github.com/google/uuid"
 	"gorm.io/datatypes"
+	"gorm.io/gorm"
 )
 
 // BuildingUnitsFromExtra reads optional "units" from deal JSON (big/small cards).
@@ -155,4 +157,77 @@ func businessBuyerMatches(nameLower, sub string) bool {
 	default:
 		return false
 	}
+}
+
+// MarketEligibleAsset is one of a player's holdings that matches the
+// currently active Market card, with the net payout they'd receive for it.
+type MarketEligibleAsset struct {
+	AssetID       uuid.UUID `json:"asset_id"`
+	Name          string    `json:"name"`
+	Mortgage      int64     `json:"mortgage"`
+	LoanAmount    int64     `json:"loan_amount"`
+	Cashflow      int64     `json:"cashflow"`
+	OfferPrice    int64     `json:"offer_price"`
+	NetToPlayer   int64     `json:"net_to_player"`
+	BuildingUnits int64     `json:"building_units"`
+}
+
+// MarketEligiblePlayer is a player who owns at least one asset matching the
+// active Market card.
+type MarketEligiblePlayer struct {
+	PlayerID uuid.UUID             `json:"player_id"`
+	Name     string                `json:"name"`
+	Assets   []MarketEligibleAsset `json:"assets"`
+}
+
+// ComputeMarketEligibility lists, for the given active market card, every
+// player who owns at least one matching asset, with the net profit
+// (offerPrice - mortgage) they'd receive for each. Shared by the manual
+// auditor endpoint and the automated turn engine.
+func ComputeMarketEligibility(db *gorm.DB, gameID uuid.UUID, ev models.MarketEvent) ([]MarketEligiblePlayer, error) {
+	eligible := []MarketEligiblePlayer{}
+
+	var players []models.Player
+	if err := db.Where("game_id = ?", gameID).Order("position asc").Find(&players).Error; err != nil {
+		return nil, err
+	}
+
+	var assets []models.Asset
+	if err := db.Where("game_id = ? AND owner_id IS NOT NULL", gameID).Find(&assets).Error; err != nil {
+		return nil, err
+	}
+
+	offerPrice := ev.OfferPrice
+	for _, p := range players {
+		var rows []MarketEligibleAsset
+		for _, a := range assets {
+			if a.OwnerID == nil || *a.OwnerID != p.ID {
+				continue
+			}
+			if !AssetMatchesMarketEvent(a, ev) {
+				continue
+			}
+			// Чистая прибыль сделки по правилам Cashflow: цена покупателя − ипотека по активу (не путать с банковским займом на сделку).
+			net := offerPrice - a.Mortgage
+			rows = append(rows, MarketEligibleAsset{
+				AssetID:       a.ID,
+				Name:          a.Name,
+				Mortgage:      a.Mortgage,
+				LoanAmount:    a.LoanAmount,
+				Cashflow:      a.Income,
+				OfferPrice:    offerPrice,
+				NetToPlayer:   net,
+				BuildingUnits: a.BuildingUnits,
+			})
+		}
+		if len(rows) > 0 {
+			eligible = append(eligible, MarketEligiblePlayer{
+				PlayerID: p.ID,
+				Name:     p.Name,
+				Assets:   rows,
+			})
+		}
+	}
+
+	return eligible, nil
 }

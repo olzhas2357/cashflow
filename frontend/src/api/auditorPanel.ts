@@ -11,6 +11,8 @@ export type GameSession = {
   active_market_event?: MarketEvent | null
   active_big_deal_id?: string | null
   active_big_deal?: BigDeal | null
+  active_stock_news_deal_id?: string | null
+  active_stock_news_deal?: SmallDeal | null
   join_code: string
   status: 'lobby' | 'in_progress' | 'completed'
   current_turn_player_id?: string | null
@@ -20,6 +22,8 @@ export type GameSession = {
     | 'AWAITING_DECISION'
     | 'AWAITING_DEAL_CHOICE'
     | 'AWAITING_MARKET_DECISIONS'
+    | 'AWAITING_STOCK_NEWS_DECISIONS'
+    | 'AWAITING_CHARITY_DECISION'
     | 'TURN_COMPLETE'
   turn_number: number
   last_dice_roll?: number | null
@@ -201,6 +205,15 @@ export type GameAsset = {
   owner_id?: string | null
 }
 
+export type AuctionBid = {
+  id: string
+  market_offer_id: string
+  buyer_id: string
+  offer_price: number
+  seller_confirmed?: boolean
+  buyer_confirmed?: boolean
+}
+
 export type MarketOfferAuction = {
   id: string
   asset_id: string
@@ -208,8 +221,10 @@ export type MarketOfferAuction = {
   price: number
   status: string
   game_id?: string | null
+  expires_at?: string | null
   asset?: GameAsset
   seller?: UserPlayer
+  bids?: AuctionBid[]
 }
 
 export type PendingTransactionDTO = {
@@ -244,6 +259,20 @@ export async function createGame(token: string, payload: { name: string; max_pla
     token,
     method: 'POST',
     body: JSON.stringify(payload),
+  })
+}
+
+export async function deleteGame(token: string, gameId: string) {
+  return apiFetch<{ ok: boolean }>(`${A}/games/${gameId}`, {
+    token,
+    method: 'DELETE',
+  })
+}
+
+export async function deleteAllGames(token: string) {
+  return apiFetch<{ ok: boolean; deleted: number }>(`${A}/games`, {
+    token,
+    method: 'DELETE',
   })
 }
 

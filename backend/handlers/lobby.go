@@ -201,7 +201,10 @@ type LobbyStateResponse struct {
 	// MarketEligible is only populated while a market card is active — lets a
 	// reloaded/reconnected client show the right dialog without waiting for
 	// a fresh MARKET_OPEN WebSocket event.
-	MarketEligible []MarketEligiblePlayerDTO `json:"market_eligible,omitempty"`
+	MarketEligible []services.MarketEligiblePlayer `json:"market_eligible,omitempty"`
+	// StockNewsEligible mirrors MarketEligible for the stock-sell-at-new-price
+	// dialog while a Stock News card's decision step is open.
+	StockNewsEligible []services.StockNewsEligiblePlayer `json:"stock_news_eligible,omitempty"`
 }
 
 // LobbyState returns the game + roster for the waiting-room screen. Players
@@ -228,7 +231,7 @@ func (h *LobbyHandler) LobbyState(c *gin.Context) {
 	}
 
 	var game models.GameSession
-	if err := h.db.Preload("ActiveSmallDeal").Preload("ActiveBigDeal").Preload("ActiveMarketEvent").First(&game, "id = ?", gameID).Error; err != nil {
+	if err := h.db.Preload("ActiveSmallDeal").Preload("ActiveBigDeal").Preload("ActiveMarketEvent").Preload("ActiveStockNewsDeal").First(&game, "id = ?", gameID).Error; err != nil {
 		c.JSON(http.StatusNotFound, typ.ErrorResponse{Error: "game_not_found"})
 		return
 	}
@@ -246,12 +249,20 @@ func (h *LobbyHandler) LobbyState(c *gin.Context) {
 
 	resp := LobbyStateResponse{Game: game, Players: roster}
 	if game.ActiveMarketEvent != nil {
-		eligibility, err := computeMarketEligibility(h.db, gameID, *game.ActiveMarketEvent)
+		eligible, err := services.ComputeMarketEligibility(h.db, gameID, *game.ActiveMarketEvent)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "market_eligibility_failed"})
 			return
 		}
-		resp.MarketEligible = eligibility.Eligible
+		resp.MarketEligible = eligible
+	}
+	if game.ActiveStockNewsDeal != nil {
+		eligible, err := services.ComputeStockNewsEligibility(h.db, gameID, game.ActiveStockNewsDeal.Symbol)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "stock_news_eligibility_failed"})
+			return
+		}
+		resp.StockNewsEligible = eligible
 	}
 
 	c.JSON(http.StatusOK, resp)
