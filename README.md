@@ -266,7 +266,7 @@ docker logs -f cashflow_backend
 **/play/join**
 ![Player Page](info/page_auditor.png)
 
-![new fields](info/update_fieds.png)
+![new fields](info/update_fields.png)
 
 ## 🎯 Планы развития
 
