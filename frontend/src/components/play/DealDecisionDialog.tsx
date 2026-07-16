@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { makeDecision } from '@/api/play'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { listMyAssets, makeDecision, sellStockToBank } from '@/api/play'
 import { useAuthStore } from '@/store/authStore'
 import { usePlayStore } from '@/store/usePlayStore'
 import type { GameSession } from '@/api/auditorPanel'
@@ -44,6 +44,30 @@ export function DealDecisionDialog({ game }: { game: GameSession }) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['play_lobby', gameId] }),
   })
 
+  // Lets a player sell shares they already hold in this same stock while the
+  // Buy/Pass dialog is open — the dialog blocks background clicks (including
+  // the portfolio panel's own Sell button), so without this the only way to
+  // reach it was to Pass first, losing the chance to buy at this price too.
+  const symbol = game.active_small_deal?.symbol
+  const assetsQ = useQuery({
+    queryKey: ['my_assets', gameId],
+    queryFn: () => listMyAssets(token!),
+    enabled: !!token && isStock && !!symbol,
+  })
+  const ownedAsset = assetsQ.data?.find(
+    (a) => a.type === 'stock' && a.symbol && symbol && a.symbol.toUpperCase() === symbol.toUpperCase(),
+  )
+  const ownedShares = ownedAsset?.shares ?? 0
+  const [sellShares, setSellShares] = useState(1)
+
+  const sellMut = useMutation({
+    mutationFn: (n: number) => sellStockToBank(token!, gameId!, symbol!, n),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['my_assets', gameId] })
+      qc.invalidateQueries({ queryKey: ['play_lobby', gameId] })
+    },
+  })
+
   if (!deal) return null
 
   return (
@@ -81,6 +105,38 @@ export function DealDecisionDialog({ game }: { game: GameSession }) {
               value={shares}
               onChange={(e) => setShares(Math.max(1, Number(e.target.value)))}
             />
+          </div>
+        )}
+
+        {isStock && ownedShares > 0 && (
+          <div className="space-y-2 rounded-md border border-border bg-muted/20 p-3">
+            <p className="text-sm text-muted-foreground">
+              You already own {ownedShares.toLocaleString()} shares of {symbol}.
+            </p>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min={1}
+                max={ownedShares}
+                value={sellShares}
+                onChange={(e) => setSellShares(Math.max(1, Math.min(ownedShares, Number(e.target.value))))}
+                className="h-9"
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                className="shrink-0"
+                disabled={sellMut.isPending}
+                onClick={() => sellMut.mutate(sellShares)}
+              >
+                Sell @ ${deal.price.toLocaleString()}
+              </Button>
+            </div>
+            {sellMut.isError && (
+              <p className="text-xs text-destructive">
+                {sellMut.error instanceof Error ? sellMut.error.message : 'Could not sell.'}
+              </p>
+            )}
           </div>
         )}
 

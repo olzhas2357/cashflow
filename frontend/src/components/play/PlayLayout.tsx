@@ -4,7 +4,7 @@ import { useAuthStore } from '@/store/authStore'
 import { usePlayStore } from '@/store/usePlayStore'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
-import { GameNoticeToasts } from '@/components/play/GameNoticeToasts'
+import { GameNoticeToasts, GameNoticeSidebar } from '@/components/play/GameNoticeToasts'
 import { cn } from '@/lib/utils'
 
 const nav = [
@@ -54,6 +54,7 @@ export function PlayLayout() {
           ))}
         </nav>
         <Separator />
+        <GameNoticeSidebar />
         <div className="mt-auto p-3">
           <Button variant="ghost" className="w-full justify-start gap-2 text-muted-foreground" onClick={logout}>
             <LogOut className="h-4 w-4" />
