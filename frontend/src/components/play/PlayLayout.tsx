@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { LayoutList, Dice5, LogOut } from 'lucide-react'
+import { LayoutList, Dice5, LogOut, Briefcase } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { usePlayStore } from '@/store/usePlayStore'
 import { Button } from '@/components/ui/button'
@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils'
 const nav = [
   { to: '/play/lobby', label: 'Lobby', icon: LayoutList },
   { to: '/play/board', label: 'Board', icon: Dice5 },
+  { to: '/play/assets', label: 'My assets', icon: Briefcase },
 ]
 
 export function PlayLayout() {

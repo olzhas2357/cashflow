@@ -22,6 +22,7 @@ import SettingsPage from '@/pages/auditor/SettingsPage'
 import JoinGame from '@/pages/play/JoinGame'
 import Lobby from '@/pages/play/Lobby'
 import Board from '@/pages/play/Board'
+import MyAssets from '@/pages/play/MyAssets'
 
 function RequireAuditor() {
   const token = useAuthStore((s) => s.token)
@@ -80,6 +81,7 @@ export default function App() {
         <Route element={<PlayLayout />}>
           <Route path="/play/lobby" element={<Lobby />} />
           <Route path="/play/board" element={<Board />} />
+          <Route path="/play/assets" element={<MyAssets />} />
         </Route>
       </Route>
 

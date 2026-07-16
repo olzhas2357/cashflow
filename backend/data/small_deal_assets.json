@@ -4,7 +4,7 @@
     "category": "stock",
     "type": "stock",
     "title": "GRO4US at 40",
-    "description": "Text",
+    "description": "GRO4US — быстрорастущая агротехнологическая компания. Акции скачут вместе с урожаем и спросом на её разработки.",
     "price": 40,
     "down_payment": 40,
     "mortgage": 0,
@@ -20,7 +20,7 @@
     "category": "stock",
     "type": "stock",
     "title": "GRO4US at 20",
-    "description": "Text",
+    "description": "GRO4US — быстрорастущая агротехнологическая компания. Акции скачут вместе с урожаем и спросом на её разработки.",
     "price": 20,
     "down_payment": 20,
     "mortgage": 0,
@@ -36,7 +36,7 @@
     "category": "stock",
     "type": "stock",
     "title": "GRO4US at 10",
-    "description": "Text",
+    "description": "GRO4US — быстрорастущая агротехнологическая компания. Акции скачут вместе с урожаем и спросом на её разработки.",
     "price": 10,
     "down_payment": 10,
     "mortgage": 0,
@@ -52,7 +52,7 @@
     "category": "stock",
     "type": "stock",
     "title": "ON2U at 40",
-    "description": "Text",
+    "description": "ON2U — сервис доставки на дом с быстро растущей аудиторией, но нестабильной прибылью, отсюда и резкие скачки цены акций.",
     "price": 40,
     "down_payment": 40,
     "mortgage": 0,
@@ -68,7 +68,7 @@
     "category": "stock",
     "type": "stock",
     "title": "ON2U at 30",
-    "description": "Text",
+    "description": "ON2U — сервис доставки на дом с быстро растущей аудиторией, но нестабильной прибылью, отсюда и резкие скачки цены акций.",
     "price": 30,
     "down_payment": 30,
     "mortgage": 0,
@@ -84,7 +84,7 @@
     "category": "stock",
     "type": "stock",
     "title": "ON2U at 20",
-    "description": "Text",
+    "description": "ON2U — сервис доставки на дом с быстро растущей аудиторией, но нестабильной прибылью, отсюда и резкие скачки цены акций.",
     "price": 20,
     "down_payment": 20,
     "mortgage": 0,
@@ -100,7 +100,7 @@
     "category": "stock",
     "type": "stock",
     "title": "ON2U at 10",
-    "description": "Text",
+    "description": "ON2U — сервис доставки на дом с быстро растущей аудиторией, но нестабильной прибылью, отсюда и резкие скачки цены акций.",
     "price": 10,
     "down_payment": 10,
     "mortgage": 0,
@@ -116,7 +116,7 @@
     "category": "stock",
     "type": "stock",
     "title": "ON2U at 5",
-    "description": "Text",
+    "description": "ON2U — сервис доставки на дом с быстро растущей аудиторией, но нестабильной прибылью, отсюда и резкие скачки цены акций.",
     "price": 5,
     "down_payment": 5,
     "mortgage": 0,
@@ -127,13 +127,13 @@
       "price_range": { "min": 10, "max": 30 }
     }
   },
-  
+
   {
     "id": "stock_ok4u_40",
     "category": "stock",
     "type": "stock",
     "title": "OK4U at 40",
-    "description": "Text.",
+    "description": "OK4U — сеть фитнес-студий и товаров для здоровья. Популярность то растёт, то падает вместе с модой на ЗОЖ.",
     "price": 40,
     "down_payment": 40,
     "mortgage": 0,
@@ -144,13 +144,13 @@
       "price_range": { "min": 5, "max": 40 }
     }
   },
-  
+
   {
     "id": "stock_ok4u_50",
     "category": "stock",
     "type": "stock",
     "title": "OK4U at 50",
-    "description": "Text.",
+    "description": "OK4U — сеть фитнес-студий и товаров для здоровья. Популярность то растёт, то падает вместе с модой на ЗОЖ.",
     "price": 50,
     "down_payment": 50,
     "mortgage": 0,
@@ -161,13 +161,13 @@
       "price_range": { "min": 5, "max": 40 }
     }
   },
-  
+
   {
     "id": "stock_ok4u_30",
     "category": "stock",
     "type": "stock",
     "title": "OK4U at 30",
-    "description": "Text.",
+    "description": "OK4U — сеть фитнес-студий и товаров для здоровья. Популярность то растёт, то падает вместе с модой на ЗОЖ.",
     "price": 30,
     "down_payment": 30,
     "mortgage": 0,
@@ -184,7 +184,7 @@
     "category": "stock",
     "type": "stock",
     "title": "OK4U at 20",
-    "description": "Text.",
+    "description": "OK4U — сеть фитнес-студий и товаров для здоровья. Популярность то растёт, то падает вместе с модой на ЗОЖ.",
     "price": 20,
     "down_payment": 20,
     "mortgage": 0,
@@ -195,13 +195,13 @@
       "price_range": { "min": 5, "max": 40 }
     }
   },
-  
+
   {
     "id": "stock_ok4u_10",
     "category": "stock",
     "type": "stock",
     "title": "OK4U at 10",
-    "description": "Text.",
+    "description": "OK4U — сеть фитнес-студий и товаров для здоровья. Популярность то растёт, то падает вместе с модой на ЗОЖ.",
     "price": 10,
     "down_payment": 10,
     "mortgage": 0,
@@ -218,7 +218,7 @@
     "category": "stock",
     "type": "stock",
     "title": "OK4U at 5",
-    "description": "Text.",
+    "description": "OK4U — сеть фитнес-студий и товаров для здоровья. Популярность то растёт, то падает вместе с модой на ЗОЖ.",
     "price": 5,
     "down_payment": 5,
     "mortgage": 0,
@@ -229,13 +229,13 @@
       "price_range": { "min": 5, "max": 40 }
     }
   },
-  
+
   {
     "id": "stock_ok4u_1",
     "category": "stock",
     "type": "stock",
     "title": "OK4U at 1",
-    "description": "Text.",
+    "description": "OK4U — сеть фитнес-студий и товаров для здоровья. Популярность то растёт, то падает вместе с модой на ЗОЖ.",
     "price": 1,
     "down_payment": 1,
     "mortgage": 0,
@@ -246,14 +246,14 @@
       "price_range": { "min": 5, "max": 40 }
     }
   },
-  
+
 
   {
     "id": "stock_myt4u_40",
     "category": "stock",
     "type": "stock",
     "title": "MYT4U at 40",
-    "description": "Text.",
+    "description": "MYT4U — сеть автомоек и клининговых услуг «Мойка для тебя». Цена акций чувствительна к сезону и погоде.",
     "price": 40,
     "down_payment": 40,
     "mortgage": 0,
@@ -264,14 +264,14 @@
       "price_range": { "min": 5, "max": 30 }
     }
   },
-  
-  
+
+
   {
     "id": "stock_myt4u_30",
     "category": "stock",
     "type": "stock",
     "title": "MYT4U at 30",
-    "description": "Text.",
+    "description": "MYT4U — сеть автомоек и клининговых услуг «Мойка для тебя». Цена акций чувствительна к сезону и погоде.",
     "price": 30,
     "down_payment": 30,
     "mortgage": 0,
@@ -282,13 +282,13 @@
       "price_range": { "min": 5, "max": 30 }
     }
   },
-  
+
   {
     "id": "stock_myt4u_20",
     "category": "stock",
     "type": "stock",
     "title": "MYT4U at 20",
-    "description": "Text.",
+    "description": "MYT4U — сеть автомоек и клининговых услуг «Мойка для тебя». Цена акций чувствительна к сезону и погоде.",
     "price": 20,
     "down_payment": 20,
     "mortgage": 0,
@@ -299,14 +299,14 @@
       "price_range": { "min": 5, "max": 30 }
     }
   },
-  
-  
+
+
   {
     "id": "stock_myt4u_10",
     "category": "stock",
     "type": "stock",
     "title": "MYT4U at 10",
-    "description": "Text.",
+    "description": "MYT4U — сеть автомоек и клининговых услуг «Мойка для тебя». Цена акций чувствительна к сезону и погоде.",
     "price": 10,
     "down_payment": 10,
     "mortgage": 0,
@@ -317,15 +317,15 @@
       "price_range": { "min": 5, "max": 30 }
     }
   },
-  
-  
-  
+
+
+
   {
     "id": "stock_myt4u_5",
     "category": "stock",
     "type": "stock",
     "title": "MYT4U at 5",
-    "description": "Text.",
+    "description": "MYT4U — сеть автомоек и клининговых услуг «Мойка для тебя». Цена акций чувствительна к сезону и погоде.",
     "price": 5,
     "down_payment": 5,
     "mortgage": 0,
@@ -336,14 +336,14 @@
       "price_range": { "min": 5, "max": 30 }
     }
   },
-  
-  
+
+
   {
     "id": "stock_myt4u_1",
     "category": "stock",
     "type": "stock",
     "title": "MYT4U at 1",
-    "description": "Text.",
+    "description": "MYT4U — сеть автомоек и клининговых услуг «Мойка для тебя». Цена акций чувствительна к сезону и погоде.",
     "price": 1,
     "down_payment": 1,
     "mortgage": 0,
@@ -355,5 +355,5 @@
     }
   }
 
-  
+
 ]

@@ -46,6 +46,33 @@ type bigDealSeedRow struct {
 	ROI         float64        `json:"roi"`
 	Cost        int64          `json:"cost"`
 	Extra       map[string]any `json:"extra"`
+
+	// Conditional-expense metadata used by "news"/event cards (e.g. property
+	// damage that only applies if the drawer owns a matching asset). These
+	// used to have no struct field at all, so encoding/json silently dropped
+	// them on load — the player never saw which property type a card applied
+	// to. Folded into the description text below rather than enforced as a
+	// real ownership check (that's a bigger feature, not done here).
+	TargetPropertyType string `json:"target_property_type"`
+	TargetDescription  string `json:"target_description"`
+	PaymentRule        string `json:"payment_rule"`
+}
+
+// paymentRuleRu translates the handful of known English payment_rule notes
+// from the seed JSON into short Russian, matching the rest of the deck's
+// language. Falls back to the raw value for anything unrecognized so new
+// rules aren't silently dropped.
+func paymentRuleRu(rule string) string {
+	switch strings.TrimSpace(rule) {
+	case "Pay out of pocket or take a loan":
+		return "Оплачивается из своих денег или в кредит."
+	case "Pay only for one 8-plex even if you own multiple":
+		return "Списывается только за один 8-plex, даже если у вас их несколько."
+	case "":
+		return ""
+	default:
+		return rule
+	}
 }
 
 func SeedBigDealBusiness(db *gorm.DB) error {
@@ -96,6 +123,21 @@ func seedBigDeals(db *gorm.DB, fileName, dealType, logLabel string) error {
 			cf = 0
 		}
 
+		description := strings.TrimSpace(row.Description)
+		if td := strings.TrimSpace(row.TargetDescription); td != "" {
+			description += "\nПрименяется, если вы владеете: " + td + "."
+		}
+		if pr := paymentRuleRu(row.PaymentRule); pr != "" {
+			description += "\n" + pr
+		}
+
+		if row.TargetPropertyType != "" {
+			if row.Extra == nil {
+				row.Extra = map[string]any{}
+			}
+			row.Extra["target_property_type"] = row.TargetPropertyType
+		}
+
 		extID := strings.TrimSpace(row.ID)
 
 		extraRaw, err := json.Marshal(row.Extra)
@@ -111,7 +153,7 @@ func seedBigDeals(db *gorm.DB, fileName, dealType, logLabel string) error {
 			DealType:    dealType,
 			Name:        name,
 			Title:       title,
-			Description: row.Description,
+			Description: description,
 			Price:       price,
 			DownPayment: down,
 			Mortgage:    mortgage,

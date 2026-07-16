@@ -202,6 +202,8 @@ export type GameAsset = {
   unit_price?: number
   loan_amount?: number
   loan_expense?: number
+  extra?: Record<string, unknown>
+  building_units?: number
   owner_id?: string | null
 }
 

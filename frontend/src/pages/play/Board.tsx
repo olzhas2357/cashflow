@@ -5,6 +5,7 @@ import { usePlayStore } from '@/store/usePlayStore'
 import { getLobby, rollDice } from '@/api/play'
 import { usePlayGameSocket } from '@/hooks/usePlayGameSocket'
 import { BOARD_SIZE, cellLabelAt, cellColorAt } from '@/lib/board'
+import { boardCellGridPosition, BOARD_GRID_ROWS, BOARD_GRID_COLS } from '@/lib/boardLayout'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { DealDecisionDialog } from '@/components/play/DealDecisionDialog'
@@ -135,18 +136,23 @@ export default function Board() {
         </p>
       )}
 
-      <div className="grid grid-cols-8 gap-1 rounded-xl border border-border bg-card p-3">
+      <div
+        className="grid grid-rows-6 grid-cols-8 gap-1 rounded-xl border border-border bg-card p-3"
+        style={{ aspectRatio: `${BOARD_GRID_COLS} / ${BOARD_GRID_ROWS}` }}
+      >
         {Array.from({ length: BOARD_SIZE }, (_, position) => {
           const occupants = players.filter((p) => p.position === position)
           const isCurrentTurn = game?.current_turn_player_id != null && occupants.some((p) => p.id === game.current_turn_player_id)
+          const { row, col } = boardCellGridPosition(position)
           return (
             <div
               key={position}
               className={cn(
-                'flex aspect-square flex-col items-center justify-center gap-1 rounded-lg border p-1 text-center',
+                'flex flex-col items-center justify-center gap-1 rounded-lg border p-1 text-center',
                 cellColorAt(position),
                 isCurrentTurn && 'ring-2 ring-primary',
               )}
+              style={{ gridRow: row, gridColumn: col }}
               title={cellLabelAt(position)}
             >
               <span className="text-[10px] font-semibold leading-tight">{cellLabelAt(position)}</span>
@@ -165,15 +171,33 @@ export default function Board() {
             </div>
           )
         })}
-      </div>
 
-      <div className="flex flex-wrap gap-3">
-        {players.map((p) => (
-          <div key={p.id} className="flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-sm">
-            <span className={cn('h-2.5 w-2.5 rounded-full', colorForPlayer(p.id))} />
-            <span className={p.id === game?.current_turn_player_id ? 'font-semibold text-primary' : ''}>{p.name}</span>
+        <div
+          className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border/60 bg-muted/10 p-2 text-center"
+          style={{ gridRow: '2 / 6', gridColumn: '2 / 8' }}
+        >
+          <div>
+            <div className="text-sm font-semibold text-muted-foreground">Rat Race</div>
+            <div className="text-lg font-bold tracking-tight">{game?.name ?? 'Board'}</div>
+            <div className="text-xs text-muted-foreground">
+              Turn {game?.turn_number ?? 0} &middot; {game?.turn_status ?? '—'}
+            </div>
           </div>
-        ))}
+          <div className="flex flex-wrap justify-center gap-2">
+            {players.map((p) => (
+              <div
+                key={p.id}
+                className={cn(
+                  'flex items-center gap-1.5 rounded-lg border border-border bg-card px-2 py-1 text-xs',
+                  p.id === game?.current_turn_player_id && 'border-primary/60 bg-primary/10',
+                )}
+              >
+                <span className={cn('h-2 w-2 rounded-full', colorForPlayer(p.id))} />
+                <span className={p.id === game?.current_turn_player_id ? 'font-semibold text-primary' : ''}>{p.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
       </div>
 

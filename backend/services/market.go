@@ -25,6 +25,29 @@ func BuildingUnitsFromExtra(extra datatypes.JSON) int64 {
 	return int64(m.Units)
 }
 
+// MergeDescriptionIntoExtra adds/overwrites a "description" key on a deal's
+// Extra JSON before it's copied onto a purchased Asset — Asset.Extra
+// previously only carried incidental deal metadata (notes, resale_value,
+// units), never the deal's actual descriptive text, so "My Assets" had
+// nothing to show for a business holding's description.
+func MergeDescriptionIntoExtra(extra datatypes.JSON, description string) datatypes.JSON {
+	if description == "" {
+		return extra
+	}
+	m := map[string]interface{}{}
+	if len(extra) > 0 {
+		if err := json.Unmarshal(extra, &m); err != nil {
+			m = map[string]interface{}{}
+		}
+	}
+	m["description"] = description
+	out, err := json.Marshal(m)
+	if err != nil {
+		return extra
+	}
+	return datatypes.JSON(out)
+}
+
 func effectiveBuildingUnits(asset models.Asset) int64 {
 	u := BuildingUnitsFromExtra(asset.Extra)
 	if u > 0 {
@@ -53,7 +76,7 @@ func bedsBathsFromExtra(extra datatypes.JSON) (beds, baths int, ok bool) {
 // MarketNPCOfferSupported is true when the catalog row can drive an external (NPC) buyer sale at OfferPrice.
 func MarketNPCOfferSupported(ev models.MarketEvent) bool {
 	switch ev.EventType {
-	case "REAL_ESTATE_BUYER", "BUSINESS_BUYER":
+	case "REAL_ESTATE_BUYER", "BUSINESS_BUYER", "ASSET_BUYER":
 		return ev.OfferPrice > 0
 	default:
 		return false
@@ -137,6 +160,11 @@ func AssetMatchesMarketEvent(asset models.Asset, ev models.MarketEvent) bool {
 			return false
 		}
 		return businessBuyerMatches(name, ev.SubType)
+	case "ASSET_BUYER":
+		if asset.Type != "business" {
+			return false
+		}
+		return assetBuyerMatches(name, ev.SubType)
 	default:
 		return false
 	}
@@ -154,6 +182,25 @@ func businessBuyerMatches(nameLower, sub string) bool {
 		return strings.Contains(nameLower, "breakfast") || strings.Contains(nameLower, "пансион") || strings.Contains(nameLower, "b&b")
 	case "SOFTWARE_CO":
 		return strings.Contains(nameLower, "software") || strings.Contains(nameLower, "софт") || strings.Contains(nameLower, "програм")
+	default:
+		return false
+	}
+}
+
+// assetBuyerMatches covers ASSET_BUYER market cards (gold/land collectibles
+// seeded in small_deal_business.json with Type GOLD_COINS/GOLD_KRUGERRAND/
+// LAND_10_ACRES/LAND_20_ACRES) — these purchases create Type:"business"
+// assets like REAL_ESTATE_BUYER/BUSINESS_BUYER cards, matched the same way.
+func assetBuyerMatches(nameLower, sub string) bool {
+	switch sub {
+	case "GOLD_COINS":
+		return strings.Contains(nameLower, "золот") && strings.Contains(nameLower, "монет")
+	case "GOLD_KRUGERRAND":
+		return strings.Contains(nameLower, "крюгерранд")
+	case "LAND_10_ACRES":
+		return strings.Contains(nameLower, "10 акров")
+	case "LAND_20_ACRES":
+		return strings.Contains(nameLower, "20 акров")
 	default:
 		return false
 	}

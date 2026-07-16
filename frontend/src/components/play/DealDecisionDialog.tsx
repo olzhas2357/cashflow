@@ -75,9 +75,15 @@ export function DealDecisionDialog({ game }: { game: GameSession }) {
       <DialogContent onInteractOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>
-            {isSmallDeal ? 'Small Deal' : 'Big Deal'}: {deal.name}
+            {isSmallDeal ? 'Small Deal' : 'Big Deal'}: {deal.name?.trim() || '⚠ Unnamed card'}
           </DialogTitle>
-          <DialogDescription>{deal.description}</DialogDescription>
+          {deal.description?.trim() ? (
+            <DialogDescription className="whitespace-pre-line">{deal.description}</DialogDescription>
+          ) : (
+            <DialogDescription className="text-destructive">
+              ⚠ Card data is missing — description was not generated.
+            </DialogDescription>
+          )}
         </DialogHeader>
 
         <div className="space-y-2 text-sm">

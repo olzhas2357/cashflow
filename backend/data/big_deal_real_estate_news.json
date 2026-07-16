@@ -27,5 +27,20 @@
         "loan_eligible": true,
         "loan_terms": "standard"
       }
+    },
+    {
+      "id": "event_tenant_skip_damage",
+      "category": "expense",
+      "type": "property_damage",
+      "title": "Ущерб собственности",
+      "description": "Жилец не заплатил два месяца и уехал. Ущерб превысил страховку.",
+      "cost": 500,
+      "target_property_type": "any_rental",
+      "target_description": "Любая арендная недвижимость",
+      "payment_rule": "Pay out of pocket or take a loan",
+      "extra": {
+        "trigger": "ownership_check",
+        "migrated_from": "small_deal_real_estate_news.json (was never seeded — SeedSmallDealRealEstateNews was a no-op stub)"
+      }
     }
   ]

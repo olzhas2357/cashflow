@@ -109,8 +109,14 @@ export function MarketDecisionDialog({
     <Dialog open>
       <DialogContent onInteractOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
         <DialogHeader>
-          <DialogTitle>Market: {card.name}</DialogTitle>
-          <DialogDescription>{card.description}</DialogDescription>
+          <DialogTitle>Market: {card.name?.trim() || '⚠ Unnamed card'}</DialogTitle>
+          {card.description?.trim() ? (
+            <DialogDescription className="whitespace-pre-line">{card.description}</DialogDescription>
+          ) : (
+            <DialogDescription className="text-destructive">
+              ⚠ Card data is missing — description was not generated.
+            </DialogDescription>
+          )}
         </DialogHeader>
 
         {decideMut.isError && (

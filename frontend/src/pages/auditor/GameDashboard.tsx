@@ -67,7 +67,8 @@ const money = (n: number) =>
 /** Совпадает с backend MarketNPCOfferSupported — только эти карты можно «открыть» как NPC-покупателя. */
 function marketEventNpcSupported(ev: MarketEvent): boolean {
   return (
-    (ev.event_type === 'REAL_ESTATE_BUYER' || ev.event_type === 'BUSINESS_BUYER') && ev.offer_price > 0
+    (ev.event_type === 'REAL_ESTATE_BUYER' || ev.event_type === 'BUSINESS_BUYER' || ev.event_type === 'ASSET_BUYER') &&
+    ev.offer_price > 0
   )
 }
 
@@ -904,7 +905,7 @@ export default function GameDashboard() {
             </select>
             <div className="space-y-1">
               <Label className="text-muted-foreground">Description</Label>
-              <div className="max-h-[220px] overflow-y-auto rounded-md border border-border bg-muted/30 p-3 text-sm leading-relaxed text-foreground">
+              <div className="max-h-[220px] overflow-y-auto whitespace-pre-line rounded-md border border-border bg-muted/30 p-3 text-sm leading-relaxed text-foreground">
                 {bigDealDescription
                   ? bigDealDescription
                   : selectedBigDeal
