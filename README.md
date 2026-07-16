@@ -258,15 +258,15 @@ docker logs -f cashflow_backend
 * big deals
 * market
 
-![Описание фото](financial_statement_structure.png)
+![Описание фото](info/financial_statement_structure.png)
 
 **/auditor/games**
-![Player Page](page_players.png)
+![Player Page](info/page_players.png)
 
 **/play/join**
-![Player Page](page_auditor.png)
+![Player Page](info/page_auditor.png)
 
-![new fields](update_fieds.png)
+![new fields](info/update_fieds.png)
 
 ## 🎯 Планы развития
 
@@ -277,7 +277,7 @@ docker logs -f cashflow_backend
 * [ ] кредитная система (несколько займов)
 * [ ] аналитика игроков
 
-![Описание фото](cashflow_platform_architecture.png)
+![Описание фото](info/cashflow_platform_architecture.png)
 
 ---
 
