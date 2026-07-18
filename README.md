@@ -260,14 +260,14 @@ docker logs -f cashflow_backend
 
 ![Описание фото](info/financial_statement_structure.png)
 
-**/auditor/games**
-![Player Page](info/page_players.png)
-
 **/play/join**
 ![Player Page](info/page_auditor.png)
 
 ![new fields](info/update_fields.png)
 
+![market](info/image.png)
+
+![won](info/won.png)
 ## 🎯 Планы развития
 
 * [ ] UI для аудитора
