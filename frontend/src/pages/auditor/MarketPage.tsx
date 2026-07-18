@@ -43,6 +43,18 @@ export default function MarketPage() {
           >
             Manage small deals
           </Link>
+          <Link
+            to="/market/big-deals"
+            className="rounded-lg border border-primary/40 bg-primary/10 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/20"
+          >
+            Manage big deals
+          </Link>
+          <Link
+            to="/market/events"
+            className="rounded-lg border border-primary/40 bg-primary/10 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/20"
+          >
+            Manage market events
+          </Link>
           {games.map((g) => (
             <Link
               key={g.id}

@@ -852,6 +852,107 @@ func (h *AuditorPanelHandler) ListBigDeals(c *gin.Context) {
 	c.JSON(http.StatusOK, dedupeBigDealsByExternalID(deals))
 }
 
+type UpsertBigDealRequest struct {
+	ExternalID  string  `json:"external_id"`
+	DealType    string  `json:"deal_type" binding:"required"`
+	Title       string  `json:"title" binding:"required"`
+	Name        string  `json:"name"`
+	Description string  `json:"description"`
+	Price       int64   `json:"price" binding:"required"`
+	DownPayment int64   `json:"down_payment"`
+	Mortgage    int64   `json:"mortgage"`
+	Cashflow    int64   `json:"cashflow"`
+	ROI         float64 `json:"roi"`
+}
+
+func (h *AuditorPanelHandler) CreateBigDeal(c *gin.Context) {
+	var req UpsertBigDealRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "invalid_request"})
+		return
+	}
+
+	item := models.BigDeal{
+		ID:          uuid.New(),
+		ExternalID:  req.ExternalID,
+		DealType:    req.DealType,
+		Name:        req.Name,
+		Title:       req.Title,
+		Description: req.Description,
+		Price:       req.Price,
+		DownPayment: req.DownPayment,
+		Mortgage:    req.Mortgage,
+		Cashflow:    req.Cashflow,
+		ROI:         req.ROI,
+	}
+	if item.Name == "" {
+		item.Name = req.Title
+	}
+	if item.ExternalID == "" {
+		item.ExternalID = uuid.NewString()
+	}
+	if err := h.db.Create(&item).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "create_big_deal_failed"})
+		return
+	}
+	c.JSON(http.StatusOK, item)
+}
+
+func (h *AuditorPanelHandler) UpdateBigDeal(c *gin.Context) {
+	dealID, err := uuid.Parse(c.Param("dealId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "invalid_deal_id"})
+		return
+	}
+	var req UpsertBigDealRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "invalid_request"})
+		return
+	}
+
+	updates := map[string]any{
+		"deal_type":    req.DealType,
+		"title":        req.Title,
+		"name":         req.Name,
+		"description":  req.Description,
+		"price":        req.Price,
+		"down_payment": req.DownPayment,
+		"mortgage":     req.Mortgage,
+		"cashflow":     req.Cashflow,
+		"roi":          req.ROI,
+	}
+	if req.ExternalID != "" {
+		updates["external_id"] = req.ExternalID
+	}
+	if req.Name == "" {
+		updates["name"] = req.Title
+	}
+
+	if err := h.db.Model(&models.BigDeal{}).Where("id = ?", dealID).Updates(updates).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "update_big_deal_failed"})
+		return
+	}
+	var updated models.BigDeal
+	if err := h.db.First(&updated, "id = ?", dealID).Error; err != nil {
+		c.JSON(http.StatusNotFound, typ.ErrorResponse{Error: "big_deal_not_found"})
+		return
+	}
+	c.JSON(http.StatusOK, updated)
+}
+
+func (h *AuditorPanelHandler) DeleteBigDeal(c *gin.Context) {
+	dealID, err := uuid.Parse(c.Param("dealId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "invalid_deal_id"})
+		return
+	}
+	if err := h.db.Delete(&models.BigDeal{}, "id = ?", dealID).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "delete_big_deal_failed"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
 // ListDoodads returns all doodad cards.
 func (h *AuditorPanelHandler) ListDoodads(c *gin.Context) {
 	var items []models.Doodad
@@ -870,6 +971,84 @@ func (h *AuditorPanelHandler) ListMarketEvents(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, events)
+}
+
+type UpsertMarketEventRequest struct {
+	Name        string `json:"name" binding:"required"`
+	EventType   string `json:"event_type"`
+	SubType     string `json:"sub_type"`
+	Description string `json:"description"`
+	OfferPrice  int64  `json:"offer_price"`
+	IsGlobal    bool   `json:"is_global"`
+}
+
+func (h *AuditorPanelHandler) CreateMarketEvent(c *gin.Context) {
+	var req UpsertMarketEventRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "invalid_request"})
+		return
+	}
+
+	item := models.MarketEvent{
+		ID:          uuid.New(),
+		Name:        req.Name,
+		EventType:   req.EventType,
+		SubType:     req.SubType,
+		Description: req.Description,
+		OfferPrice:  req.OfferPrice,
+		IsGlobal:    req.IsGlobal,
+	}
+	if err := h.db.Create(&item).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "create_market_event_failed"})
+		return
+	}
+	c.JSON(http.StatusOK, item)
+}
+
+func (h *AuditorPanelHandler) UpdateMarketEvent(c *gin.Context) {
+	eventID, err := uuid.Parse(c.Param("eventId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "invalid_event_id"})
+		return
+	}
+	var req UpsertMarketEventRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "invalid_request"})
+		return
+	}
+
+	updates := map[string]any{
+		"name":        req.Name,
+		"event_type":  req.EventType,
+		"sub_type":    req.SubType,
+		"description": req.Description,
+		"offer_price": req.OfferPrice,
+		"is_global":   req.IsGlobal,
+	}
+
+	if err := h.db.Model(&models.MarketEvent{}).Where("id = ?", eventID).Updates(updates).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "update_market_event_failed"})
+		return
+	}
+	var updated models.MarketEvent
+	if err := h.db.First(&updated, "id = ?", eventID).Error; err != nil {
+		c.JSON(http.StatusNotFound, typ.ErrorResponse{Error: "market_event_not_found"})
+		return
+	}
+	c.JSON(http.StatusOK, updated)
+}
+
+func (h *AuditorPanelHandler) DeleteMarketEvent(c *gin.Context) {
+	eventID, err := uuid.Parse(c.Param("eventId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "invalid_event_id"})
+		return
+	}
+	if err := h.db.Delete(&models.MarketEvent{}, "id = ?", eventID).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "delete_market_event_failed"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
 // RemovePlayer deletes a player row and dummy user, cleaning up related rows first.

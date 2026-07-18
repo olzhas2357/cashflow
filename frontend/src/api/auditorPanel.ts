@@ -448,12 +448,79 @@ export async function listBigDeals(token: string) {
   return apiFetch<BigDeal[]>(`${A}/big-deals`, { token })
 }
 
+export type BigDealPayload = {
+  deal_type: string
+  title: string
+  name?: string
+  description?: string
+  price: number
+  down_payment: number
+  cashflow: number
+  mortgage: number
+  roi: number
+}
+
+export async function createBigDeal(token: string, payload: BigDealPayload) {
+  return apiFetch<BigDeal>(`${A}/big-deals`, {
+    token,
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function updateBigDeal(token: string, dealId: string, payload: BigDealPayload) {
+  return apiFetch<BigDeal>(`${A}/big-deals/${dealId}`, {
+    token,
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function deleteBigDeal(token: string, dealId: string) {
+  return apiFetch<{ ok: boolean }>(`${A}/big-deals/${dealId}`, {
+    token,
+    method: 'DELETE',
+  })
+}
+
 export async function listDoodads(token: string) {
   return apiFetch<Doodad[]>(`${A}/doodads`, { token })
 }
 
 export async function listMarketEvents(token: string) {
   return apiFetch<MarketEvent[]>(`${A}/market-events`, { token })
+}
+
+export type MarketEventPayload = {
+  name: string
+  event_type?: string
+  sub_type?: string
+  description?: string
+  offer_price: number
+  is_global: boolean
+}
+
+export async function createMarketEvent(token: string, payload: MarketEventPayload) {
+  return apiFetch<MarketEvent>(`${A}/market-events`, {
+    token,
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function updateMarketEvent(token: string, eventId: string, payload: MarketEventPayload) {
+  return apiFetch<MarketEvent>(`${A}/market-events/${eventId}`, {
+    token,
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function deleteMarketEvent(token: string, eventId: string) {
+  return apiFetch<{ ok: boolean }>(`${A}/market-events/${eventId}`, {
+    token,
+    method: 'DELETE',
+  })
 }
 
 export async function referenceData(token: string, gameId: string) {

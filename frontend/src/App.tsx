@@ -16,6 +16,8 @@ import LogsPage from '@/pages/auditor/LogsPage'
 import TransactionsPage from '@/pages/auditor/TransactionsPage'
 import MarketPage from '@/pages/auditor/MarketPage'
 import SmallDealsPage from '@/pages/auditor/SmallDealsPage'
+import BigDealsPage from '@/pages/auditor/BigDealsPage'
+import MarketEventsPage from '@/pages/auditor/MarketEventsPage'
 import PlayersDirectory from '@/pages/auditor/PlayersDirectory'
 import SettingsPage from '@/pages/auditor/SettingsPage'
 
@@ -70,6 +72,10 @@ export default function App() {
           <Route path="/auditor/market" element={<MarketPage />} />
           <Route path="/auditor/market/small-deals" element={<SmallDealsPage />} />
           <Route path="/market/small-deals" element={<SmallDealsPage />} />
+          <Route path="/auditor/market/big-deals" element={<BigDealsPage />} />
+          <Route path="/market/big-deals" element={<BigDealsPage />} />
+          <Route path="/auditor/market/events" element={<MarketEventsPage />} />
+          <Route path="/market/events" element={<MarketEventsPage />} />
           <Route path="/auditor/logs" element={<LogsPage />} />
           <Route path="/auditor/players" element={<PlayersDirectory />} />
           <Route path="/auditor/settings" element={<SettingsPage />} />
