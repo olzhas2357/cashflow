@@ -76,11 +76,40 @@ func bedsBathsFromExtra(extra datatypes.JSON) (beds, baths int, ok bool) {
 // MarketNPCOfferSupported is true when the catalog row can drive an external (NPC) buyer sale at OfferPrice.
 func MarketNPCOfferSupported(ev models.MarketEvent) bool {
 	switch ev.EventType {
-	case "REAL_ESTATE_BUYER", "BUSINESS_BUYER", "ASSET_BUYER":
+	case "REAL_ESTATE_BUYER", "BUSINESS_BUYER", "ASSET_BUYER",
+		"MULTI_UNIT_BUYER", "MULTI_UNIT_BUYER_1031", "MULTI_UNIT_BUYER_REIT":
 		return ev.OfferPrice > 0
 	default:
 		return false
 	}
+}
+
+// isPerUnitMarketEvent is true for cards priced "per unit" (e.g. "$25000 за
+// каждую квартиру") rather than a single flat offer — ev.OfferPrice holds
+// the per-unit price for these, and MarketOfferForAsset multiplies it out.
+func isPerUnitMarketEvent(eventType string) bool {
+	switch eventType {
+	case "MULTI_UNIT_BUYER", "MULTI_UNIT_BUYER_1031", "MULTI_UNIT_BUYER_REIT":
+		return true
+	default:
+		return false
+	}
+}
+
+// MarketOfferForAsset is the actual dollar offer a specific asset earns
+// under the given market card — a flat OfferPrice for most card types, or
+// OfferPrice × building units for the per-unit MULTI_UNIT_BUYER* family.
+// Shared by ComputeMarketEligibility (what the player is shown) and the
+// actual sale execution (applyMarketSellTx) so the two never disagree.
+func MarketOfferForAsset(ev models.MarketEvent, asset models.Asset) int64 {
+	if !isPerUnitMarketEvent(ev.EventType) {
+		return ev.OfferPrice
+	}
+	units := effectiveBuildingUnits(asset)
+	if units <= 0 {
+		units = 1
+	}
+	return ev.OfferPrice * units
 }
 
 func apartmentBuildingName(name string) bool {
@@ -105,6 +134,34 @@ func isFourPlexAsset(asset models.Asset, name string) bool {
 		return true
 	}
 	return asset.BuildingUnits == 4 && multifamilyPlexName(asset.Name)
+}
+
+// AssetMatchesBigDealNewsTarget reports whether an owned asset satisfies the
+// "target_property_type" of a big_deal_real_estate_news card (see
+// backend/data/big_deal_real_estate_news.json, folded into BigDeal.Extra by
+// the seeder). Only two values exist today: "any_rental" (any owned real
+// estate) and "8-plex" (a specific building size, matched the same way as
+// isFourPlexAsset above).
+func AssetMatchesBigDealNewsTarget(asset models.Asset, target string) bool {
+	if asset.Type != "real_estate" {
+		return false
+	}
+	switch target {
+	case "any_rental":
+		return true
+	case "8-plex":
+		name := strings.ToLower(asset.Name)
+		if strings.Contains(name, "8-plex") || strings.Contains(name, "8plex") {
+			return true
+		}
+		u := effectiveBuildingUnits(asset)
+		if u == 8 && multifamilyPlexName(asset.Name) {
+			return true
+		}
+		return asset.BuildingUnits == 8 && multifamilyPlexName(asset.Name)
+	default:
+		return false
+	}
 }
 
 // AssetMatchesMarketEvent returns whether an on-table asset qualifies for this market card.
@@ -165,6 +222,40 @@ func AssetMatchesMarketEvent(asset models.Asset, ev models.MarketEvent) bool {
 			return false
 		}
 		return assetBuyerMatches(name, ev.SubType)
+	case "MULTI_UNIT_BUYER":
+		// "Дуплексы, 4-плексы, 8-плексы" — small multi-unit residential only,
+		// deliberately excludes the big Apartment building cards (those are
+		// REAL_ESTATE_BUYER/APT_12/APT_24/APT_OVER_12 and
+		// MULTI_UNIT_BUYER_REIT below).
+		if asset.Type != "real_estate" || apartmentBuildingName(asset.Name) {
+			return false
+		}
+		if strings.Contains(name, "duplex") || strings.Contains(name, "дуплекс") ||
+			strings.Contains(name, "plex") || strings.Contains(name, "плекс") {
+			return true
+		}
+		u := effectiveBuildingUnits(asset)
+		return u == 2 || u == 4 || u == 8
+	case "MULTI_UNIT_BUYER_1031":
+		// "любых многоквартирных домах" — any multi-family building, unlike
+		// MULTI_UNIT_BUYER above this includes big Apartment buildings too.
+		if asset.Type != "real_estate" {
+			return false
+		}
+		if multifamilyPlexName(asset.Name) {
+			return true
+		}
+		return effectiveBuildingUnits(asset) >= 2
+	case "MULTI_UNIT_BUYER_REIT":
+		// APT_OVER_12: same ">=12 units" rule as REAL_ESTATE_BUYER/APT_OVER_12.
+		if asset.Type != "real_estate" {
+			return false
+		}
+		u := effectiveBuildingUnits(asset)
+		if u >= 12 {
+			return true
+		}
+		return asset.BuildingUnits >= 12 && apartmentBuildingName(asset.Name)
 	default:
 		return false
 	}
@@ -244,7 +335,6 @@ func ComputeMarketEligibility(db *gorm.DB, gameID uuid.UUID, ev models.MarketEve
 		return nil, err
 	}
 
-	offerPrice := ev.OfferPrice
 	for _, p := range players {
 		var rows []MarketEligibleAsset
 		for _, a := range assets {
@@ -254,6 +344,7 @@ func ComputeMarketEligibility(db *gorm.DB, gameID uuid.UUID, ev models.MarketEve
 			if !AssetMatchesMarketEvent(a, ev) {
 				continue
 			}
+			offerPrice := MarketOfferForAsset(ev, a)
 			// Чистая прибыль сделки по правилам Cashflow: цена покупателя − ипотека по активу (не путать с банковским займом на сделку).
 			net := offerPrice - a.Mortgage
 			rows = append(rows, MarketEligibleAsset{

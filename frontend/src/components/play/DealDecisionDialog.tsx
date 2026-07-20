@@ -29,6 +29,11 @@ export function DealDecisionDialog({ game }: { game: GameSession }) {
   const isSmallDeal = !!game.active_small_deal
   const deal = game.active_small_deal ?? game.active_big_deal
   const isStock = isSmallDeal && game.active_small_deal?.category === 'stock'
+  // big_deal_real_estate_news cards ("Ущерб от жильца" etc.) are a mandatory
+  // expense — you only ever see one if you already own a matching property
+  // (checked server-side before this dialog opens), so there's no Pass, just
+  // an amount due.
+  const isBigDealNews = !isSmallDeal && game.active_big_deal?.deal_type === 'big_deal_real_estate_news'
   // Defaults to false — a purchase that can't be covered by cash on hand
   // should fail with "insufficient cash" unless the player explicitly opts
   // into a bank loan, not take one out silently on their behalf.
@@ -86,20 +91,29 @@ export function DealDecisionDialog({ game }: { game: GameSession }) {
           )}
         </DialogHeader>
 
-        <div className="space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Price</span>
-            <span>${deal.price.toLocaleString()}</span>
+        {isBigDealNews ? (
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between font-medium">
+              <span className="text-muted-foreground">Amount due</span>
+              <span>${deal.down_payment.toLocaleString()}</span>
+            </div>
           </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Down payment</span>
-            <span>${deal.down_payment.toLocaleString()}</span>
+        ) : (
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Price</span>
+              <span>${deal.price.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Down payment</span>
+              <span>${deal.down_payment.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Cashflow / mo</span>
+              <span>${deal.cashflow.toLocaleString()}</span>
+            </div>
           </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Cashflow / mo</span>
-            <span>${deal.cashflow.toLocaleString()}</span>
-          </div>
-        </div>
+        )}
 
         {isStock && (
           <div className="space-y-2">
@@ -163,11 +177,17 @@ export function DealDecisionDialog({ game }: { game: GameSession }) {
         )}
 
         <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={() => decisionMut.mutate('pass')} disabled={decisionMut.isPending}>
-            Pass
-          </Button>
+          {!isBigDealNews && (
+            <Button variant="outline" onClick={() => decisionMut.mutate('pass')} disabled={decisionMut.isPending}>
+              Pass
+            </Button>
+          )}
           <Button onClick={() => decisionMut.mutate('buy')} disabled={decisionMut.isPending}>
-            {decisionMut.isPending ? 'Processing…' : 'Buy'}
+            {decisionMut.isPending
+              ? 'Processing…'
+              : isBigDealNews
+                ? `Pay $${deal.down_payment.toLocaleString()}`
+                : 'Buy'}
           </Button>
         </DialogFooter>
       </DialogContent>

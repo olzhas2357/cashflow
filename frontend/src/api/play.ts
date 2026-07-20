@@ -1,5 +1,5 @@
 import { apiFetch } from './http'
-import type { GameSession, SmallDeal, BigDeal, Profession, UserPlayer, MarketEvent, MarketOfferAuction, GameAsset } from './auditorPanel'
+import type { GameSession, SmallDeal, BigDeal, Profession, UserPlayer, MarketEvent, MarketOfferAuction, GameAsset, LogDTO } from './auditorPanel'
 
 export type MarketEligibleAsset = {
   asset_id: string
@@ -137,6 +137,13 @@ export async function confirmAuctionTransaction(token: string, gameId: string, t
 
 export async function listMyAssets(token: string) {
   return apiFetch<GameAsset[]>('/api/assets', { token })
+}
+
+// listMyLogs hits a player-scoped endpoint (PlayerMyLogs) that filters by
+// the caller's own player_id server-side — unlike the auditor's gameLogs
+// (auditorPanel.ts), which returns every player's activity.
+export async function listMyLogs(token: string, gameId: string) {
+  return apiFetch<LogDTO[]>(`/api/games/${gameId}/my-logs`, { token })
 }
 
 export async function sellStockToBank(token: string, gameId: string, symbol: string, shares: number) {

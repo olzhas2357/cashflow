@@ -215,18 +215,19 @@ func (h *TurnHandler) Roll(c *gin.Context) {
 			"awaiting_deal_choice": true,
 		})
 	case services.CellMarket:
-		var count int64
-		if err := h.db.Model(&models.MarketEvent{}).Count(&count).Error; err != nil || count == 0 {
+		var ids []uuid.UUID
+		if err := h.db.Model(&models.MarketEvent{}).Pluck("id", &ids).Error; err != nil || len(ids) == 0 {
 			c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "no_market_events_available"})
 			return
 		}
-		idx, err := services.RandomIndex(int(count))
+		pickedID, newDrawnJSON, err := services.DrawFromDeck(ids, game.DrawnMarketEventIDs)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "market_draw_failed"})
 			return
 		}
+		game.DrawnMarketEventIDs = newDrawnJSON
 		var marketCard models.MarketEvent
-		if err := h.db.Order("id").Offset(idx).Limit(1).First(&marketCard).Error; err != nil {
+		if err := h.db.First(&marketCard, "id = ?", pickedID).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "market_draw_failed"})
 			return
 		}
@@ -243,6 +244,11 @@ func (h *TurnHandler) Roll(c *gin.Context) {
 		// takes as "show the decision dialog") so players see *something*
 		// happened instead of silently passing the turn.
 		if len(eligible) == 0 {
+			if err := h.db.Model(&models.GameSession{}).Where("id = ?", gameID).
+				Update("drawn_market_event_ids", game.DrawnMarketEventIDs).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "market_state_save_failed"})
+				return
+			}
 			if h.hub != nil {
 				h.hub.Broadcast(gameID.String(), "MARKET_SKIPPED", gin.H{
 					"player_id": callerID.String(),
@@ -433,6 +439,17 @@ func (h *TurnHandler) decideBuyOrPass(c *gin.Context, gameID uuid.UUID, callerID
 		return
 	}
 
+	// big_deal_real_estate_news cards are a mandatory expense, not an
+	// optional purchase — the only valid response once you own a matching
+	// property (checked at draw time in decideDealChoice) is to pay.
+	if req.Action == "pass" && game.ActiveBigDealID != nil {
+		var deal models.BigDeal
+		if err := h.db.First(&deal, "id = ?", *game.ActiveBigDealID).Error; err == nil && deal.DealType == "big_deal_real_estate_news" {
+			c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "mandatory_expense_cannot_pass"})
+			return
+		}
+	}
+
 	if req.Action == "buy" {
 		switch {
 		case game.ActiveSmallDealID != nil:
@@ -483,18 +500,19 @@ func (h *TurnHandler) decideDealChoice(c *gin.Context, gameID uuid.UUID, callerI
 	}
 
 	if req.Action == "small" {
-		var count int64
-		if err := h.db.Model(&models.SmallDeal{}).Count(&count).Error; err != nil || count == 0 {
+		var ids []uuid.UUID
+		if err := h.db.Model(&models.SmallDeal{}).Pluck("id", &ids).Error; err != nil || len(ids) == 0 {
 			c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "no_small_deals_available"})
 			return
 		}
-		idx, err := services.RandomIndex(int(count))
+		pickedID, newDrawnJSON, err := services.DrawFromDeck(ids, game.DrawnSmallDealIDs)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "small_deal_draw_failed"})
 			return
 		}
+		game.DrawnSmallDealIDs = newDrawnJSON
 		var deal models.SmallDeal
-		if err := h.db.Order("id").Offset(idx).Limit(1).First(&deal).Error; err != nil {
+		if err := h.db.First(&deal, "id = ?", pickedID).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "small_deal_draw_failed"})
 			return
 		}
@@ -518,6 +536,11 @@ func (h *TurnHandler) decideDealChoice(c *gin.Context, gameID uuid.UUID, callerI
 				return
 			}
 			if len(eligible) == 0 {
+				if err := h.db.Model(&models.GameSession{}).Where("id = ?", gameID).
+					Update("drawn_small_deal_ids", game.DrawnSmallDealIDs).Error; err != nil {
+					c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "stock_news_state_save_failed"})
+					return
+				}
 				h.finishResolution(c, gameID, callerID)
 				return
 			}
@@ -564,20 +587,67 @@ func (h *TurnHandler) decideDealChoice(c *gin.Context, gameID uuid.UUID, callerI
 		return
 	}
 
-	var count int64
-	if err := h.db.Model(&models.BigDeal{}).Count(&count).Error; err != nil || count == 0 {
+	var ids []uuid.UUID
+	if err := h.db.Model(&models.BigDeal{}).Pluck("id", &ids).Error; err != nil || len(ids) == 0 {
 		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "no_big_deals_available"})
 		return
 	}
-	idx, err := services.RandomIndex(int(count))
+	pickedID, newDrawnJSON, err := services.DrawFromDeck(ids, game.DrawnBigDealIDs)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "big_deal_draw_failed"})
 		return
 	}
+	game.DrawnBigDealIDs = newDrawnJSON
 	var deal models.BigDeal
-	if err := h.db.Order("id").Offset(idx).Limit(1).First(&deal).Error; err != nil {
+	if err := h.db.First(&deal, "id = ?", pickedID).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "big_deal_draw_failed"})
 		return
+	}
+
+	// big_deal_real_estate_news cards ("Ущерб от жильца" etc.) are a
+	// mandatory expense that only applies if the DRAWING player owns a
+	// matching property (see applyBigDealPurchase's isNewsCost branch) — if
+	// they don't, the card has no effect and is discarded, same as the
+	// existing Market/Stock-News auto-skip-when-nobody-eligible pattern.
+	if deal.DealType == "big_deal_real_estate_news" {
+		var target string
+		if len(deal.Extra) > 0 {
+			var extra map[string]any
+			if err := json.Unmarshal(deal.Extra, &extra); err == nil {
+				if v, ok := extra["target_property_type"].(string); ok {
+					target = v
+				}
+			}
+		}
+		owns := false
+		if target != "" {
+			var assets []models.Asset
+			if err := h.db.Where("game_id = ? AND owner_id = ?", gameID, callerID).Find(&assets).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "big_deal_news_check_failed"})
+				return
+			}
+			for _, a := range assets {
+				if services.AssetMatchesBigDealNewsTarget(a, target) {
+					owns = true
+					break
+				}
+			}
+		}
+		if !owns {
+			if err := h.db.Model(&models.GameSession{}).Where("id = ?", gameID).
+				Update("drawn_big_deal_ids", game.DrawnBigDealIDs).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "deal_state_save_failed"})
+				return
+			}
+			if h.hub != nil {
+				h.hub.Broadcast(gameID.String(), "BIG_DEAL_NEWS_SKIPPED", gin.H{
+					"player_id": callerID.String(),
+					"card":      deal,
+				})
+			}
+			h.finishResolution(c, gameID, callerID)
+			return
+		}
 	}
 
 	game.ActiveBigDealID = &deal.ID
@@ -608,94 +678,105 @@ func (h *TurnHandler) decideMarket(c *gin.Context, gameID uuid.UUID, callerID uu
 		return
 	}
 
-	var marketEvent models.MarketEvent
-	if err := h.db.First(&marketEvent, "id = ?", *game.ActiveMarketEventID).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "market_event_load_failed"})
-		return
-	}
-
-	eligible, err := services.ComputeMarketEligibility(h.db, gameID, marketEvent)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "market_eligibility_failed"})
-		return
-	}
-	isEligible := false
-	for _, ep := range eligible {
-		if ep.PlayerID == callerID {
-			isEligible = true
-			break
-		}
-	}
-	if !isEligible {
-		c.JSON(http.StatusForbidden, typ.ErrorResponse{Error: "not_eligible_for_market"})
-		return
-	}
-
-	switch req.Action {
-	case "market_sell":
-		if req.AssetID == nil {
-			c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "asset_id_required"})
-			return
-		}
-		if err := h.auditor.applyMarketSell(gameID, callerID, *req.AssetID); err != nil {
-			c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: err.Error()})
-			return
-		}
-	case "market_auction_start":
-		if req.AssetID == nil {
-			c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "asset_id_required"})
-			return
-		}
-		askingPrice := int64(0)
-		if req.AskingPrice != nil {
-			askingPrice = *req.AskingPrice
-		}
-		var offer *models.MarketOffer
-		if err := h.db.Transaction(func(tx *gorm.DB) error {
-			var err error
-			offer, err = listAssetForAuction(tx, gameID, callerID, *req.AssetID, askingPrice)
-			return err
-		}); err != nil {
-			c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: err.Error()})
-			return
-		}
-		if h.hub != nil {
-			h.hub.Broadcast(gameID.String(), "AUCTION_STARTED", gin.H{
-				"player_id":       callerID.String(),
-				"market_offer_id": offer.ID.String(),
-				"asset_id":        offer.AssetID.String(),
-				"expires_at":      offer.ExpiresAt,
-			})
-		}
-	}
-
-	var allDone bool
-	var rollerID uuid.UUID
-	if err := h.db.Transaction(func(tx *gorm.DB) error {
+	// The whole decision — re-checking the card is still active, eligibility,
+	// roller-priority, and whether this player already answered, then
+	// actually performing the sell/auction action and marking this player
+	// responded — runs inside one locked transaction. Previously the
+	// eligibility check + sale executed *before* any row lock (the lock only
+	// covered the later "mark responded / close" step), so rapid or
+	// concurrent requests against the same game (e.g. clicking multiple
+	// per-asset "Sell" buttons in MarketDecisionDialog before the UI reacted
+	// to the first) could each pass the check and each execute a real sale.
+	// Locking the game row first serializes those requests: the second one
+	// only proceeds once the first has fully committed.
+	var (
+		allDone     bool
+		rollerID    uuid.UUID
+		offer       *models.MarketOffer
+		actionTaken string
+	)
+	err := h.db.Transaction(func(tx *gorm.DB) error {
 		var g models.GameSession
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&g, "id = ?", gameID).Error; err != nil {
 			return err
+		}
+		if g.ActiveMarketEventID == nil {
+			return errors.New("no_active_market")
 		}
 		if g.CurrentTurnPlayerID != nil {
 			rollerID = *g.CurrentTurnPlayerID
 		}
 
-		var responded []string
-		_ = json.Unmarshal(g.MarketRespondedPlayerIDs, &responded)
-		alreadyResponded := false
-		for _, r := range responded {
-			if r == callerID.String() {
-				alreadyResponded = true
+		var marketEvent models.MarketEvent
+		if err := tx.First(&marketEvent, "id = ?", *g.ActiveMarketEventID).Error; err != nil {
+			return err
+		}
+
+		eligible, err := services.ComputeMarketEligibility(tx, gameID, marketEvent)
+		if err != nil {
+			return err
+		}
+		isEligible := false
+		for _, ep := range eligible {
+			if ep.PlayerID == callerID {
+				isEligible = true
 				break
 			}
 		}
-		if !alreadyResponded {
-			responded = append(responded, callerID.String())
+		if !isEligible {
+			return errNotEligibleForMarket
 		}
+
+		var responded []string
+		_ = json.Unmarshal(g.MarketRespondedPlayerIDs, &responded)
 		respondedSet := make(map[string]bool, len(responded))
 		for _, r := range responded {
 			respondedSet[r] = true
 		}
+		if respondedSet[callerID.String()] {
+			return errAlreadyRespondedToMarket
+		}
+
+		// The roller (whoever landed on the Market cell) gets first right of
+		// reply if they own a matching asset — other eligible owners only
+		// get a turn once the roller has answered (sold/skipped) or isn't
+		// eligible at all.
+		rollerStillEligible := false
+		for _, ep := range eligible {
+			if ep.PlayerID == rollerID {
+				rollerStillEligible = true
+				break
+			}
+		}
+		if rollerStillEligible && !respondedSet[rollerID.String()] && callerID != rollerID {
+			return errWaitForRoller
+		}
+
+		switch req.Action {
+		case "market_sell":
+			if req.AssetID == nil {
+				return errors.New("asset_id_required")
+			}
+			if err := h.auditor.applyMarketSellTx(tx, gameID, callerID, *req.AssetID); err != nil {
+				return err
+			}
+		case "market_auction_start":
+			if req.AssetID == nil {
+				return errors.New("asset_id_required")
+			}
+			askingPrice := int64(0)
+			if req.AskingPrice != nil {
+				askingPrice = *req.AskingPrice
+			}
+			offer, err = listAssetForAuction(tx, gameID, callerID, *req.AssetID, askingPrice)
+			if err != nil {
+				return err
+			}
+		}
+		actionTaken = req.Action
+
+		responded = append(responded, callerID.String())
+		respondedSet[callerID.String()] = true
 
 		freshEligible, err := services.ComputeMarketEligibility(tx, gameID, marketEvent)
 		if err != nil {
@@ -725,9 +806,28 @@ func (h *TurnHandler) decideMarket(c *gin.Context, gameID uuid.UUID, callerID uu
 			g.MarketRespondedPlayerIDs = respondedJSON
 		}
 		return tx.Save(&g).Error
-	}); err != nil {
-		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "market_response_save_failed"})
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, errNotEligibleForMarket):
+			c.JSON(http.StatusForbidden, typ.ErrorResponse{Error: "not_eligible_for_market"})
+		case errors.Is(err, errAlreadyRespondedToMarket):
+			c.JSON(http.StatusConflict, typ.ErrorResponse{Error: "already_responded_to_market"})
+		case errors.Is(err, errWaitForRoller):
+			c.JSON(http.StatusForbidden, typ.ErrorResponse{Error: "wait_for_roller"})
+		default:
+			c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: err.Error()})
+		}
 		return
+	}
+
+	if actionTaken == "market_auction_start" && offer != nil && h.hub != nil {
+		h.hub.Broadcast(gameID.String(), "AUCTION_STARTED", gin.H{
+			"player_id":       callerID.String(),
+			"market_offer_id": offer.ID.String(),
+			"asset_id":        offer.AssetID.String(),
+			"expires_at":      offer.ExpiresAt,
+		})
 	}
 
 	if h.hub != nil {
@@ -743,6 +843,12 @@ func (h *TurnHandler) decideMarket(c *gin.Context, gameID uuid.UUID, callerID uu
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
+
+var (
+	errNotEligibleForMarket     = errors.New("not_eligible_for_market")
+	errAlreadyRespondedToMarket = errors.New("already_responded_to_market")
+	errWaitForRoller            = errors.New("wait_for_roller")
+)
 
 // decideStockNews resolves one eligible holder's sell/hold answer for the
 // currently open ActiveStockNewsDeal — the split/reverse-split itself

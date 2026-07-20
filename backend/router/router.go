@@ -129,6 +129,7 @@ func NewServer(cfg ServerConfig) *gin.Engine {
 
 	auth.POST("/games/:id/ready", h.Lobby.Ready)
 	auth.GET("/games/:id/lobby", h.Lobby.LobbyState)
+	auth.GET("/games/:id/my-logs", h.Auditor.PlayerMyLogs)
 	auth.POST("/games/:id/turn/roll", h.Turn.Roll)
 	auth.POST("/games/:id/turn/decision", h.Turn.Decision)
 

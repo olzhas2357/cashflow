@@ -17,6 +17,7 @@ import { AuctionPanel } from '@/components/play/AuctionPanel'
 import { StockPortfolioPanel } from '@/components/play/StockPortfolioPanel'
 import { LoanPanel } from '@/components/play/LoanPanel'
 import { FinancialStatement } from '@/components/play/FinancialStatement'
+import { MyActivityPanel } from '@/components/play/MyActivityPanel'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Dice5, Trophy } from 'lucide-react'
 
@@ -57,6 +58,7 @@ export default function Board() {
     CHARITY_CHOICE_REQUIRED: () => qc.invalidateQueries({ queryKey: ['play_lobby', gameId] }),
     CHARITY_PAID: () => qc.invalidateQueries({ queryKey: ['play_lobby', gameId] }),
     DEAL_DRAWN: () => qc.invalidateQueries({ queryKey: ['play_lobby', gameId] }),
+    BIG_DEAL_NEWS_SKIPPED: () => qc.invalidateQueries({ queryKey: ['play_lobby', gameId] }),
     DEAL_CHOICE_REQUIRED: () => qc.invalidateQueries({ queryKey: ['play_lobby', gameId] }),
     MARKET_OPEN: () => qc.invalidateQueries({ queryKey: ['play_lobby', gameId] }),
     MARKET_SKIPPED: () => qc.invalidateQueries({ queryKey: ['play_lobby', gameId] }),
@@ -158,11 +160,14 @@ export default function Board() {
               <span className="text-[10px] font-semibold leading-tight">{cellLabelAt(position)}</span>
               <span className="text-[9px] opacity-70">#{position}</span>
               {occupants.length > 0 && (
-                <div className="flex flex-wrap justify-center gap-0.5">
+                <div className="flex flex-wrap justify-center gap-1">
                   {occupants.map((p) => (
                     <span
                       key={p.id}
-                      className={cn('h-2.5 w-2.5 rounded-full', colorForPlayer(p.id))}
+                      className={cn(
+                        'h-4 w-4 rounded-full border-2 border-background shadow-sm',
+                        colorForPlayer(p.id),
+                      )}
                       title={p.name}
                     />
                   ))}
@@ -206,6 +211,7 @@ export default function Board() {
         {me && <LoanPanel player={me} />}
         <StockPortfolioPanel game={game} />
         <AuctionPanel />
+        <MyActivityPanel />
       </div>
 
       {game && isMyTurn && game.turn_status === 'AWAITING_DECISION' && <DealDecisionDialog game={game} />}

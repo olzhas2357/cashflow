@@ -94,6 +94,17 @@ export function MarketDecisionDialog({
   const card = game.active_market_event
   const mine = eligible.find((p) => p.player_id === myPlayerId)
 
+  // The roller (whoever landed on the Market cell) gets first right of
+  // reply if they own a matching asset — everyone else just waits until the
+  // roller has answered (sold/skipped) or isn't eligible at all, mirroring
+  // the same priority enforced server-side in decideMarket (turn.go).
+  const rollerId = game.current_turn_player_id
+  const responded = game.market_responded_player_ids ?? []
+  const rollerEligible = eligible.some((p) => p.player_id === rollerId)
+  const rollerAnswered = rollerId ? responded.includes(rollerId) : true
+  const isRoller = !!rollerId && myPlayerId === rollerId
+  const mustWaitForRoller = rollerEligible && !rollerAnswered && !isRoller
+
   const decideMut = useMutation({
     mutationFn: (payload: {
       action: 'market_sell' | 'market_skip' | 'market_auction_start'
@@ -125,7 +136,11 @@ export function MarketDecisionDialog({
           </p>
         )}
 
-        {mine ? (
+        {mine && mustWaitForRoller ? (
+          <p className="text-sm text-muted-foreground">
+            Waiting for the player who rolled to decide first…
+          </p>
+        ) : mine ? (
           <div className="space-y-3">
             {mine.assets.map((asset) => (
               <AssetOfferRow

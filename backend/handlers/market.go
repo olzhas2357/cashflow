@@ -165,50 +165,59 @@ func (h *AuditorPanelHandler) MarketExternalSell(c *gin.Context) {
 // (turn.go's Decision, action=market_sell).
 func (h *AuditorPanelHandler) applyMarketSell(gameID, playerID, assetID uuid.UUID) error {
 	return h.db.Transaction(func(tx *gorm.DB) error {
-		var game models.GameSession
-		if err := tx.Preload("ActiveMarketEvent").First(&game, "id = ?", gameID).Error; err != nil {
-			return err
-		}
-		if game.ActiveMarketEvent == nil || game.ActiveMarketEventID == nil {
-			return errors.New("no_active_market")
-		}
-		ev := game.ActiveMarketEvent
-		if !services.MarketNPCOfferSupported(*ev) {
-			return errors.New("market_event_not_npc_offer")
-		}
-
-		var seller models.Player
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-			Preload("Profession").
-			First(&seller, "id = ? AND game_id = ?", playerID, gameID).Error; err != nil {
-			return err
-		}
-
-		var asset models.Asset
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-			Where("id = ? AND owner_id = ? AND game_id = ?", assetID, playerID, gameID).
-			First(&asset).Error; err != nil {
-			return errors.New("asset_not_found_or_not_owned")
-		}
-		if !services.AssetMatchesMarketEvent(asset, *ev) {
-			return errors.New("asset_not_eligible_for_market")
-		}
-
-		marketPrice := ev.OfferPrice
-		mortgageAtSale := asset.Mortgage
-		saleProfit := marketPrice - mortgageAtSale
-		before := snapshotFinance(seller)
-		assetName := asset.Name
-
-		if err := h.sellAssetToMarket(tx, gameID, &seller, &asset, marketPrice); err != nil {
-			return err
-		}
-		if err := h.auditPlayerFinancials(tx, &seller, seller.Profession); err != nil {
-			return err
-		}
-		desc := fmt.Sprintf("Market sale (NPC): %s offer=%d mortgage=%d profit=%d", assetName, marketPrice, mortgageAtSale, saleProfit)
-		return h.createFinancialLog(tx, gameID, seller.ID, "market_npc_sell", before, seller, desc)
+		return h.applyMarketSellTx(tx, gameID, playerID, assetID)
 	})
+}
+
+// applyMarketSellTx is the same logic as applyMarketSell but takes an
+// already-open transaction instead of opening its own — used by decideMarket
+// (turn.go) so the eligibility check and the sale itself run under the same
+// row lock, closing the race where rapid/concurrent requests could each pass
+// the eligibility check before the first one's closing update commits.
+func (h *AuditorPanelHandler) applyMarketSellTx(tx *gorm.DB, gameID, playerID, assetID uuid.UUID) error {
+	var game models.GameSession
+	if err := tx.Preload("ActiveMarketEvent").First(&game, "id = ?", gameID).Error; err != nil {
+		return err
+	}
+	if game.ActiveMarketEvent == nil || game.ActiveMarketEventID == nil {
+		return errors.New("no_active_market")
+	}
+	ev := game.ActiveMarketEvent
+	if !services.MarketNPCOfferSupported(*ev) {
+		return errors.New("market_event_not_npc_offer")
+	}
+
+	var seller models.Player
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Preload("Profession").
+		First(&seller, "id = ? AND game_id = ?", playerID, gameID).Error; err != nil {
+		return err
+	}
+
+	var asset models.Asset
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("id = ? AND owner_id = ? AND game_id = ?", assetID, playerID, gameID).
+		First(&asset).Error; err != nil {
+		return errors.New("asset_not_found_or_not_owned")
+	}
+	if !services.AssetMatchesMarketEvent(asset, *ev) {
+		return errors.New("asset_not_eligible_for_market")
+	}
+
+	marketPrice := services.MarketOfferForAsset(*ev, asset)
+	mortgageAtSale := asset.Mortgage
+	saleProfit := marketPrice - mortgageAtSale
+	before := snapshotFinance(seller)
+	assetName := asset.Name
+
+	if err := h.sellAssetToMarket(tx, gameID, &seller, &asset, marketPrice); err != nil {
+		return err
+	}
+	if err := h.auditPlayerFinancials(tx, &seller, seller.Profession); err != nil {
+		return err
+	}
+	desc := fmt.Sprintf("Market sale (NPC): %s offer=%d mortgage=%d profit=%d", assetName, marketPrice, mortgageAtSale, saleProfit)
+	return h.createFinancialLog(tx, gameID, seller.ID, "market_npc_sell", before, seller, desc)
 }
 
 // sellAssetToMarket выполняет продажу актива внешнему покупателю по правилам настольного Cashflow (строго).

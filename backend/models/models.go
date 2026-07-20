@@ -189,6 +189,14 @@ type GameSession struct {
 	ActiveBigDealID *uuid.UUID `gorm:"type:uuid;index" json:"active_big_deal_id,omitempty"`
 	ActiveBigDeal   *BigDeal   `gorm:"foreignKey:ActiveBigDealID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL" json:"active_big_deal,omitempty"`
 
+	// DrawnSmallDealIDs/DrawnBigDealIDs/DrawnMarketEventIDs: JSON arrays of
+	// card IDs already drawn this pass through the deck, so the same card
+	// doesn't repeat until every card has been shown once. Reset (reshuffled)
+	// automatically once the pool is exhausted — see services.DrawFromDeck.
+	DrawnSmallDealIDs   datatypes.JSON `gorm:"type:jsonb;not null;default:'[]'" json:"drawn_small_deal_ids,omitempty"`
+	DrawnBigDealIDs     datatypes.JSON `gorm:"type:jsonb;not null;default:'[]'" json:"drawn_big_deal_ids,omitempty"`
+	DrawnMarketEventIDs datatypes.JSON `gorm:"type:jsonb;not null;default:'[]'" json:"drawn_market_event_ids,omitempty"`
+
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }

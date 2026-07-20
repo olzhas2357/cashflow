@@ -2,8 +2,6 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
   Gamepad2,
-  Users,
-  ArrowLeftRight,
   TrendingUp,
   ScrollText,
   Settings,
@@ -19,8 +17,6 @@ import { cn } from '@/lib/utils'
 const nav = [
   { to: '/auditor/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/auditor/games', label: 'Games', icon: Gamepad2 },
-  { to: '/auditor/players', label: 'Players', icon: Users },
-  { to: '/auditor/transactions', label: 'Transactions', icon: ArrowLeftRight },
   { to: '/auditor/market', label: 'Market', icon: TrendingUp },
   { to: '/auditor/logs', label: 'Logs', icon: ScrollText },
   { to: '/auditor/settings', label: 'Settings', icon: Settings },

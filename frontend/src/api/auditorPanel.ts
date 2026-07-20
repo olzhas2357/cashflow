@@ -13,6 +13,7 @@ export type GameSession = {
   active_big_deal?: BigDeal | null
   active_stock_news_deal_id?: string | null
   active_stock_news_deal?: SmallDeal | null
+  market_responded_player_ids?: string[]
   join_code: string
   status: 'lobby' | 'in_progress' | 'completed'
   current_turn_player_id?: string | null

@@ -1253,6 +1253,50 @@ func (h *AuditorPanelHandler) GameLogs(c *gin.Context) {
 	c.JSON(http.StatusOK, out)
 }
 
+// PlayerMyLogs returns the CALLING player's own financial log entries for
+// this game — same shape as GameLogs (the auditor's all-players view), but
+// scoped to middleware.GetPlayerID so each player only ever sees their own
+// purchases/events, never anyone else's.
+func (h *AuditorPanelHandler) PlayerMyLogs(c *gin.Context) {
+	gameID, ok := parseGameID(c)
+	if !ok {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "invalid_game_id"})
+		return
+	}
+	playerID, ok := middleware.GetPlayerID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, typ.ErrorResponse{Error: "unauthorized"})
+		return
+	}
+
+	type row struct {
+		ID          uuid.UUID
+		PlayerID    uuid.UUID
+		PlayerName  string
+		Type        string
+		Amount      int64
+		Description *string
+		CreatedAt   string
+	}
+
+	var rows []row
+	if err := h.db.Table("financial_logs").
+		Select("financial_logs.id, financial_logs.player_id, players.name as player_name, financial_logs.type, financial_logs.amount, financial_logs.description, financial_logs.created_at::text as created_at").
+		Joins("JOIN players ON players.id = financial_logs.player_id").
+		Where("financial_logs.game_id = ? AND financial_logs.player_id = ?", gameID, playerID).
+		Order("financial_logs.created_at desc").
+		Scan(&rows).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "logs_failed"})
+		return
+	}
+
+	out := make([]LogDTO, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, LogDTO(r))
+	}
+	c.JSON(http.StatusOK, out)
+}
+
 func (h *AuditorPanelHandler) GameAssets(c *gin.Context) {
 	gameID, ok := parseGameID(c)
 	if !ok {
