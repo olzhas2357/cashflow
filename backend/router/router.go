@@ -2,6 +2,7 @@ package router
 
 import (
 	"net/http"
+	"os"
 	"time"
 
 	"cashflow/handlers"
@@ -34,14 +35,32 @@ func NewServer(cfg ServerConfig) *gin.Engine {
 	h := handlers.NewHandlers(cfg.DB, jwtCfg, hub)
 
 	engine := gin.New()
+	engine.SetTrustedProxies(nil) // исправляет WARNING и безопаснее для Railway
 	engine.Use(gin.Recovery(), gin.Logger())
 
-	// Permissive CORS for the starter scaffold.
-	// For production, lock this down to your frontend origin(s).
+	// CORS — принимаем запросы с Vercel и localhost
 	engine.Use(func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		origin := c.Request.Header.Get("Origin")
+
+		frontendURL := os.Getenv("FRONTEND_URL")
+		allowed := map[string]bool{
+			"http://localhost:5173": true,
+			"http://localhost:3000": true,
+		}
+		if frontendURL != "" {
+			allowed[frontendURL] = true
+		}
+
+		if allowed[origin] {
+			c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
+		} else if origin == "" {
+			// прямые запросы (curl, Postman) — пропускаем
+		}
+
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(http.StatusNoContent)
 			return
@@ -51,6 +70,11 @@ func NewServer(cfg ServerConfig) *gin.Engine {
 
 	engine.GET("/api/healthz", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"ok": true})
+	})
+
+	// health check для Railway
+	engine.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
 	// Public routes
@@ -133,17 +157,10 @@ func NewServer(cfg ServerConfig) *gin.Engine {
 	auth.POST("/games/:id/turn/roll", h.Turn.Roll)
 	auth.POST("/games/:id/turn/decision", h.Turn.Decision)
 
-	// Player-facing auction routes — identity always comes from the JWT
-	// (middleware.GetPlayerID), unlike the auditor/* equivalents above which
-	// take an arbitrary player id in the body. market_auction_start itself is
-	// reached via turn/decision (action=market_auction_start) since it's part
-	// of the same Market-card response as market_sell/market_skip.
 	auth.GET("/games/:id/market/auction/offers", h.Auditor.PlayerAuctionOffers)
 	auth.POST("/games/:id/market/auction/bid", h.Auditor.PlayerAuctionBid)
 	auth.POST("/games/:id/transactions/:txId/player-confirm", h.Auditor.PlayerTransactionConfirm)
 
-	// Player-facing stock/loan self-service — same identity-from-JWT pattern
-	// as the auction routes above.
 	auth.POST("/games/:id/stock/sell-bank", h.Auditor.PlayerStockSellToBank)
 	auth.POST("/games/:id/loans", h.Auditor.PlayerBankLoan)
 	auth.POST("/games/:id/loans/repay", h.Auditor.PlayerRepayLoan)
