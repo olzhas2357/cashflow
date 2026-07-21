@@ -91,7 +91,7 @@ func Run() {
 		},
 	})
 
-	if err := srv.Run(":" + cfg.Port); err != nil {
+	if err := srv.Run("0.0.0.0:" + cfg.Port); err != nil {
 		log.Fatalf("server run: %v", err)
 	}
 }
