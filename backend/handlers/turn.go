@@ -232,7 +232,40 @@ func (h *TurnHandler) Roll(c *gin.Context) {
 			return
 		}
 
-		eligible, err := services.ComputeMarketEligibility(h.db, gameID, marketCard)
+		// Forced cards (BUSINESS_EXIT/FORCED_LOSS/BUSINESS_BOOST) resolve
+		// immediately with no player decision — same "auto-skip if nobody
+		// affected" rule as the voluntary family below, just applied without
+		// ever entering AWAITING_MARKET_DECISIONS.
+		if marketCard.IsForced || marketCard.EventType == "FORCED_LOSS" || marketCard.EventType == "BUSINESS_BOOST" {
+			var applied []uuid.UUID
+			if err := h.db.Transaction(func(tx *gorm.DB) error {
+				var innerErr error
+				applied, innerErr = h.auditor.resolveForcedMarketEvent(tx, gameID, callerID, marketCard)
+				if innerErr != nil {
+					return innerErr
+				}
+				return tx.Model(&models.GameSession{}).Where("id = ?", gameID).
+					Update("drawn_market_event_ids", game.DrawnMarketEventIDs).Error
+			}); err != nil {
+				c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "market_forced_resolution_failed"})
+				return
+			}
+			if h.hub != nil {
+				broadcastType := "MARKET_FORCED_APPLIED"
+				if len(applied) == 0 {
+					broadcastType = "MARKET_SKIPPED"
+				}
+				h.hub.Broadcast(gameID.String(), broadcastType, gin.H{
+					"player_id":          callerID.String(),
+					"card":               marketCard,
+					"applied_player_ids": applied,
+				})
+			}
+			h.finishResolution(c, gameID, callerID)
+			return
+		}
+
+		eligible, err := services.ComputeMarketEligibility(h.db, gameID, marketCard, services.MarketEligibilityRestriction(marketCard, &callerID))
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "market_eligibility_failed"})
 			return
@@ -712,7 +745,7 @@ func (h *TurnHandler) decideMarket(c *gin.Context, gameID uuid.UUID, callerID uu
 			return err
 		}
 
-		eligible, err := services.ComputeMarketEligibility(tx, gameID, marketEvent)
+		eligible, err := services.ComputeMarketEligibility(tx, gameID, marketEvent, services.MarketEligibilityRestriction(marketEvent, &rollerID))
 		if err != nil {
 			return err
 		}
@@ -778,7 +811,7 @@ func (h *TurnHandler) decideMarket(c *gin.Context, gameID uuid.UUID, callerID uu
 		responded = append(responded, callerID.String())
 		respondedSet[callerID.String()] = true
 
-		freshEligible, err := services.ComputeMarketEligibility(tx, gameID, marketEvent)
+		freshEligible, err := services.ComputeMarketEligibility(tx, gameID, marketEvent, services.MarketEligibilityRestriction(marketEvent, &rollerID))
 		if err != nil {
 			return err
 		}

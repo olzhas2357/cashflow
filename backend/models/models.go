@@ -267,6 +267,17 @@ type MarketEvent struct {
 	Description string    `gorm:"type:text;not null;default:''" json:"description"`
 	OfferPrice  int64     `gorm:"not null;default:0" json:"offer_price"`
 	IsGlobal    bool      `gorm:"not null;default:false" json:"is_global"`
+	// Multiplier: BUSINESS_EXIT payout = asset.Price * Multiplier.
+	Multiplier int64 `gorm:"not null;default:0" json:"multiplier"`
+	// CashflowAdd: BUSINESS_BOOST — added to a matching business asset's Income.
+	CashflowAdd int64 `gorm:"not null;default:0" json:"cashflow_add"`
+	// ExtraValue: MARKET_BOOST — added on top of asset.Price to form the sell offer.
+	ExtraValue int64 `gorm:"not null;default:0" json:"extra_value"`
+	// IsForced: card resolves automatically with no player decision (e.g. BUSINESS_EXIT).
+	IsForced bool `gorm:"not null;default:false" json:"is_forced"`
+	// ImpactCashflowChange/ImpactDelayTurns: SPECIAL_LOAN's deferred-payout terms.
+	ImpactCashflowChange int64 `gorm:"not null;default:0" json:"impact_cashflow_change"`
+	ImpactDelayTurns     int   `gorm:"not null;default:0" json:"impact_delay_turns"`
 }
 
 type Doodad struct {

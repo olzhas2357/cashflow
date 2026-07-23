@@ -62,6 +62,7 @@ export default function Board() {
     DEAL_CHOICE_REQUIRED: () => qc.invalidateQueries({ queryKey: ['play_lobby', gameId] }),
     MARKET_OPEN: () => qc.invalidateQueries({ queryKey: ['play_lobby', gameId] }),
     MARKET_SKIPPED: () => qc.invalidateQueries({ queryKey: ['play_lobby', gameId] }),
+    MARKET_FORCED_APPLIED: () => qc.invalidateQueries({ queryKey: ['play_lobby', gameId] }),
     MARKET_DECISION: () => qc.invalidateQueries({ queryKey: ['play_lobby', gameId] }),
     STOCK_NEWS_OPEN: () => qc.invalidateQueries({ queryKey: ['play_lobby', gameId] }),
     STOCK_NEWS_DECISION: () => qc.invalidateQueries({ queryKey: ['play_lobby', gameId] }),

@@ -26,6 +26,7 @@ const EVENT_LABELS: Record<string, string> = {
   DEAL_CHOICE_REQUIRED: 'Choose Small Deal or Big Deal',
   MARKET_OPEN: 'Market card opened — check if you can sell',
   MARKET_SKIPPED: 'Market card skipped — nobody owned a matching asset',
+  MARKET_FORCED_APPLIED: 'Market card resolved automatically — check your balance',
   BIG_DEAL_NEWS_SKIPPED: "Big Deal news skipped — you don't own a matching property",
   MARKET_DECISION: 'A player answered the Market card',
   STOCK_NEWS_OPEN: 'Stock News: price changed, sell if you want',
@@ -46,6 +47,7 @@ function describeEvent(type: string, payload: Record<string, unknown>): string {
   switch (type) {
     case 'MARKET_OPEN':
     case 'MARKET_SKIPPED':
+    case 'MARKET_FORCED_APPLIED':
       return card?.name ? `${EVENT_LABELS[type]}: ${card.name}` : EVENT_LABELS[type]
     case 'BIG_DEAL_NEWS_SKIPPED':
       return card?.title ? `${EVENT_LABELS[type]}: ${card.title}` : EVENT_LABELS[type]

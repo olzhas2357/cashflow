@@ -249,7 +249,7 @@ func (h *LobbyHandler) LobbyState(c *gin.Context) {
 
 	resp := LobbyStateResponse{Game: game, Players: roster}
 	if game.ActiveMarketEvent != nil {
-		eligible, err := services.ComputeMarketEligibility(h.db, gameID, *game.ActiveMarketEvent)
+		eligible, err := services.ComputeMarketEligibility(h.db, gameID, *game.ActiveMarketEvent, services.MarketEligibilityRestriction(*game.ActiveMarketEvent, game.CurrentTurnPlayerID))
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "market_eligibility_failed"})
 			return

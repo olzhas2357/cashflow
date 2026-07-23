@@ -77,8 +77,11 @@ func bedsBathsFromExtra(extra datatypes.JSON) (beds, baths int, ok bool) {
 func MarketNPCOfferSupported(ev models.MarketEvent) bool {
 	switch ev.EventType {
 	case "REAL_ESTATE_BUYER", "BUSINESS_BUYER", "ASSET_BUYER",
-		"MULTI_UNIT_BUYER", "MULTI_UNIT_BUYER_1031", "MULTI_UNIT_BUYER_REIT":
+		"MULTI_UNIT_BUYER", "MULTI_UNIT_BUYER_1031", "MULTI_UNIT_BUYER_REIT",
+		"SPECIAL_LOAN":
 		return ev.OfferPrice > 0
+	case "MARKET_BOOST":
+		return ev.ExtraValue > 0
 	default:
 		return false
 	}
@@ -102,6 +105,9 @@ func isPerUnitMarketEvent(eventType string) bool {
 // Shared by ComputeMarketEligibility (what the player is shown) and the
 // actual sale execution (applyMarketSellTx) so the two never disagree.
 func MarketOfferForAsset(ev models.MarketEvent, asset models.Asset) int64 {
+	if ev.EventType == "MARKET_BOOST" {
+		return asset.Price + ev.ExtraValue
+	}
 	if !isPerUnitMarketEvent(ev.EventType) {
 		return ev.OfferPrice
 	}
@@ -110,6 +116,26 @@ func MarketOfferForAsset(ev models.MarketEvent, asset models.Asset) int64 {
 		units = 1
 	}
 	return ev.OfferPrice * units
+}
+
+// IsHouse32Asset matches the HOUSE_3_2 sub_type shared by REAL_ESTATE_BUYER,
+// MARKET_BOOST, and the forced FORCED_LOSS confiscation.
+func IsHouse32Asset(asset models.Asset) bool {
+	if asset.Type != "real_estate" {
+		return false
+	}
+	if b, bt, ok := bedsBathsFromExtra(asset.Extra); ok {
+		return b == 3 && bt == 2
+	}
+	name := strings.ToLower(asset.Name)
+	return strings.Contains(name, "house") || strings.Contains(name, "3/2") || strings.Contains(name, "дом")
+}
+
+// AssetIsLimitedPartnership matches BUSINESS_EXIT's forced LP buyout target —
+// business assets created from the big_deal_business.json LIMITED_PARTNERSHIP
+// cards (title "Limited partner required" / RU "партнер").
+func AssetIsLimitedPartnership(nameLower string) bool {
+	return strings.Contains(nameLower, "partner") || strings.Contains(nameLower, "партнер")
 }
 
 func apartmentBuildingName(name string) bool {
@@ -182,10 +208,7 @@ func AssetMatchesMarketEvent(asset models.Asset, ev models.MarketEvent) bool {
 			}
 			return strings.Contains(name, "condo") || strings.Contains(name, "квартир")
 		case "HOUSE_3_2":
-			if b, bt, ok := bedsBathsFromExtra(asset.Extra); ok {
-				return b == 3 && bt == 2
-			}
-			return strings.Contains(name, "house") || strings.Contains(name, "3/2") || strings.Contains(name, "дом")
+			return IsHouse32Asset(asset)
 		case "APT_12":
 			u := effectiveBuildingUnits(asset)
 			if u == 12 {
@@ -256,6 +279,11 @@ func AssetMatchesMarketEvent(asset models.Asset, ev models.MarketEvent) bool {
 			return true
 		}
 		return asset.BuildingUnits >= 12 && apartmentBuildingName(asset.Name)
+	case "MARKET_BOOST", "SPECIAL_LOAN":
+		// Both are HOUSE_3_2-only voluntary cards: MARKET_BOOST sells at
+		// asset.Price+extra_value, SPECIAL_LOAN converts the house into a
+		// deferred receivable (see applySpecialLoanSellTx).
+		return IsHouse32Asset(asset)
 	default:
 		return false
 	}
@@ -318,11 +346,25 @@ type MarketEligiblePlayer struct {
 	Assets   []MarketEligibleAsset `json:"assets"`
 }
 
+// MarketEligibilityRestriction returns the restrictToPlayerID argument for
+// ComputeMarketEligibility: nil for IsGlobal cards (any eligible owner may
+// respond), or rollerID for IsGlobal=false cards (only whoever landed on the
+// cell may respond).
+func MarketEligibilityRestriction(ev models.MarketEvent, rollerID *uuid.UUID) *uuid.UUID {
+	if ev.IsGlobal {
+		return nil
+	}
+	return rollerID
+}
+
 // ComputeMarketEligibility lists, for the given active market card, every
 // player who owns at least one matching asset, with the net profit
 // (offerPrice - mortgage) they'd receive for each. Shared by the manual
-// auditor endpoint and the automated turn engine.
-func ComputeMarketEligibility(db *gorm.DB, gameID uuid.UUID, ev models.MarketEvent) ([]MarketEligiblePlayer, error) {
+// auditor endpoint and the automated turn engine. restrictToPlayerID, when
+// non-nil, limits results to that single player — used for cards with
+// IsGlobal=false, which apply only to whoever landed on the cell, not every
+// eligible owner.
+func ComputeMarketEligibility(db *gorm.DB, gameID uuid.UUID, ev models.MarketEvent, restrictToPlayerID *uuid.UUID) ([]MarketEligiblePlayer, error) {
 	eligible := []MarketEligiblePlayer{}
 
 	var players []models.Player
@@ -336,6 +378,9 @@ func ComputeMarketEligibility(db *gorm.DB, gameID uuid.UUID, ev models.MarketEve
 	}
 
 	for _, p := range players {
+		if restrictToPlayerID != nil && p.ID != *restrictToPlayerID {
+			continue
+		}
 		var rows []MarketEligibleAsset
 		for _, a := range assets {
 			if a.OwnerID == nil || *a.OwnerID != p.ID {
