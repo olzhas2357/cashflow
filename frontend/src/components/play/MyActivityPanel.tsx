@@ -34,12 +34,12 @@ export function MyActivityPanel() {
         <ScrollArea className="h-48 pr-2">
           <ul className="space-y-2">
             {logs.map((l) => (
-              <li key={l.id} className="flex items-center justify-between gap-2 text-sm">
-                <div className="flex min-w-0 items-center gap-2">
-                  <Badge variant="outline" className="shrink-0 text-xs">
-                    {l.type}
-                  </Badge>
-                  <span className="truncate text-muted-foreground">{l.description ?? ''}</span>
+              <li key={l.id} className="flex items-center gap-2 text-sm">
+                <Badge variant="outline" className="shrink-0 text-xs">
+                  {l.type}
+                </Badge>
+                <div className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap text-muted-foreground [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  {l.description ?? ''}
                 </div>
                 <span className={l.amount < 0 ? 'shrink-0 text-destructive' : 'shrink-0 text-green-600'}>
                   {l.amount >= 0 ? '+' : ''}

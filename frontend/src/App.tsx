@@ -21,7 +21,9 @@ import MarketEventsPage from '@/pages/auditor/MarketEventsPage'
 import PlayersDirectory from '@/pages/auditor/PlayersDirectory'
 import SettingsPage from '@/pages/auditor/SettingsPage'
 
+import LandingPage from '@/pages/LandingPage'
 import JoinGame from '@/pages/play/JoinGame'
+import OnboardingScreen from '@/pages/play/OnboardingScreen'
 import Lobby from '@/pages/play/Lobby'
 import Board from '@/pages/play/Board'
 import MyAssets from '@/pages/play/MyAssets'
@@ -45,7 +47,7 @@ function RequirePlayer() {
 }
 
 function RootRedirect({ user }: { user: AuthUser | null }) {
-  if (!user) return <Navigate to="/login" replace />
+  if (!user) return <LandingPage />
   if (user.role === 'auditor' || user.role === 'admin') return <Navigate to="/auditor/dashboard" replace />
   if (user.role === 'player') return <Navigate to="/play/lobby" replace />
   return <Navigate to="/login" replace />
@@ -84,6 +86,7 @@ export default function App() {
 
       <Route path="/play/join" element={<JoinGame />} />
       <Route element={<RequirePlayer />}>
+        <Route path="/play/onboarding" element={<OnboardingScreen />} />
         <Route element={<PlayLayout />}>
           <Route path="/play/lobby" element={<Lobby />} />
           <Route path="/play/board" element={<Board />} />

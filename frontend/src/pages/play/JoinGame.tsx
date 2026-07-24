@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { join } from '@/api/auth'
 import { useAuthStore } from '@/store/authStore'
 import { usePlayStore } from '@/store/usePlayStore'
@@ -14,11 +15,12 @@ export default function JoinGame() {
   const setToken = useAuthStore((s) => s.setToken)
   const setGameId = usePlayStore((s) => s.setGameId)
 
-  const [joinCode, setJoinCode] = useState('')
+  const [searchParams] = useSearchParams()
+  const [joinCode, setJoinCode] = useState(searchParams.get('code') ?? '')
   const [name, setName] = useState('')
   const [err, setErr] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-
+  
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
     setErr(null)
@@ -27,7 +29,7 @@ export default function JoinGame() {
       const res = await join(joinCode.trim().toUpperCase(), name.trim())
       setToken(res.token)
       setGameId(res.game_id)
-      navigate('/play/lobby', { replace: true })
+      navigate('/play/onboarding', { replace: true })
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Could not join game.')
     } finally {
