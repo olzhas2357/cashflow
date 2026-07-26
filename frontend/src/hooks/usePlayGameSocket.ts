@@ -53,6 +53,17 @@ function describeEvent(type: string, payload: Record<string, unknown>): string {
       return card?.title ? `${EVENT_LABELS[type]}: ${card.title}` : EVENT_LABELS[type]
     case 'STOCK_NEWS_OPEN':
       return card?.symbol ? `${EVENT_LABELS[type]} (${card.symbol})` : EVENT_LABELS[type]
+    case 'AUCTION_ENDED': {
+      const assetName = payload.asset_name as string | undefined
+      const price = payload.price as number | undefined
+      if (payload.sold && assetName) {
+        return `Auction ended: ${assetName} sold${price != null ? ` for $${price.toLocaleString()}` : ''}`
+      }
+      if (assetName) {
+        return `Auction ended: ${assetName} — no winning bid`
+      }
+      return EVENT_LABELS[type]
+    }
     default:
       return EVENT_LABELS[type] ?? type
   }

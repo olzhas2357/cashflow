@@ -71,6 +71,7 @@ export default function Board() {
     AUCTION_ENDED: () => {
       qc.invalidateQueries({ queryKey: ['auction_offers', gameId] })
       qc.invalidateQueries({ queryKey: ['play_lobby', gameId] })
+      qc.invalidateQueries({ queryKey: ['my_assets', gameId] })
     },
     STOCK_SOLD: () => {
       qc.invalidateQueries({ queryKey: ['my_assets', gameId] })

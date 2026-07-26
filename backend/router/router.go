@@ -146,7 +146,6 @@ func NewServer(cfg ServerConfig) *gin.Engine {
 	auditor.GET("/games/:id/transactions/pending", h.Auditor.PendingTransactions)
 	auditor.POST("/games/:id/transactions/:txId/approve", h.Auditor.ApproveTx)
 	auditor.POST("/games/:id/transactions/:txId/reject", h.Auditor.RejectTx)
-	auditor.POST("/games/:id/transactions/:txId/player-confirm", h.Auditor.TransactionPlayerConfirm)
 
 	auth.GET("/players/:id", h.Players.GetPlayer)
 	auth.GET("/players/:id/finance", h.Players.GetPlayerFinance)
@@ -159,7 +158,6 @@ func NewServer(cfg ServerConfig) *gin.Engine {
 
 	auth.GET("/games/:id/market/auction/offers", h.Auditor.PlayerAuctionOffers)
 	auth.POST("/games/:id/market/auction/bid", h.Auditor.PlayerAuctionBid)
-	auth.POST("/games/:id/transactions/:txId/player-confirm", h.Auditor.PlayerTransactionConfirm)
 
 	auth.POST("/games/:id/stock/sell-bank", h.Auditor.PlayerStockSellToBank)
 	auth.POST("/games/:id/loans", h.Auditor.PlayerBankLoan)

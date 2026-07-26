@@ -123,10 +123,6 @@ type Transaction struct {
 	Status       string `gorm:"type:varchar(20);not null;index" json:"status"` // pending, approved, rejected
 	AgreedPrice  *int64 `gorm:"type:bigint" json:"agreed_price"`
 
-	// Player-to-player market auction: both must confirm before settlement (see TransactionPlayerConfirm).
-	SellerConfirmed bool `gorm:"not null;default:false" json:"seller_confirmed"`
-	BuyerConfirmed  bool `gorm:"not null;default:false" json:"buyer_confirmed"`
-
 	MarketOffer MarketOffer `gorm:"foreignKey:MarketOfferID;references:ID" json:"market_offer,omitempty"`
 	Buyer       Player      `gorm:"foreignKey:BuyerID;references:ID" json:"buyer,omitempty"`
 	Seller      Player      `gorm:"-" json:"seller,omitempty"` // derived, unused — fully ignored by GORM (see market_auction.go's listOpenAuctionOffers, which does a plain Find on []Transaction; -:migration alone doesn't stop GORM's association auto-detection outside AutoMigrate)

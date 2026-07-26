@@ -2579,6 +2579,13 @@ func (h *AuditorPanelHandler) PendingTransactions(c *gin.Context) {
 
 	out := make([]AuditorPendingTransactionDTO, 0, len(txs))
 	for _, tx := range txs {
+		// Timed player-vs-player auction bids (MarketOffer.ExpiresAt != nil) settle
+		// automatically at expiry (see resolveIfExpiredTx in market_auction.go) — the
+		// auditor must not be able to hand-approve/reject a bid mid-auction, so those
+		// never appear in this manual-sale queue.
+		if tx.MarketOffer.ExpiresAt != nil {
+			continue
+		}
 		agreed := tx.OfferPrice
 		if tx.CounterOffer != nil {
 			agreed = *tx.CounterOffer
@@ -2614,6 +2621,10 @@ func (h *AuditorPanelHandler) ApproveTx(c *gin.Context) {
 		c.JSON(http.StatusNotFound, typ.ErrorResponse{Error: "transaction_not_found"})
 		return
 	}
+	if tx.MarketOffer.ExpiresAt != nil {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "auction_transaction_not_manually_settleable"})
+		return
+	}
 
 	if err := h.db.Transaction(func(txDB *gorm.DB) error {
 		return h.settlePlayerToPlayerTrade(txDB, gameID, tx.ID, true)
@@ -2642,14 +2653,6 @@ func (h *AuditorPanelHandler) settlePlayerToPlayerTrade(txDB *gorm.DB, gameID uu
 		agreed = *tx.CounterOffer
 	}
 
-	if rejectOtherPending {
-		if err := txDB.Model(&models.Transaction{}).
-			Where("market_offer_id = ? AND id <> ? AND status = ?", tx.MarketOfferID, tx.ID, "pending").
-			Update("status", "rejected").Error; err != nil {
-			return err
-		}
-	}
-
 	var buyer models.Player
 	if err := txDB.Clauses(clause.Locking{Strength: "UPDATE"}).
 		Preload("Profession").
@@ -2676,6 +2679,17 @@ func (h *AuditorPanelHandler) settlePlayerToPlayerTrade(txDB *gorm.DB, gameID uu
 
 	if buyer.Cash < agreed {
 		return errors.New("insufficient_cash")
+	}
+
+	// Only reject sibling pending bids once we know this settlement will actually
+	// succeed — rejecting them earlier would permanently lose other valid bids if
+	// this one then fails validation (e.g. a cascading auction-resolution retry).
+	if rejectOtherPending {
+		if err := txDB.Model(&models.Transaction{}).
+			Where("market_offer_id = ? AND id <> ? AND status = ?", tx.MarketOfferID, tx.ID, "pending").
+			Update("status", "rejected").Error; err != nil {
+			return err
+		}
 	}
 
 	buyer.Cash -= agreed
@@ -2762,8 +2776,13 @@ func (h *AuditorPanelHandler) RejectTx(c *gin.Context) {
 
 	if err := h.db.Transaction(func(txDB *gorm.DB) error {
 		var tx models.Transaction
-		if err := txDB.Where("id = ? AND game_id = ? AND status = ?", txID, gameID, "pending").First(&tx).Error; err != nil {
+		if err := txDB.Where("id = ? AND game_id = ? AND status = ?", txID, gameID, "pending").
+			Preload("MarketOffer").
+			First(&tx).Error; err != nil {
 			return err
+		}
+		if tx.MarketOffer.ExpiresAt != nil {
+			return errors.New("auction_transaction_not_manually_settleable")
 		}
 
 		if err := txDB.Model(&models.Transaction{}).Where("id = ?", tx.ID).Update("status", "rejected").Error; err != nil {

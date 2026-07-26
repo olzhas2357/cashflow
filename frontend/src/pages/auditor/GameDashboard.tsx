@@ -47,7 +47,6 @@ import {
   postEventStockSellBank,
   rejectTransaction,
   startGame,
-  transactionPlayerConfirm,
   type GameAsset,
   type MarketEvent,
   type PlayerFinanceDTO,
@@ -535,13 +534,6 @@ export default function GameDashboard() {
     onSuccess: refresh,
     onError: (err) => alert((err as Error).message || 'Bid failed'),
   })
-  const playerConfirmTxM = useMutation({
-    mutationFn: ({ txId, playerId }: { txId: string; playerId: string }) =>
-      transactionPlayerConfirm(token!, gameId!, txId, playerId),
-    onSuccess: refresh,
-    onError: (err) => alert((err as Error).message || 'Confirm failed'),
-  })
-
   const recent = (logsQ.data ?? []).slice(-12).reverse()
   const pending = pendingQ.data ?? []
   const activeNpcMarket = gameQ.data?.active_market_event ?? marketStateQ.data?.active_event ?? null
@@ -651,7 +643,10 @@ export default function GameDashboard() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Pending transactions</CardTitle>
-              <CardDescription>Сделки между игроками: подтверждение сторонами или одобрение аудитором.</CardDescription>
+              <CardDescription>
+                Ручные сделки между игроками, одобряемые аудитором. Ставки на таймированном аукционе сюда не
+                попадают — они разрешаются автоматически по истечении таймера.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {pending.length === 0 ? (
@@ -660,7 +655,6 @@ export default function GameDashboard() {
                 pending.map((p) => {
                   const tx = p.transaction
                   const asset = tx.market_offer?.asset
-                  const sellerIdTx = tx.market_offer?.seller_id
                   const agreed = tx.counter_offer ?? tx.offer_price
                   return (
                     <div key={tx.id} className="rounded-lg border border-border p-3 text-sm">
@@ -670,28 +664,7 @@ export default function GameDashboard() {
                         {tx.counter_offer != null ? ` · counter ${money(tx.counter_offer)}` : ''} · settled at {money(agreed)} · Buyer
                         cash after {money(p.buyer_cash_after)}
                       </div>
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        Подтверждения: продавец {tx.seller_confirmed ? 'да' : 'нет'}, покупатель {tx.buyer_confirmed ? 'да' : 'нет'}
-                      </div>
                       <div className="mt-2 flex flex-wrap gap-2">
-                        {sellerIdTx ? (
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            disabled={playerConfirmTxM.isPending || tx.seller_confirmed}
-                            onClick={() => playerConfirmTxM.mutate({ txId: tx.id, playerId: sellerIdTx })}
-                          >
-                            Продавец: подтвердить
-                          </Button>
-                        ) : null}
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          disabled={playerConfirmTxM.isPending || tx.buyer_confirmed}
-                          onClick={() => playerConfirmTxM.mutate({ txId: tx.id, playerId: tx.buyer_id })}
-                        >
-                          Покупатель: подтвердить
-                        </Button>
                         <Button size="sm" onClick={() => approveM.mutate(tx.id)}>
                           Approve (аудитор)
                         </Button>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { listAuctionOffers, bidOnAuction, confirmAuctionTransaction } from '@/api/play'
+import { listAuctionOffers, bidOnAuction } from '@/api/play'
 import type { MarketOfferAuction } from '@/api/auditorPanel'
 import { useAuthStore } from '@/store/authStore'
 import { usePlayStore } from '@/store/usePlayStore'
@@ -36,14 +36,6 @@ function AuctionCard({ offer }: { offer: MarketOfferAuction }) {
   const bidMut = useMutation({
     mutationFn: (price: number) => bidOnAuction(token!, gameId!, offer.id, price),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['auction_offers', gameId] }),
-  })
-
-  const confirmMut = useMutation({
-    mutationFn: (txId: string) => confirmAuctionTransaction(token!, gameId!, txId),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['auction_offers', gameId] })
-      qc.invalidateQueries({ queryKey: ['play_lobby', gameId] })
-    },
   })
 
   const secondsLeft = Math.ceil(msLeft / 1000)
@@ -91,25 +83,14 @@ function AuctionCard({ offer }: { offer: MarketOfferAuction }) {
         <p className="text-xs text-muted-foreground">Waiting for the timer to run out…</p>
       )}
 
-      {expired && topBid && (isSeller || topBid.buyer_id === myPlayerId) && (
-        <Button
-          size="sm"
-          className="w-full"
-          onClick={() => confirmMut.mutate(topBid.id)}
-          disabled={confirmMut.isPending || (isSeller ? !!topBid.seller_confirmed : !!topBid.buyer_confirmed)}
-        >
-          {(isSeller ? topBid.seller_confirmed : topBid.buyer_confirmed)
-            ? 'Waiting on the other side…'
-            : `Confirm sale for $${topBid.offer_price.toLocaleString()}`}
-        </Button>
-      )}
-      {expired && !topBid && <p className="text-xs text-muted-foreground">No bids — listing closed.</p>}
+      {/* The highest bid wins automatically the moment the timer ends — no
+          confirmation needed from anyone. This card simply disappears once
+          the backend has settled it (it leaves the open-offers list). */}
+      {expired && <p className="text-xs text-muted-foreground">Settling…</p>}
 
-      {(bidMut.isError || confirmMut.isError) && (
+      {bidMut.isError && (
         <p className="text-xs text-destructive">
-          {(bidMut.error ?? confirmMut.error) instanceof Error
-            ? (bidMut.error ?? confirmMut.error as Error).message
-            : 'Something went wrong.'}
+          {bidMut.error instanceof Error ? bidMut.error.message : 'Something went wrong.'}
         </p>
       )}
     </div>

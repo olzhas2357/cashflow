@@ -213,8 +213,6 @@ export type AuctionBid = {
   market_offer_id: string
   buyer_id: string
   offer_price: number
-  seller_confirmed?: boolean
-  buyer_confirmed?: boolean
 }
 
 export type MarketOfferAuction = {
@@ -239,8 +237,6 @@ export type PendingTransactionDTO = {
     counter_offer?: number | null
     status: string
     game_id?: string | null
-    seller_confirmed?: boolean
-    buyer_confirmed?: boolean
     message?: string
     market_offer?: {
       asset?: GameAsset
@@ -342,14 +338,6 @@ export async function marketAuctionBid(
     token,
     method: 'POST',
     body: JSON.stringify(payload),
-  })
-}
-
-export async function transactionPlayerConfirm(token: string, gameId: string, txId: string, playerId: string) {
-  return apiFetch<{ ok: boolean }>(`${A}/games/${gameId}/transactions/${txId}/player-confirm`, {
-    token,
-    method: 'POST',
-    body: JSON.stringify({ player_id: playerId }),
   })
 }
 

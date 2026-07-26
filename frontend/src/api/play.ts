@@ -107,10 +107,11 @@ export async function makeDecision(token: string, gameId: string, payload: Decis
 }
 
 // Player-facing auction endpoints — identity always comes from the caller's
-// own JWT (see PlayerAuctionOffers/PlayerAuctionBid/PlayerTransactionConfirm
-// in backend/handlers/market_auction.go). Starting an auction is not here —
+// own JWT (see PlayerAuctionOffers/PlayerAuctionBid in
+// backend/handlers/market_auction.go). Starting an auction is not here —
 // it's a turn/decision action (market_auction_start), since it's this
-// player's response to the currently open Market card.
+// player's response to the currently open Market card. There is no confirm
+// step: the highest bid at expiry settles automatically on the backend.
 
 export async function listAuctionOffers(token: string, gameId: string) {
   return apiFetch<MarketOfferAuction[]>(`/api/games/${gameId}/market/auction/offers`, { token })
@@ -121,13 +122,6 @@ export async function bidOnAuction(token: string, gameId: string, marketOfferId:
     token,
     method: 'POST',
     body: JSON.stringify({ market_offer_id: marketOfferId, bid_price: bidPrice }),
-  })
-}
-
-export async function confirmAuctionTransaction(token: string, gameId: string, txId: string) {
-  return apiFetch<{ ok: boolean }>(`/api/games/${gameId}/transactions/${txId}/player-confirm`, {
-    token,
-    method: 'POST',
   })
 }
 
