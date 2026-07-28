@@ -14,6 +14,7 @@ type Handlers struct {
 	Realtime *RealtimeHandler
 	Lobby    *LobbyHandler
 	Turn     *TurnHandler
+	Chat     *ChatHandler
 }
 
 func NewHandlers(db *gorm.DB, jwtCfg services.JWTConfig, hub *services.RealtimeHub) *Handlers {
@@ -28,6 +29,7 @@ func NewHandlers(db *gorm.DB, jwtCfg services.JWTConfig, hub *services.RealtimeH
 		Realtime: &RealtimeHandler{db: db, jwtCfg: jwtCfg, hub: hub},
 		Lobby:    &LobbyHandler{db: db, hub: hub},
 		Turn:     &TurnHandler{db: db, hub: hub, auditor: auditorHandler},
+		Chat:     &ChatHandler{db: db, hub: hub},
 	}
 }
 

@@ -14,6 +14,9 @@ export type GameSession = {
   active_stock_news_deal_id?: string | null
   active_stock_news_deal?: SmallDeal | null
   market_responded_player_ids?: string[]
+  deal_offered_by_player_id?: string | null
+  deal_offer_commission?: number
+  deal_offer_claimed_by?: string | null
   join_code: string
   status: 'lobby' | 'in_progress' | 'completed'
   current_turn_player_id?: string | null
@@ -25,6 +28,7 @@ export type GameSession = {
     | 'AWAITING_MARKET_DECISIONS'
     | 'AWAITING_STOCK_NEWS_DECISIONS'
     | 'AWAITING_CHARITY_DECISION'
+    | 'AWAITING_DEAL_OFFER_CLAIM'
     | 'TURN_COMPLETE'
   turn_number: number
   last_dice_roll?: number | null

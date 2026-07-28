@@ -105,7 +105,13 @@ export function usePlayGameSocket(token: string | null, gameId: string | null, h
           return
         }
         if (!data?.type) return
-        push({ type: data.type, message: describeEvent(data.type, data.payload ?? {}) })
+        // CHAT_MESSAGE is excluded from the toast feed — unlike every other
+        // event here (rare game-state transitions), chat messages/emoji fire
+        // often enough that toasting each one would be spam; the ChatPanel
+        // itself renders them via the handler below.
+        if (data.type !== 'CHAT_MESSAGE') {
+          push({ type: data.type, message: describeEvent(data.type, data.payload ?? {}) })
+        }
         handlersRef.current[data.type]?.(data.payload ?? {})
       }
 

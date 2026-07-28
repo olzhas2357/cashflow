@@ -502,11 +502,12 @@ func (h *TurnHandler) advanceToNextActivePlayer(
 }
 
 type DecisionRequest struct {
-	Action      string     `json:"action" binding:"required"` // "buy"|"pass"|"small"|"big"|"market_sell"|"market_skip"|"market_auction_start"|"stock_news_sell"|"stock_news_skip"|"charity_donate"|"charity_skip"
+	Action      string     `json:"action" binding:"required"` // "buy"|"pass"|"small"|"big"|"market_sell"|"market_skip"|"market_auction_start"|"stock_news_sell"|"stock_news_skip"|"charity_donate"|"charity_skip"|"offer_deal_all"|"accept_offer"|"cancel_offer"
 	Shares      int64      `json:"shares"`
 	AllowLoan   bool       `json:"allow_loan"`
 	AssetID     *uuid.UUID `json:"asset_id"`
 	AskingPrice *int64     `json:"asking_price"`
+	Commission  *int64     `json:"commission"` // offer_deal_all: commission the offering player charges on top of the bank price
 }
 
 // Decision resolves whatever the current player (or, for market cards, any
@@ -548,6 +549,8 @@ func (h *TurnHandler) Decision(c *gin.Context) {
 		h.decideStockNews(c, gameID, callerID, game, req)
 	case "AWAITING_CHARITY_DECISION":
 		h.decideCharity(c, gameID, callerID, game, req)
+	case "AWAITING_DEAL_OFFER_CLAIM":
+		h.decideOfferClaim(c, gameID, callerID, game, req)
 	default:
 		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "not_awaiting_decision"})
 	}
@@ -557,7 +560,7 @@ func (h *TurnHandler) Decision(c *gin.Context) {
 // dealID is always resolved server-side from the active-deal column, never
 // trusted from the client.
 func (h *TurnHandler) decideBuyOrPass(c *gin.Context, gameID uuid.UUID, callerID uuid.UUID, game models.GameSession, req DecisionRequest) {
-	if req.Action != "buy" && req.Action != "pass" {
+	if req.Action != "buy" && req.Action != "pass" && req.Action != "offer_deal_all" {
 		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "invalid_request"})
 		return
 	}
@@ -567,6 +570,11 @@ func (h *TurnHandler) decideBuyOrPass(c *gin.Context, gameID uuid.UUID, callerID
 	}
 	if game.ActiveSmallDealID == nil && game.ActiveBigDealID == nil {
 		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "no_active_deal"})
+		return
+	}
+
+	if req.Action == "offer_deal_all" {
+		h.decideOfferDealAll(c, gameID, callerID, game, req)
 		return
 	}
 
@@ -614,6 +622,247 @@ func (h *TurnHandler) decideBuyOrPass(c *gin.Context, gameID uuid.UUID, callerID
 	}
 
 	h.finishResolution(c, gameID, callerID)
+}
+
+// errOfferAlreadyClaimed signals a lost race in decideAcceptOffer — surfaced
+// to the client as HTTP 409, not a generic 400, so the frontend can show a
+// friendly "someone else already claimed it" message.
+var errOfferAlreadyClaimed = errors.New("offer_already_claimed")
+
+// decideOfferDealAll lets the current-turn player (A) broadcast the active
+// Small/Big Deal to every other active player with a commission on top of
+// the bank price — whoever accepts first (decideAcceptOffer) buys it and
+// pays A the commission. Stock small deals are excluded: applySmallDealPurchase
+// enforces that only whoever opened the card may buy it (only_opener_can_buy_stock),
+// which a non-opener buyer can never satisfy. big_deal_real_estate_news cards
+// are excluded too, same as they're already excluded from "pass" — they're a
+// mandatory expense, not a tradeable offer.
+func (h *TurnHandler) decideOfferDealAll(c *gin.Context, gameID uuid.UUID, callerID uuid.UUID, game models.GameSession, req DecisionRequest) {
+	if req.Commission == nil || *req.Commission < 0 {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "invalid_commission"})
+		return
+	}
+
+	var basePrice int64
+	var dealPayload interface{}
+	switch {
+	case game.ActiveSmallDealID != nil:
+		var deal models.SmallDeal
+		if err := h.db.First(&deal, "id = ?", *game.ActiveSmallDealID).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "deal_load_failed"})
+			return
+		}
+		if resolveSmallDealType(deal) == "stock" {
+			c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "deal_not_offerable"})
+			return
+		}
+		basePrice = deal.DownPayment
+		dealPayload = deal
+	case game.ActiveBigDealID != nil:
+		var deal models.BigDeal
+		if err := h.db.First(&deal, "id = ?", *game.ActiveBigDealID).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "deal_load_failed"})
+			return
+		}
+		if deal.DealType == "big_deal_real_estate_news" {
+			c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "deal_not_offerable"})
+			return
+		}
+		basePrice = deal.DownPayment
+		dealPayload = deal
+	}
+
+	game.DealOfferedByPlayerID = &callerID
+	game.DealOfferCommission = *req.Commission
+	game.DealOfferClaimedBy = nil
+	game.TurnStatus = "AWAITING_DEAL_OFFER_CLAIM"
+	if err := h.db.Save(&game).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "offer_save_failed"})
+		return
+	}
+
+	if h.hub != nil {
+		h.hub.Broadcast(gameID.String(), "DEAL_OFFERED_ALL", gin.H{
+			"from_player_id": callerID.String(),
+			"deal":           dealPayload,
+			"base_price":     basePrice,
+			"commission":     *req.Commission,
+			"total_price":    basePrice + *req.Commission,
+		})
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true, "awaiting_offer_claim": true})
+}
+
+// decideOfferClaim dispatches the AWAITING_DEAL_OFFER_CLAIM status to either
+// accept or cancel the outstanding broadcast offer — mirrors how decideMarket/
+// decideStockNews each branch internally on req.Action for their one status.
+func (h *TurnHandler) decideOfferClaim(c *gin.Context, gameID uuid.UUID, callerID uuid.UUID, game models.GameSession, req DecisionRequest) {
+	switch req.Action {
+	case "accept_offer":
+		h.decideAcceptOffer(c, gameID, callerID, game, req)
+	case "cancel_offer":
+		h.decideCancelOffer(c, gameID, callerID, game, req)
+	default:
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "invalid_request"})
+	}
+}
+
+// decideAcceptOffer is the race-safe "first to accept wins" claim. The claim
+// itself (row-locking game_sessions, re-checking it's still unclaimed) and the
+// commission transfer happen in one transaction, following the same
+// clause.Locking{Strength:"UPDATE"} style already used for the other
+// first-to-respond races in this codebase (decideMarket above,
+// resolveIfExpiredTx in market_auction.go). The actual asset purchase runs
+// afterward via applySmallDealPurchase/applyBigDealPurchase, which own their
+// own internal transaction and don't accept an external tx — safe here only
+// because the claim gate above already serializes callers, so at most one
+// caller ever reaches that call for a given offer. If the purchase then fails
+// (e.g. insufficient cash for the base price with no loan), the commission is
+// reversed and the offer reopened so another player can still claim it.
+func (h *TurnHandler) decideAcceptOffer(c *gin.Context, gameID uuid.UUID, callerID uuid.UUID, game models.GameSession, req DecisionRequest) {
+	if game.DealOfferedByPlayerID == nil {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "no_pending_offer"})
+		return
+	}
+	if *game.DealOfferedByPlayerID == callerID {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "cannot_accept_own_offer"})
+		return
+	}
+
+	var caller models.Player
+	if err := h.db.First(&caller, "id = ? AND game_id = ?", callerID, gameID).Error; err != nil {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "player_not_found"})
+		return
+	}
+	if caller.Placement != 0 {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "player_already_finished"})
+		return
+	}
+
+	var (
+		opener      uuid.UUID
+		commission  int64
+		smallDealID *uuid.UUID
+		bigDealID   *uuid.UUID
+	)
+	err := h.db.Transaction(func(tx *gorm.DB) error {
+		var g models.GameSession
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&g, "id = ?", gameID).Error; err != nil {
+			return err
+		}
+		if g.TurnStatus != "AWAITING_DEAL_OFFER_CLAIM" || g.DealOfferClaimedBy != nil || g.DealOfferedByPlayerID == nil {
+			return errOfferAlreadyClaimed
+		}
+		opener = *g.DealOfferedByPlayerID
+		commission = g.DealOfferCommission
+		smallDealID = g.ActiveSmallDealID
+		bigDealID = g.ActiveBigDealID
+
+		var buyer models.Player
+		if err := tx.First(&buyer, "id = ? AND game_id = ?", callerID, gameID).Error; err != nil {
+			return err
+		}
+		if buyer.Cash < commission {
+			return errors.New("insufficient_cash_for_commission")
+		}
+
+		g.DealOfferClaimedBy = &callerID
+		if err := tx.Save(&g).Error; err != nil {
+			return err
+		}
+		return h.auditor.applyDealOfferCommission(tx, gameID, callerID, opener, commission)
+	})
+	if err != nil {
+		if errors.Is(err, errOfferAlreadyClaimed) {
+			c.JSON(http.StatusConflict, typ.ErrorResponse{Error: "offer_already_claimed"})
+			return
+		}
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	var purchaseErr error
+	switch {
+	case smallDealID != nil:
+		purchaseErr = h.auditor.applySmallDealPurchase(gameID, EventRequest{
+			PlayerID:  callerID,
+			DealID:    smallDealID,
+			Shares:    req.Shares,
+			AllowLoan: req.AllowLoan,
+		})
+	case bigDealID != nil:
+		purchaseErr = h.auditor.applyBigDealPurchase(gameID, callerID, *bigDealID)
+	}
+	if purchaseErr != nil {
+		if commission > 0 {
+			if revErr := h.auditor.reverseDealOfferCommission(gameID, callerID, opener, commission); revErr != nil {
+				c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "commission_reversal_failed"})
+				return
+			}
+		}
+		h.db.Model(&models.GameSession{}).Where("id = ?", gameID).Update("deal_offer_claimed_by", nil)
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: purchaseErr.Error()})
+		return
+	}
+
+	if err := h.db.Model(&models.GameSession{}).Where("id = ?", gameID).Updates(map[string]interface{}{
+		"active_small_deal_id":        nil,
+		"active_small_deal_opened_by": nil,
+		"active_big_deal_id":          nil,
+		"deal_offered_by_player_id":   nil,
+		"deal_offer_commission":       0,
+		"deal_offer_claimed_by":       nil,
+	}).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "offer_clear_failed"})
+		return
+	}
+
+	if h.hub != nil {
+		h.hub.Broadcast(gameID.String(), "OFFER_CLAIMED", gin.H{
+			"buyer_id":   callerID.String(),
+			"seller_id":  opener.String(),
+			"commission": commission,
+		})
+	}
+
+	h.finishResolution(c, gameID, opener)
+}
+
+// decideCancelOffer lets the offering player (A) withdraw the broadcast offer
+// while nobody has claimed it yet, returning to the plain buy/pass flow.
+func (h *TurnHandler) decideCancelOffer(c *gin.Context, gameID uuid.UUID, callerID uuid.UUID, game models.GameSession, req DecisionRequest) {
+	if game.DealOfferedByPlayerID == nil || *game.DealOfferedByPlayerID != callerID {
+		c.JSON(http.StatusForbidden, typ.ErrorResponse{Error: "not_offer_owner"})
+		return
+	}
+
+	err := h.db.Transaction(func(tx *gorm.DB) error {
+		var g models.GameSession
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&g, "id = ?", gameID).Error; err != nil {
+			return err
+		}
+		if g.DealOfferClaimedBy != nil {
+			return errOfferAlreadyClaimed
+		}
+		g.DealOfferedByPlayerID = nil
+		g.DealOfferCommission = 0
+		g.DealOfferClaimedBy = nil
+		g.TurnStatus = "AWAITING_DECISION"
+		return tx.Save(&g).Error
+	})
+	if err != nil {
+		if errors.Is(err, errOfferAlreadyClaimed) {
+			c.JSON(http.StatusConflict, typ.ErrorResponse{Error: "offer_already_claimed"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "offer_cancel_failed"})
+		return
+	}
+
+	if h.hub != nil {
+		h.hub.Broadcast(gameID.String(), "OFFER_CANCELLED", gin.H{"player_id": callerID.String()})
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
 // decideDealChoice resolves the Deal-cell choice (draw from the Small or Big

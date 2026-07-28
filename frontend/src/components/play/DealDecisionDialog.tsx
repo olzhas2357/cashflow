@@ -39,12 +39,21 @@ export function DealDecisionDialog({ game }: { game: GameSession }) {
   // into a bank loan, not take one out silently on their behalf.
   const [allowLoan, setAllowLoan] = useState(false)
 
+  // "Offer to all" lets this player hand the deal off to whoever accepts
+  // first, for a commission on top of the bank price — not available for
+  // mandatory expense cards or stock (stock purchases are restricted to
+  // whoever opened the card, so a non-opener buyer could never claim it).
+  const canOfferToAll = !isBigDealNews && !isStock
+  const [showOfferInput, setShowOfferInput] = useState(false)
+  const [commission, setCommission] = useState(0)
+
   const decisionMut = useMutation({
-    mutationFn: (action: 'buy' | 'pass') =>
+    mutationFn: (payload: { action: 'buy' | 'pass' | 'offer_deal_all'; commission?: number }) =>
       makeDecision(token!, gameId!, {
-        action,
+        action: payload.action,
         shares: isStock ? shares : undefined,
         allow_loan: allowLoan,
+        commission: payload.commission,
       }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['play_lobby', gameId] }),
   })
@@ -170,6 +179,30 @@ export function DealDecisionDialog({ game }: { game: GameSession }) {
           Take a bank loan if I don't have enough cash
         </label>
 
+        {canOfferToAll && showOfferInput && (
+          <div className="space-y-2 rounded-md border border-border bg-muted/20 p-3">
+            <Label htmlFor="commission">Your commission on top of price</Label>
+            <Input
+              id="commission"
+              type="number"
+              min={0}
+              value={commission}
+              onChange={(e) => setCommission(Math.max(0, Number(e.target.value)))}
+            />
+            <p className="text-xs text-muted-foreground">
+              Whoever accepts first pays ${deal.down_payment.toLocaleString()} to the bank +{' '}
+              ${commission.toLocaleString()} to you = ${(deal.down_payment + commission).toLocaleString()} total.
+            </p>
+            <Button
+              className="w-full"
+              disabled={decisionMut.isPending}
+              onClick={() => decisionMut.mutate({ action: 'offer_deal_all', commission })}
+            >
+              Send to all players
+            </Button>
+          </div>
+        )}
+
         {decisionMut.isError && (
           <p className="text-sm text-destructive">
             {decisionMut.error instanceof Error ? decisionMut.error.message : 'Could not process decision.'}
@@ -178,11 +211,20 @@ export function DealDecisionDialog({ game }: { game: GameSession }) {
 
         <DialogFooter className="gap-2">
           {!isBigDealNews && (
-            <Button variant="outline" onClick={() => decisionMut.mutate('pass')} disabled={decisionMut.isPending}>
+            <Button
+              variant="outline"
+              onClick={() => decisionMut.mutate({ action: 'pass' })}
+              disabled={decisionMut.isPending}
+            >
               Pass
             </Button>
           )}
-          <Button onClick={() => decisionMut.mutate('buy')} disabled={decisionMut.isPending}>
+          {canOfferToAll && !showOfferInput && (
+            <Button variant="outline" onClick={() => setShowOfferInput(true)} disabled={decisionMut.isPending}>
+              Offer to all
+            </Button>
+          )}
+          <Button onClick={() => decisionMut.mutate({ action: 'buy' })} disabled={decisionMut.isPending}>
             {decisionMut.isPending
               ? 'Processing…'
               : isBigDealNews

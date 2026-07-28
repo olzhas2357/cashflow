@@ -182,7 +182,9 @@ type GameSession struct {
 
 	CurrentTurnPlayerID *uuid.UUID `gorm:"type:uuid;index" json:"current_turn_player_id,omitempty"`
 	CurrentTurnPlayer   *Player    `gorm:"foreignKey:CurrentTurnPlayerID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL" json:"current_turn_player,omitempty"`
-	// TurnStatus: WAITING_ROLL | RESOLVING_CELL | AWAITING_DECISION | TURN_COMPLETE.
+	// TurnStatus: WAITING_ROLL | RESOLVING_CELL | AWAITING_DECISION | AWAITING_DEAL_CHOICE |
+	// AWAITING_MARKET_DECISIONS | AWAITING_STOCK_NEWS_DECISIONS | AWAITING_CHARITY_DECISION |
+	// AWAITING_DEAL_OFFER_CLAIM | TURN_COMPLETE.
 	TurnStatus   string `gorm:"type:varchar(30);not null;default:'WAITING_ROLL'" json:"turn_status"`
 	TurnNumber   int    `gorm:"not null;default:0" json:"turn_number"`
 	LastDiceRoll *int   `json:"last_dice_roll,omitempty"`
@@ -192,6 +194,14 @@ type GameSession struct {
 
 	ActiveBigDealID *uuid.UUID `gorm:"type:uuid;index" json:"active_big_deal_id,omitempty"`
 	ActiveBigDeal   *BigDeal   `gorm:"foreignKey:ActiveBigDealID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL" json:"active_big_deal,omitempty"`
+
+	// DealOfferedByPlayerID/DealOfferCommission/DealOfferClaimedBy: the active
+	// Small/Big Deal's owner can broadcast it to all other active players with
+	// a commission on top of the bank price; whoever accepts first (claims it)
+	// buys the asset and pays the commission to the offering player.
+	DealOfferedByPlayerID *uuid.UUID `gorm:"type:uuid;index" json:"deal_offered_by_player_id,omitempty"`
+	DealOfferCommission   int64      `gorm:"not null;default:0" json:"deal_offer_commission"`
+	DealOfferClaimedBy    *uuid.UUID `gorm:"type:uuid;index" json:"deal_offer_claimed_by,omitempty"`
 
 	// DrawnSmallDealIDs/DrawnBigDealIDs/DrawnMarketEventIDs: JSON arrays of
 	// card IDs already drawn this pass through the deck, so the same card

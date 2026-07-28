@@ -155,6 +155,7 @@ func NewServer(cfg ServerConfig) *gin.Engine {
 	auth.GET("/games/:id/my-logs", h.Auditor.PlayerMyLogs)
 	auth.POST("/games/:id/turn/roll", h.Turn.Roll)
 	auth.POST("/games/:id/turn/decision", h.Turn.Decision)
+	auth.POST("/games/:id/chat", h.Chat.SendMessage)
 
 	auth.GET("/games/:id/market/auction/offers", h.Auditor.PlayerAuctionOffers)
 	auth.POST("/games/:id/market/auction/bid", h.Auditor.PlayerAuctionBid)

@@ -2401,6 +2401,48 @@ func (h *AuditorPanelHandler) applySmallDealPurchase(gameID uuid.UUID, req Event
 	})
 }
 
+// applyDealOfferCommission debits the commission from the buyer and credits
+// it to the offering player (seller), inside the caller's transaction, with a
+// FinancialLog row on each side — same audit convention as every other cash
+// movement in this file (snapshot before, mutate Cash, recalculate, log).
+func (h *AuditorPanelHandler) applyDealOfferCommission(tx *gorm.DB, gameID, buyerID, sellerID uuid.UUID, commission int64) error {
+	if commission <= 0 {
+		return nil
+	}
+	var buyer, seller models.Player
+	if err := tx.Preload("Profession").First(&buyer, "id = ? AND game_id = ?", buyerID, gameID).Error; err != nil {
+		return err
+	}
+	if err := tx.Preload("Profession").First(&seller, "id = ? AND game_id = ?", sellerID, gameID).Error; err != nil {
+		return err
+	}
+	buyerBefore, sellerBefore := snapshotFinance(buyer), snapshotFinance(seller)
+	buyer.Cash -= commission
+	seller.Cash += commission
+	recalculatePlayerFinancials(&buyer, buyer.Profession)
+	recalculatePlayerFinancials(&seller, seller.Profession)
+	if err := tx.Save(&buyer).Error; err != nil {
+		return err
+	}
+	if err := tx.Save(&seller).Error; err != nil {
+		return err
+	}
+	if err := h.createFinancialLog(tx, gameID, buyer.ID, "deal_offer_commission_paid", buyerBefore, buyer, "Deal offer commission paid"); err != nil {
+		return err
+	}
+	return h.createFinancialLog(tx, gameID, seller.ID, "deal_offer_commission_received", sellerBefore, seller, "Deal offer commission received")
+}
+
+// reverseDealOfferCommission undoes applyDealOfferCommission when the
+// downstream asset purchase fails after the commission already committed —
+// runs in its own transaction since the original claim transaction in
+// decideAcceptOffer has already closed by the time this is called.
+func (h *AuditorPanelHandler) reverseDealOfferCommission(gameID, buyerID, sellerID uuid.UUID, commission int64) error {
+	return h.db.Transaction(func(tx *gorm.DB) error {
+		return h.applyDealOfferCommission(tx, gameID, sellerID, buyerID, commission) // swapped direction = reversal
+	})
+}
+
 func (h *AuditorPanelHandler) BigDealPurchase(c *gin.Context) {
 	gameID, ok := parseGameID(c)
 	if !ok {

@@ -2,18 +2,20 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/store/authStore'
 import { usePlayStore } from '@/store/usePlayStore'
-import { getLobby, rollDice } from '@/api/play'
+import { getLobby, rollDice, type ChatMessage } from '@/api/play'
 import { usePlayGameSocket } from '@/hooks/usePlayGameSocket'
 import { BOARD_SIZE, cellLabelAt, cellColorAt } from '@/lib/board'
 import { boardCellGridPosition, BOARD_GRID_ROWS, BOARD_GRID_COLS } from '@/lib/boardLayout'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { DealDecisionDialog } from '@/components/play/DealDecisionDialog'
+import { DealOfferDialog } from '@/components/play/DealOfferDialog'
 import { DealChoiceDialog } from '@/components/play/DealChoiceDialog'
 import { MarketDecisionDialog } from '@/components/play/MarketDecisionDialog'
 import { StockNewsDecisionDialog } from '@/components/play/StockNewsDecisionDialog'
 import { CharityDecisionDialog } from '@/components/play/CharityDecisionDialog'
 import { AuctionPanel } from '@/components/play/AuctionPanel'
+import { ChatPanel } from '@/components/play/ChatPanel'
 import { StockPortfolioPanel } from '@/components/play/StockPortfolioPanel'
 import { LoanPanel } from '@/components/play/LoanPanel'
 import { FinancialStatement } from '@/components/play/FinancialStatement'
@@ -29,6 +31,7 @@ export default function Board() {
   const qc = useQueryClient()
   const [lastRoll, setLastRoll] = useState<{ die1: number; die2: number | null; total: number } | null>(null)
   const [winnerModal, setWinnerModal] = useState<PlayerWonPayload | null>(null)
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
 
   const gameQ = useQuery({
     queryKey: ['play_lobby', gameId],
@@ -81,6 +84,24 @@ export default function Board() {
     },
     DECISION_MADE: () => qc.invalidateQueries({ queryKey: ['play_lobby', gameId] }),
     TURN_CHANGED: () => qc.invalidateQueries({ queryKey: ['play_lobby', gameId] }),
+    DEAL_OFFERED_ALL: () => qc.invalidateQueries({ queryKey: ['play_lobby', gameId] }),
+    OFFER_CLAIMED: () => qc.invalidateQueries({ queryKey: ['play_lobby', gameId] }),
+    OFFER_CANCELLED: () => qc.invalidateQueries({ queryKey: ['play_lobby', gameId] }),
+    CHAT_MESSAGE: (payload) => {
+      setChatMessages((msgs) =>
+        [
+          ...msgs,
+          {
+            id: `${payload.player_id}-${payload.ts}`,
+            playerId: payload.player_id as string,
+            name: payload.name as string,
+            text: payload.text as string | undefined,
+            emoji: payload.emoji as string | undefined,
+            ts: payload.ts as number,
+          },
+        ].slice(-100),
+      )
+    },
     PLAYER_WON: (payload) => {
       // Only the player who just won gets the personal stats modal — everyone
       // else just gets the generic toast (handled by usePlayGameSocket's push)
@@ -106,7 +127,7 @@ export default function Board() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 lg:grid lg:grid-cols-[1fr_320px] lg:items-start lg:gap-6 lg:space-y-0">
+    <div className="mx-auto max-w-7xl space-y-6 lg:grid lg:grid-cols-[1fr_320px] lg:items-start lg:gap-6 lg:space-y-0">
       <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -140,7 +161,8 @@ export default function Board() {
         {!isMyTurn &&
           game?.status === 'in_progress' &&
           game?.turn_status !== 'AWAITING_MARKET_DECISIONS' &&
-          game?.turn_status !== 'AWAITING_STOCK_NEWS_DECISIONS' && (
+          game?.turn_status !== 'AWAITING_STOCK_NEWS_DECISIONS' &&
+          game?.turn_status !== 'AWAITING_DEAL_OFFER_CLAIM' && (
             <p className="text-sm text-muted-foreground">Waiting for your turn…</p>
           )}
       </div>
@@ -169,15 +191,15 @@ export default function Board() {
               style={{ gridRow: row, gridColumn: col }}
               title={cellLabelAt(position)}
             >
-              <span className="text-[10px] font-semibold leading-tight">{cellLabelAt(position)}</span>
-              <span className="text-[9px] opacity-70">#{position}</span>
+              <span className="text-xs font-semibold leading-tight">{cellLabelAt(position)}</span>
+              <span className="text-[10px] opacity-70">#{position}</span>
               {occupants.length > 0 && (
                 <div className="flex flex-wrap justify-center gap-1">
                   {occupants.map((p) => (
                     <span
                       key={p.id}
                       className={cn(
-                        'h-4 w-4 rounded-full border-2 border-background shadow-sm',
+                        'h-5 w-5 rounded-full border-2 border-background shadow-sm',
                         colorForPlayer(p.id),
                       )}
                       title={p.name}
@@ -190,17 +212,17 @@ export default function Board() {
         })}
 
         <div
-          className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border/60 bg-muted/10 p-2 text-center"
+          className="flex min-h-0 flex-col gap-2 overflow-hidden rounded-lg border border-dashed border-border/60 bg-muted/10 p-2"
           style={{ gridRow: '2 / 6', gridColumn: '2 / 8' }}
         >
-          <div>
+          <div className="shrink-0 text-center">
             <div className="text-sm font-semibold text-muted-foreground">Rat Race</div>
             <div className="text-lg font-bold tracking-tight">{game?.name ?? 'Board'}</div>
             <div className="text-xs text-muted-foreground">
               Turn {game?.turn_number ?? 0} &middot; {game?.turn_status ?? '—'}
             </div>
           </div>
-          <div className="flex flex-wrap justify-center gap-2">
+          <div className="flex shrink-0 flex-wrap justify-center gap-2">
             {players.map((p) => (
               <div
                 key={p.id}
@@ -214,6 +236,16 @@ export default function Board() {
               </div>
             ))}
           </div>
+          {token && gameId && (
+            <ChatPanel
+              gameId={gameId}
+              token={token}
+              messages={chatMessages}
+              players={players}
+              embedded
+              className="min-h-0 flex-1"
+            />
+          )}
         </div>
       </div>
       </div>
@@ -235,6 +267,7 @@ export default function Board() {
       {game && game.turn_status === 'AWAITING_STOCK_NEWS_DECISIONS' && (
         <StockNewsDecisionDialog game={game} eligible={gameQ.data?.stock_news_eligible ?? []} />
       )}
+      {game && game.turn_status === 'AWAITING_DEAL_OFFER_CLAIM' && <DealOfferDialog game={game} />}
 
       {winnerModal && (
         <WinnerModal

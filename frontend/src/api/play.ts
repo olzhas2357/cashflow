@@ -85,10 +85,14 @@ export type DecisionRequest = {
     | 'stock_news_skip'
     | 'charity_donate'
     | 'charity_skip'
+    | 'offer_deal_all'
+    | 'accept_offer'
+    | 'cancel_offer'
   shares?: number
   allow_loan?: boolean
   asset_id?: string
   asking_price?: number
+  commission?: number
 }
 
 export type DecisionResponse = {
@@ -161,5 +165,24 @@ export async function repayBankLoan(token: string, gameId: string, loanAmount: n
     token,
     method: 'POST',
     body: JSON.stringify({ loan_amount: loanAmount }),
+  })
+}
+
+// Chat is ephemeral — no history endpoint, messages only exist in memory for
+// whoever's connected, delivered via the CHAT_MESSAGE WS event (see Board.tsx).
+export type ChatMessage = {
+  id: string
+  playerId: string
+  name: string
+  text?: string
+  emoji?: string
+  ts: number
+}
+
+export async function sendChatMessage(token: string, gameId: string, payload: { text?: string; emoji?: string }) {
+  return apiFetch<{ ok: boolean }>(`/api/games/${gameId}/chat`, {
+    token,
+    method: 'POST',
+    body: JSON.stringify(payload),
   })
 }
