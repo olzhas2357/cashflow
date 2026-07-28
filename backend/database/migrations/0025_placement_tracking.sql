@@ -1,0 +1,9 @@
+-- +goose Up
+ALTER TABLE players ADD COLUMN IF NOT EXISTS placement INT NOT NULL DEFAULT 0;
+ALTER TABLE players ADD COLUMN IF NOT EXISTS finished_turn INT NOT NULL DEFAULT 0;
+ALTER TABLE game_sessions ADD COLUMN IF NOT EXISTS winners_count INT NOT NULL DEFAULT 0;
+
+-- +goose Down
+ALTER TABLE players DROP COLUMN IF EXISTS placement;
+ALTER TABLE players DROP COLUMN IF EXISTS finished_turn;
+ALTER TABLE game_sessions DROP COLUMN IF EXISTS winners_count;

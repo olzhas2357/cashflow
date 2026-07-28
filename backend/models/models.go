@@ -46,6 +46,11 @@ type Player struct {
 	LoanExpense      int64 `gorm:"not null;default:0" json:"loan_expense"`
 	FinanciallyFree  bool  `gorm:"not null;default:false" json:"financially_free"`
 
+	// Placement: 0 while still playing; 1/2/3 once financially free (finish order).
+	Placement int `gorm:"not null;default:0" json:"placement"`
+	// FinishedTurn: game.TurnNumber at the moment Placement was assigned.
+	FinishedTurn int `gorm:"not null;default:0" json:"finished_turn"`
+
 	ChildrenCount int `gorm:"not null;default:0" json:"children_count"`
 	CharityTurns  int `gorm:"not null;default:0" json:"charity_turns"`
 	SkipTurns     int `gorm:"not null;default:0" json:"skip_turns"`
@@ -181,6 +186,9 @@ type GameSession struct {
 	TurnStatus   string `gorm:"type:varchar(30);not null;default:'WAITING_ROLL'" json:"turn_status"`
 	TurnNumber   int    `gorm:"not null;default:0" json:"turn_number"`
 	LastDiceRoll *int   `json:"last_dice_roll,omitempty"`
+	// WinnersCount: how many players have finished (Placement assigned) so far; game
+	// completes once this reaches 3 or no active (Placement == 0) players remain.
+	WinnersCount int `gorm:"not null;default:0" json:"winners_count"`
 
 	ActiveBigDealID *uuid.UUID `gorm:"type:uuid;index" json:"active_big_deal_id,omitempty"`
 	ActiveBigDeal   *BigDeal   `gorm:"foreignKey:ActiveBigDealID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL" json:"active_big_deal,omitempty"`

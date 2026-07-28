@@ -362,18 +362,51 @@ func (h *TurnHandler) finishResolution(c *gin.Context, gameID uuid.UUID, playerI
 		return
 	}
 
-	if player.FinanciallyFree {
-		game.Status = "completed"
-		game.TurnStatus = "TURN_COMPLETE"
-		if err := h.db.Save(&game).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "game_finish_failed"})
+	if player.FinanciallyFree && player.Placement == 0 {
+		game.WinnersCount++
+		player.Placement = game.WinnersCount
+		player.FinishedTurn = game.TurnNumber
+		if err := h.db.Save(&player).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "player_placement_failed"})
 			return
 		}
-		if h.hub != nil {
-			h.hub.Broadcast(gameID.String(), "PLAYER_WON", gin.H{"player_id": playerID.String()})
+
+		stats, err := h.buildWinnerStats(player)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "winner_stats_failed"})
+			return
 		}
-		c.JSON(http.StatusOK, gin.H{"ok": true, "won": true})
-		return
+
+		var activePlayers int64
+		h.db.Model(&models.Player{}).Where("game_id = ? AND placement = 0", gameID).Count(&activePlayers)
+		gameOver := game.WinnersCount >= 3 || activePlayers == 0
+		if gameOver {
+			game.Status = "completed"
+			game.TurnStatus = "TURN_COMPLETE"
+		}
+		if err := h.db.Save(&game).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "game_save_failed"})
+			return
+		}
+
+		if h.hub != nil {
+			h.hub.Broadcast(gameID.String(), "PLAYER_WON", gin.H{
+				"player_id":     playerID.String(),
+				"player_name":   player.Name,
+				"placement":     player.Placement,
+				"finished_turn": player.FinishedTurn,
+				"stats":         stats,
+				"game_over":     gameOver,
+			})
+		}
+
+		if gameOver {
+			c.JSON(http.StatusOK, gin.H{"ok": true, "won": true, "placement": player.Placement, "game_over": true})
+			return
+		}
+		// Fall through to the shared advance-turn logic below, which now skips
+		// this just-placed winner since players is reloaded from the DB after
+		// the Save(&player) above.
 	}
 
 	var players []models.Player
@@ -381,26 +414,91 @@ func (h *TurnHandler) finishResolution(c *gin.Context, gameID uuid.UUID, playerI
 		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "players_load_failed"})
 		return
 	}
-	nextIdx := 0
+	h.advanceToNextActivePlayer(c, &game, players, playerID)
+}
+
+// WinnerStats is the personal end-of-game stat line broadcast alongside
+// PLAYER_WON, used to render each finisher's individual results screen.
+type WinnerStats struct {
+	PassiveIncome   int64  `json:"passive_income"`
+	TotalExpenses   int64  `json:"total_expenses"`
+	Surplus         int64  `json:"surplus"`
+	AssetsCount     int    `json:"assets_count"`
+	PortfolioValue  int64  `json:"portfolio_value"`
+	FinishedTurn    int    `json:"finished_turn"`
+	BestAssetName   string `json:"best_asset_name"`
+	BestAssetIncome int64  `json:"best_asset_income"`
+	BestAssetCost   int64  `json:"best_asset_cost"`
+}
+
+func (h *TurnHandler) buildWinnerStats(player models.Player) (WinnerStats, error) {
+	var assets []models.Asset
+	if err := h.db.Where("owner_id = ?", player.ID).Find(&assets).Error; err != nil {
+		return WinnerStats{}, err
+	}
+
+	stats := WinnerStats{
+		PassiveIncome: player.PassiveIncome,
+		TotalExpenses: player.TotalExpenses,
+		AssetsCount:   len(assets),
+		FinishedTurn:  player.FinishedTurn,
+	}
+	stats.Surplus = stats.PassiveIncome - stats.TotalExpenses
+
+	for _, a := range assets {
+		stats.PortfolioValue += a.Price
+		if a.Income > stats.BestAssetIncome {
+			stats.BestAssetIncome = a.Income
+			stats.BestAssetName = a.Name
+			stats.BestAssetCost = a.Price
+		}
+	}
+
+	return stats, nil
+}
+
+// advanceToNextActivePlayer hands the turn to the next player who hasn't
+// finished yet (Placement == 0), skipping over anyone who has already exited
+// the rat race. Shared by both the just-won and still-playing paths above so
+// there is a single source of truth for "who goes next."
+func (h *TurnHandler) advanceToNextActivePlayer(
+	c *gin.Context,
+	game *models.GameSession,
+	players []models.Player,
+	currentPlayerID uuid.UUID,
+) {
+	curIdx := 0
 	for i, p := range players {
-		if p.ID == playerID {
-			nextIdx = (i + 1) % len(players)
+		if p.ID == currentPlayerID {
+			curIdx = i
 			break
 		}
 	}
-	next := players[nextIdx]
 
-	game.CurrentTurnPlayerID = &next.ID
-	game.TurnStatus = "WAITING_ROLL"
-	game.TurnNumber++
-	if err := h.db.Save(&game).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "turn_advance_failed"})
-		return
+	for offset := 1; offset <= len(players); offset++ {
+		next := players[(curIdx+offset)%len(players)]
+		if next.Placement == 0 {
+			game.CurrentTurnPlayerID = &next.ID
+			game.TurnStatus = "WAITING_ROLL"
+			game.TurnNumber++
+			if err := h.db.Save(game).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "turn_advance_failed"})
+				return
+			}
+			if h.hub != nil {
+				h.hub.Broadcast(game.ID.String(), "TURN_CHANGED", gin.H{"next_player_id": next.ID.String()})
+			}
+			c.JSON(http.StatusOK, gin.H{"ok": true, "next_player_id": next.ID.String()})
+			return
+		}
 	}
-	if h.hub != nil {
-		h.hub.Broadcast(gameID.String(), "TURN_CHANGED", gin.H{"next_player_id": next.ID.String()})
-	}
-	c.JSON(http.StatusOK, gin.H{"ok": true})
+
+	// Nobody left active — the gameOver check above should already have
+	// caught this, but end the game defensively rather than looping forever.
+	game.Status = "completed"
+	game.TurnStatus = "TURN_COMPLETE"
+	h.db.Save(game)
+	c.JSON(http.StatusOK, gin.H{"ok": true, "game_over": true})
 }
 
 type DecisionRequest struct {

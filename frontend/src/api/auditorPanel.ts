@@ -28,6 +28,7 @@ export type GameSession = {
     | 'TURN_COMPLETE'
   turn_number: number
   last_dice_roll?: number | null
+  winners_count?: number
   created_at?: string
   updated_at?: string
   created_by?: string
@@ -51,7 +52,33 @@ export type UserPlayer = {
   charity_turns: number
   skip_turns: number
   position: number
+  placement: number
+  finished_turn: number
   created_at?: string
+}
+
+// WinnerStats/PlayerWonPayload mirror backend/handlers/turn.go's WinnerStats
+// struct and the PLAYER_WON broadcast payload — one player's personal
+// end-of-game results, shown in WinnerModal.
+export type WinnerStats = {
+  passive_income: number
+  total_expenses: number
+  surplus: number
+  assets_count: number
+  portfolio_value: number
+  finished_turn: number
+  best_asset_name: string
+  best_asset_income: number
+  best_asset_cost: number
+}
+
+export type PlayerWonPayload = {
+  player_id: string
+  player_name: string
+  placement: number
+  finished_turn: number
+  stats: WinnerStats
+  game_over: boolean
 }
 
 export type Profession = {

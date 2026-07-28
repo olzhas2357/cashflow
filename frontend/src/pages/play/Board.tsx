@@ -18,8 +18,9 @@ import { StockPortfolioPanel } from '@/components/play/StockPortfolioPanel'
 import { LoanPanel } from '@/components/play/LoanPanel'
 import { FinancialStatement } from '@/components/play/FinancialStatement'
 import { MyActivityPanel } from '@/components/play/MyActivityPanel'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
-import { Dice5, Trophy } from 'lucide-react'
+import WinnerModal from '@/components/play/WinnerModal'
+import type { PlayerWonPayload } from '@/api/auditorPanel'
+import { Dice5 } from 'lucide-react'
 
 export default function Board() {
   const token = useAuthStore((s) => s.token)
@@ -27,6 +28,7 @@ export default function Board() {
   const gameId = usePlayStore((s) => s.gameId)
   const qc = useQueryClient()
   const [lastRoll, setLastRoll] = useState<{ die1: number; die2: number | null; total: number } | null>(null)
+  const [winnerModal, setWinnerModal] = useState<PlayerWonPayload | null>(null)
 
   const gameQ = useQuery({
     queryKey: ['play_lobby', gameId],
@@ -79,7 +81,16 @@ export default function Board() {
     },
     DECISION_MADE: () => qc.invalidateQueries({ queryKey: ['play_lobby', gameId] }),
     TURN_CHANGED: () => qc.invalidateQueries({ queryKey: ['play_lobby', gameId] }),
-    PLAYER_WON: () => qc.invalidateQueries({ queryKey: ['play_lobby', gameId] }),
+    PLAYER_WON: (payload) => {
+      // Only the player who just won gets the personal stats modal — everyone
+      // else just gets the generic toast (handled by usePlayGameSocket's push)
+      // plus the lobby refetch below. Also guards against an older backend
+      // still broadcasting the pre-stats shape ({ player_id } only).
+      if (payload.stats && typeof payload.placement === 'number' && payload.player_id === myPlayerId) {
+        setWinnerModal(payload as unknown as PlayerWonPayload)
+      }
+      qc.invalidateQueries({ queryKey: ['play_lobby', gameId] })
+    },
   })
 
   const game = gameQ.data?.game
@@ -87,7 +98,6 @@ export default function Board() {
   const isMyTurn = game?.current_turn_player_id === myPlayerId
   const canRoll = isMyTurn && game?.turn_status === 'WAITING_ROLL' && game?.status === 'in_progress'
   const me = players.find((p) => p.id === myPlayerId)
-  const winner = game?.status === 'completed' ? players.find((p) => p.id === game.current_turn_player_id) : undefined
 
   const tokenColors = ['bg-red-500', 'bg-blue-500', 'bg-yellow-400', 'bg-green-500', 'bg-pink-500', 'bg-cyan-400']
   const colorForPlayer = (playerId: string) => {
@@ -226,21 +236,18 @@ export default function Board() {
         <StockNewsDecisionDialog game={game} eligible={gameQ.data?.stock_news_eligible ?? []} />
       )}
 
-      <Dialog open={!!winner}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Trophy className="h-5 w-5 text-amber-400" />
-              {winner?.id === myPlayerId ? 'You won!' : `${winner?.name ?? 'A player'} won!`}
-            </DialogTitle>
-            <DialogDescription>
-              {winner?.id === myPlayerId
-                ? 'Your passive income now exceeds your total expenses — you are financially free.'
-                : `${winner?.name}'s passive income now exceeds their total expenses.`}
-            </DialogDescription>
-          </DialogHeader>
-        </DialogContent>
-      </Dialog>
+      {winnerModal && (
+        <WinnerModal
+          playerName={winnerModal.player_name}
+          placement={winnerModal.placement}
+          finishedTurn={winnerModal.finished_turn}
+          stats={winnerModal.stats}
+          isMe={winnerModal.player_id === myPlayerId}
+          gameOver={winnerModal.game_over}
+          onClose={() => setWinnerModal(null)}
+          onWatch={() => setWinnerModal(null)}
+        />
+      )}
     </div>
   )
 }
