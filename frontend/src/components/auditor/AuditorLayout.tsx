@@ -37,7 +37,7 @@ export function AuditorLayout() {
         <div className="flex h-14 items-center gap-2 border-b border-sidebar-border px-4">
           <ClipboardList className="h-6 w-6 text-primary" />
           <div>
-            <div className="text-sm font-semibold text-sidebar-foreground">Cashflow 101</div>
+            <div className="text-sm font-semibold text-sidebar-foreground">CashYOU</div>
             <div className="text-xs text-muted-foreground">Auditor console</div>
           </div>
         </div>
@@ -73,7 +73,7 @@ export function AuditorLayout() {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-40 flex h-14 items-center border-b border-border bg-background/95 px-4 backdrop-blur md:hidden">
-          <span className="text-sm font-semibold">Cashflow Auditor</span>
+          <span className="text-sm font-semibold">CashYOU Auditor</span>
         </header>
         <main className="flex-1 p-4 md:p-8">
           <Outlet />

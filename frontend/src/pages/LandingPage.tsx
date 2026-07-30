@@ -150,7 +150,7 @@ export default function LandingPage() {
             <div className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-primary/15 ring-1 ring-primary/25">
               <Coins className="h-4 w-4 text-primary" />
             </div>
-            <span className="text-sm font-medium tracking-tight">Cashflow 101</span>
+            <span className="text-sm font-medium tracking-tight">CashYOU</span>
           </div>
 
           <div className="flex items-center gap-4">

@@ -12,7 +12,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/85 backdrop-blur">
         <div className="app-container flex h-16 items-center justify-between">
           <Link to="/" className="font-semibold tracking-tight text-slate-900">
-            Cashflow
+            CashYOU
           </Link>
           <nav className="flex items-center gap-4 text-sm text-slate-700">
             <Link to="/start-game">Start Game</Link>
