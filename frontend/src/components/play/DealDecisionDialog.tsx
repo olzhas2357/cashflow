@@ -84,6 +84,10 @@ export function DealDecisionDialog({ game }: { game: GameSession }) {
 
   if (!deal) return null
 
+  const priceRange = isStock
+    ? (game.active_small_deal?.extra?.price_range as { min?: number; max?: number } | undefined)
+    : undefined
+
   return (
     <Dialog open>
       <DialogContent onInteractOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
@@ -121,6 +125,20 @@ export function DealDecisionDialog({ game }: { game: GameSession }) {
               <span className="text-muted-foreground">Cashflow / mo</span>
               <span>${deal.cashflow.toLocaleString()}</span>
             </div>
+            {!isStock && deal.roi > 0 && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">ROI</span>
+                <span className="text-emerald-400/90">{deal.roi.toFixed(1)}%/yr</span>
+              </div>
+            )}
+            {isStock && (priceRange?.min != null || priceRange?.max != null) && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Typical range</span>
+                <span>
+                  ${priceRange?.min?.toLocaleString() ?? '?'} – ${priceRange?.max?.toLocaleString() ?? '?'}
+                </span>
+              </div>
+            )}
           </div>
         )}
 

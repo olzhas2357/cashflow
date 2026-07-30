@@ -54,6 +54,14 @@ function AssetCard({
           <span className="text-muted-foreground">Cash flow</span>
           <span className="font-mono text-emerald-400/90">{money(asset.income)}/mo</span>
         </div>
+        {asset.down_payment > 0 && (
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">ROI</span>
+            <span className="font-mono text-emerald-400/90">
+              {((asset.income * 12 * 100) / asset.down_payment).toFixed(1)}%/yr
+            </span>
+          </div>
+        )}
         {description && <p className="pt-2 text-xs text-muted-foreground">{description}</p>}
       </CardContent>
     </Card>

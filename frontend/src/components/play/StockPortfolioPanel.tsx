@@ -21,6 +21,7 @@ function StockRow({
 }) {
   const owned = asset.shares ?? 0
   const [shares, setShares] = useState(owned)
+  const priceRange = asset.extra?.price_range as { min?: number; max?: number } | undefined
 
   return (
     <div className="space-y-1 rounded-lg border border-border px-3 py-2 text-sm">
@@ -28,6 +29,11 @@ function StockRow({
         <span className="font-medium">{asset.symbol}</span>
         <span className="text-muted-foreground">{owned.toLocaleString()} shares</span>
       </div>
+      {(priceRange?.min != null || priceRange?.max != null) && (
+        <p className="text-xs text-muted-foreground">
+          Typical range: ${priceRange?.min?.toLocaleString() ?? '?'} – ${priceRange?.max?.toLocaleString() ?? '?'}
+        </p>
+      )}
       {sellPrice != null ? (
         <div className="flex items-center gap-2 pt-1">
           <Input
