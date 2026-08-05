@@ -1,6 +1,7 @@
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
 import { usePlayStore } from '@/store/usePlayStore'
+import { useHostAuthStore } from '@/store/hostAuthStore'
 import type { AuthUser } from '@/api/auth'
 import { AuditorLayout } from '@/components/auditor/AuditorLayout'
 import { PlayLayout } from '@/components/play/PlayLayout'
@@ -28,6 +29,12 @@ import Lobby from '@/pages/play/Lobby'
 import Board from '@/pages/play/Board'
 import MyAssets from '@/pages/play/MyAssets'
 
+import RoomRegister from '@/pages/room/Register'
+import RoomLogin from '@/pages/room/Login'
+import RoomDashboard from '@/pages/room/Dashboard'
+import RoomJoin from '@/pages/room/Join'
+import Room from '@/pages/room/Room'
+
 function RequireAuditor() {
   const token = useAuthStore((s) => s.token)
   const user = useAuthStore((s) => s.user)
@@ -43,6 +50,12 @@ function RequirePlayer() {
   const gameId = usePlayStore((s) => s.gameId)
   if (!token || user?.role !== 'player') return <Navigate to="/login" replace />
   if (!gameId) return <Navigate to="/play/join" replace />
+  return <Outlet />
+}
+
+function RequireHost() {
+  const token = useHostAuthStore((s) => s.token)
+  if (!token) return <Navigate to="/host/login" replace />
   return <Outlet />
 }
 
@@ -93,6 +106,17 @@ export default function App() {
           <Route path="/play/assets" element={<MyAssets />} />
         </Route>
       </Route>
+
+      {/* Stage-1 room/host test flow (design/Task-Testing.md) — separate
+          from the auditor/player flows above. /login is already taken by
+          AuditorLogin, so this flow lives under /host/*. */}
+      <Route path="/host/register" element={<RoomRegister />} />
+      <Route path="/host/login" element={<RoomLogin />} />
+      <Route element={<RequireHost />}>
+        <Route path="/host/dashboard" element={<RoomDashboard />} />
+      </Route>
+      <Route path="/room/:code" element={<Room />} />
+      <Route path="/join/:code" element={<RoomJoin />} />
 
       <Route path="/" element={<RootRedirect user={user} />} />
       <Route path="*" element={<Navigate to="/" replace />} />

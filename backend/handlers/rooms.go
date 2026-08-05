@@ -132,6 +132,24 @@ func (h *RoomsHandler) CreateRoom(c *gin.Context) {
 	})
 }
 
+// ListMyRooms: GET /api/rooms — requires a room-auth JWT. Not in
+// design/Task-Testing.md's endpoint table, but the /dashboard screen it
+// specifies ("список моих активных комнат") has no other way to be built.
+func (h *RoomsHandler) ListMyRooms(c *gin.Context) {
+	hostUserID, ok := middleware.GetRoomUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, typ.ErrorResponse{Error: "unauthorized"})
+		return
+	}
+
+	var rooms []models.Room
+	if err := h.db.Where("host_user_id = ?", hostUserID).Order("created_at desc").Find(&rooms).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "list_rooms_failed"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"rooms": rooms})
+}
+
 func hostDisplayName(email string) string {
 	if at := strings.Index(email, "@"); at > 0 {
 		return email[:at]

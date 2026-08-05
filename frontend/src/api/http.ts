@@ -1,5 +1,6 @@
 export type ApiError = {
   error: string
+  message?: string
 }
 
 const API_BASE_URL =
@@ -26,7 +27,7 @@ export async function apiFetch<T>(
     } catch {
       // ignore
     }
-    throw new Error(body?.error ?? `Request failed (${res.status})`)
+    throw new Error(body?.message ?? body?.error ?? `Request failed (${res.status})`)
   }
 
   return (await res.json()) as T
