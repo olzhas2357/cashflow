@@ -91,6 +91,14 @@ func NewServer(cfg ServerConfig) *gin.Engine {
 	engine.POST("/api/auth/login", h.RoomAuth.Login)
 	engine.GET("/api/rooms/:code", h.Rooms.GetRoomState)
 	engine.POST("/api/rooms/:code/join", h.Rooms.JoinRoom)
+	// Этап 2: profession pick and the session-token bridge are identified by
+	// player_token in the body, not a JWT — same convention as /join.
+	engine.POST("/api/rooms/:code/profession", h.Rooms.SetProfession)
+	engine.POST("/api/rooms/:code/session-token", h.Rooms.ExchangeSessionToken)
+	// Public reference data — professions have no sensitive info, and room
+	// players (host room-JWT or guest player_token) have no legacy JWT to
+	// call the auth-gated /api/professions below.
+	engine.GET("/api/professions", h.Auditor.ListProfessions)
 
 	roomAuth := engine.Group("/api")
 	roomAuth.Use(middleware.RoomAuthRequired(middleware.AuthConfig{
@@ -99,6 +107,7 @@ func NewServer(cfg ServerConfig) *gin.Engine {
 	}))
 	roomAuth.GET("/auth/me", h.RoomAuth.Me)
 	roomAuth.POST("/rooms", authRateLimiter.Middleware(), h.Rooms.CreateRoom)
+	roomAuth.POST("/rooms/:code/start", h.Rooms.StartRoomGame)
 	roomAuth.GET("/rooms", h.Rooms.ListMyRooms)
 
 	// Auth routes
@@ -186,7 +195,10 @@ func NewServer(cfg ServerConfig) *gin.Engine {
 	auth.POST("/assets", h.Assets.CreateAsset)
 	auth.POST("/assets/:id/sell", h.Assets.SellAsset)
 	auth.GET("/small-deals", h.Auditor.ListSmallDeals)
-	auth.GET("/professions", h.Auditor.ListProfessions)
+	// GET /api/professions is now registered as a public route above (Этап 2
+	// room players have no legacy JWT to call this) — a strict superset of
+	// what this authenticated registration allowed, and gin forbids
+	// registering the same method+path twice.
 
 	game := auth.Group("/game")
 	game.Use(middleware.RoleRequired(models.RoleAuditor, models.RoleAdmin))

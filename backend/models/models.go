@@ -39,6 +39,10 @@ type Room struct {
 	HostUserID uuid.UUID      `gorm:"type:uuid;not null;index" json:"host_user_id"`
 	Status     string         `gorm:"type:varchar(20);not null;default:'WAITING'" json:"status"`
 	Settings   datatypes.JSON `gorm:"type:jsonb;not null;default:'{}'" json:"settings"`
+	// GameSessionID: set once the host starts the game — the room stays the
+	// join/reconnect layer, the game_session is the turn-engine layer. See
+	// handlers/rooms_game.go.
+	GameSessionID *uuid.UUID `gorm:"type:uuid;index" json:"game_session_id,omitempty"`
 
 	CreatedAt time.Time `json:"created_at"`
 	ExpiresAt time.Time `json:"expires_at"`
@@ -57,6 +61,12 @@ type RoomPlayer struct {
 	PlayerToken uuid.UUID `gorm:"type:uuid;not null;uniqueIndex" json:"-"`
 	Seat        int       `gorm:"not null" json:"seat"`
 	IsHost      bool      `gorm:"not null;default:false" json:"is_host"`
+
+	// ProfessionID: chosen in the room lobby, before the game starts.
+	ProfessionID *uuid.UUID `gorm:"type:uuid;index" json:"profession_id,omitempty"`
+	// GamePlayerID: the legacy engine models.Player created for this seat once
+	// the room's game starts — the join point between the two systems.
+	GamePlayerID *uuid.UUID `gorm:"type:uuid;index" json:"game_player_id,omitempty"`
 
 	CreatedAt time.Time `json:"created_at"`
 }

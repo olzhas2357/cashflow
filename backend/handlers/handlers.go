@@ -34,7 +34,7 @@ func NewHandlers(db *gorm.DB, jwtCfg services.JWTConfig, hub *services.RealtimeH
 		Turn:     &TurnHandler{db: db, hub: hub, auditor: auditorHandler},
 		Chat:     &ChatHandler{db: db, hub: hub},
 		RoomAuth: &RoomAuthHandler{db: db, auth: roomAuthSvc},
-		Rooms:    &RoomsHandler{db: db},
+		Rooms:    &RoomsHandler{db: db, hub: hub},
 	}
 }
 

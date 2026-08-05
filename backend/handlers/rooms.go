@@ -26,7 +26,8 @@ const roomLobbyTTL = 2 * time.Hour
 const maxRoomPlayers = 6
 
 type RoomsHandler struct {
-	db *gorm.DB
+	db  *gorm.DB
+	hub *services.RealtimeHub
 }
 
 var (
@@ -93,6 +94,7 @@ func (h *RoomsHandler) CreateRoom(c *gin.Context) {
 		Status:     models.RoomStatusWaiting,
 		ExpiresAt:  time.Now().Add(roomLobbyTTL),
 	}
+	var hostPlayer models.RoomPlayer
 
 	// Retry on the rare code collision (unique constraint), same pattern as
 	// the legacy join-code path in auditor_panel.go.
@@ -110,7 +112,7 @@ func (h *RoomsHandler) CreateRoom(c *gin.Context) {
 			return createErr
 		}
 
-		hostPlayer := models.RoomPlayer{
+		hostPlayer = models.RoomPlayer{
 			ID:          uuid.New(),
 			RoomID:      room.ID,
 			UserID:      &hostUserID,
@@ -127,8 +129,9 @@ func (h *RoomsHandler) CreateRoom(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"code":     room.Code,
-		"join_url": joinURL(room.Code),
+		"code":         room.Code,
+		"join_url":     joinURL(room.Code),
+		"player_token": hostPlayer.PlayerToken,
 	})
 }
 
@@ -164,7 +167,14 @@ func joinURL(code string) string {
 
 type joinRoomRequest struct {
 	Name string `json:"name" binding:"required"`
+	// PlayerToken: optional — if it matches an existing seat in this room,
+	// the join is treated as an idempotent reconnect instead of a new seat
+	// (design/Task-Testing.md Этап 2, шаг 6).
+	PlayerToken string `json:"player_token"`
 }
+
+var errRoomGameStarted = errors.New("room_game_started")
+var errRoomFinished = errors.New("room_finished")
 
 // JoinRoom: POST /api/rooms/:code/join — no auth, guest joins by name only.
 func (h *RoomsHandler) JoinRoom(c *gin.Context) {
@@ -188,8 +198,19 @@ func (h *RoomsHandler) JoinRoom(c *gin.Context) {
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&room, "code = ?", code).Error; err != nil {
 			return err
 		}
+
 		if room.Status != models.RoomStatusWaiting {
-			return errRoomNotJoinable
+			// A known player_token reconnecting to a running game is fine —
+			// anyone else is turned away with a clear reason.
+			if token, perr := uuid.Parse(req.PlayerToken); perr == nil {
+				if err := tx.First(&newPlayer, "room_id = ? AND player_token = ?", room.ID, token).Error; err == nil {
+					return nil
+				}
+			}
+			if room.Status == models.RoomStatusFinished {
+				return errRoomFinished
+			}
+			return errRoomGameStarted
 		}
 
 		var currentCount int64
@@ -217,8 +238,11 @@ func (h *RoomsHandler) JoinRoom(c *gin.Context) {
 	case gorm.ErrRecordNotFound:
 		c.JSON(http.StatusNotFound, typ.ErrorResponse{Error: "room_not_found"})
 		return
-	case errRoomNotJoinable:
-		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "room_not_joinable", Message: "Игра уже началась или завершена."})
+	case errRoomGameStarted:
+		c.JSON(http.StatusConflict, typ.ErrorResponse{Error: "room_game_started", Message: "Игра уже началась."})
+		return
+	case errRoomFinished:
+		c.JSON(http.StatusConflict, typ.ErrorResponse{Error: "room_finished", Message: "Игра завершена."})
 		return
 	case errRoomFull:
 		c.JSON(http.StatusConflict, typ.ErrorResponse{Error: "room_full", Message: "В этой комнате уже 6 игроков."})
