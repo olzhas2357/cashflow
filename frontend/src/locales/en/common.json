@@ -1,0 +1,34 @@
+{
+  "header": {
+    "logo": "CashYOU"
+  },
+  "languageSwitcher": {
+    "ru": "RU",
+    "kk": "ҚЗ",
+    "en": "EN"
+  },
+  "hero": {
+    "eyebrow": "Multiplayer · up to 6 players",
+    "titleTop": "Escape the",
+    "titleAccent": "Rat Race",
+    "subtitle": "A board game about financial literacy — play online with friends.",
+    "createGame": "Create Game",
+    "joinByCode": "Join by Code",
+    "joinPlaceholder": "7TX56N",
+    "joinSubmit": "Join",
+    "joinCancel": "Cancel",
+    "hint": "No sign-up · 2–6 players · 20 minutes"
+  },
+  "howItWorks": {
+    "title": "How to play",
+    "steps": [
+      { "title": "Create a game", "desc": "One button and your room is ready — no sign-up needed." },
+      { "title": "Send the link to friends", "desc": "Share the code or link on WhatsApp or Telegram." },
+      { "title": "Play", "desc": "Join from a phone or computer and start the match." }
+    ]
+  },
+  "footer": {
+    "github": "GitHub",
+    "contact": "Contact us"
+  }
+}
