@@ -11,7 +11,7 @@ import { Users } from 'lucide-react'
 export default function RoomJoin() {
   const navigate = useNavigate()
   const { code = '' } = useParams()
-  const setGuest = useRoomPlayerStore((s) => s.setGuest)
+  const setPlayer = useRoomPlayerStore((s) => s.setPlayer)
 
   const [name, setName] = useState('')
   const [err, setErr] = useState<string | null>(null)
@@ -24,7 +24,7 @@ export default function RoomJoin() {
     try {
       const res = await joinRoom(code.toUpperCase(), name.trim())
       const me = res.room.players.find((p) => p.name === name.trim() && !p.is_host)
-      setGuest(code.toUpperCase(), me?.seat ?? 0, name.trim())
+      setPlayer(code.toUpperCase(), me?.seat ?? 0, name.trim(), res.player_token)
       navigate(`/room/${code.toUpperCase()}`, { replace: true })
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Не удалось войти в комнату.')

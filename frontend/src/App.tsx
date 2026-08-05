@@ -34,6 +34,7 @@ import RoomLogin from '@/pages/room/Login'
 import RoomDashboard from '@/pages/room/Dashboard'
 import RoomJoin from '@/pages/room/Join'
 import Room from '@/pages/room/Room'
+import GameBootstrap from '@/pages/room/GameBootstrap'
 
 function RequireAuditor() {
   const token = useAuthStore((s) => s.token)
@@ -117,6 +118,9 @@ export default function App() {
       </Route>
       <Route path="/room/:code" element={<Room />} />
       <Route path="/join/:code" element={<RoomJoin />} />
+      {/* Этап 2: bootstraps into the untouched /play/* engine via a
+          one-time player_token -> legacy JWT exchange, then redirects. */}
+      <Route path="/game/:code" element={<GameBootstrap />} />
 
       <Route path="/" element={<RootRedirect user={user} />} />
       <Route path="*" element={<Navigate to="/" replace />} />

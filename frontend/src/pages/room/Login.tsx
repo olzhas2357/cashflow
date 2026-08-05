@@ -41,7 +41,7 @@ export default function RoomLogin() {
           <Home className="h-7 w-7 text-primary" />
         </div>
         <div className="text-left">
-          <h1 className="text-xl font-semibold tracking-tight">CashYoOU</h1>
+          <h1 className="text-xl font-semibold tracking-tight">CashYOU</h1>
           <p className="text-sm text-muted-foreground">Вход для создателей игр</p>
         </div>
       </div>

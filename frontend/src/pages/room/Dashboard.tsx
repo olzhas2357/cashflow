@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Copy, Check, Plus, Users } from 'lucide-react'
 import { useHostAuthStore } from '@/store/hostAuthStore'
+import { useRoomPlayerStore } from '@/store/roomPlayerStore'
 import { createRoom, listMyRooms } from '@/api/hostAuth'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -35,6 +36,7 @@ function CopyLinkButton({ code }: { code: string }) {
 export default function RoomDashboard() {
   const navigate = useNavigate()
   const token = useHostAuthStore((s) => s.token)
+  const setPlayer = useRoomPlayerStore((s) => s.setPlayer)
   const qc = useQueryClient()
 
   const roomsQ = useQuery({
@@ -47,6 +49,9 @@ export default function RoomDashboard() {
     mutationFn: () => createRoom(token!),
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ['my_rooms'] })
+      // Этап 2: the host uses the same player_token bridge as a guest to
+      // enter the game once it starts.
+      setPlayer(res.code, 1, '', res.player_token)
       navigate(`/room/${res.code}`)
     },
   })

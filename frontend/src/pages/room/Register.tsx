@@ -41,7 +41,7 @@ export default function RoomRegister() {
           <Home className="h-7 w-7 text-primary" />
         </div>
         <div className="text-left">
-          <h1 className="text-xl font-semibold tracking-tight">Cashflow 101</h1>
+          <h1 className="text-xl font-semibold tracking-tight">CashYOU</h1>
           <p className="text-sm text-muted-foreground">Создать игру с друзьями</p>
         </div>
       </div>

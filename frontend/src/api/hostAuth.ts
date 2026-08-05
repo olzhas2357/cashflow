@@ -1,4 +1,5 @@
 import { apiFetch } from './http'
+import type { Profession } from './auditorPanel'
 
 // Stage-1 room/host auth flow (design/Task-Testing.md) — separate token
 // namespace from api/auth.ts's legacy player/auditor JWT.
@@ -48,13 +49,15 @@ export type RoomPlayer = {
   name: string
   seat: number
   is_host: boolean
+  profession_id?: string
+  game_player_id?: string
   created_at: string
 }
 
 export type RoomState = Room & { players: RoomPlayer[] }
 
 export async function createRoom(token: string) {
-  return apiFetch<{ code: string; join_url: string }>('/api/rooms', {
+  return apiFetch<{ code: string; join_url: string; player_token: string }>('/api/rooms', {
     method: 'POST',
     token,
   })
@@ -65,13 +68,40 @@ export async function listMyRooms(token: string) {
   return res.rooms
 }
 
-export async function joinRoom(code: string, name: string) {
+export async function joinRoom(code: string, name: string, playerToken?: string) {
   return apiFetch<{ player_token: string; room: RoomState }>(`/api/rooms/${code}/join`, {
     method: 'POST',
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({ name, player_token: playerToken }),
   })
 }
 
 export async function getRoomState(code: string) {
   return apiFetch<RoomState>(`/api/rooms/${code}`)
+}
+
+// Этап 2: room-to-game bridge — see design/Task-Testing.md.
+
+export async function listProfessions() {
+  return apiFetch<Profession[]>('/api/professions')
+}
+
+export async function setRoomProfession(code: string, playerToken: string, professionId: string) {
+  return apiFetch<RoomState>(`/api/rooms/${code}/profession`, {
+    method: 'POST',
+    body: JSON.stringify({ player_token: playerToken, profession_id: professionId }),
+  })
+}
+
+export async function startRoomGame(code: string, hostToken: string) {
+  return apiFetch<RoomState>(`/api/rooms/${code}/start`, {
+    method: 'POST',
+    token: hostToken,
+  })
+}
+
+export async function exchangeSessionToken(code: string, playerToken: string) {
+  return apiFetch<{ token: string; game_id: string }>(`/api/rooms/${code}/session-token`, {
+    method: 'POST',
+    body: JSON.stringify({ player_token: playerToken }),
+  })
 }
