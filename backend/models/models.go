@@ -22,6 +22,45 @@ type User struct {
 	UpdatedAt    time.Time `json:"updated_at"`
 }
 
+const (
+	RoomStatusWaiting    = "WAITING"
+	RoomStatusInProgress = "IN_PROGRESS"
+	RoomStatusFinished   = "FINISHED"
+)
+
+// Room is the Stage-1 test-only room/lobby system (design/Task-Testing.md).
+// Deliberately separate from GameSession/Player (the turn-engine tables) —
+// see [[project_cashflow_architecture_mismatch]]-style note in room_auth
+// service files for why.
+type Room struct {
+	ID uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+
+	Code       string         `gorm:"type:varchar(10);not null;uniqueIndex" json:"code"`
+	HostUserID uuid.UUID      `gorm:"type:uuid;not null;index" json:"host_user_id"`
+	Status     string         `gorm:"type:varchar(20);not null;default:'WAITING'" json:"status"`
+	Settings   datatypes.JSON `gorm:"type:jsonb;not null;default:'{}'" json:"settings"`
+
+	CreatedAt time.Time `json:"created_at"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
+// RoomPlayer is a seat in a Room — a registered host or a name-only guest
+// (UserID nil), identified for reconnect purposes by PlayerToken.
+type RoomPlayer struct {
+	ID uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+
+	RoomID uuid.UUID  `gorm:"type:uuid;not null;index" json:"room_id"`
+	UserID *uuid.UUID `gorm:"type:uuid;index" json:"user_id,omitempty"`
+	Name   string     `gorm:"type:varchar(255);not null" json:"name"`
+	// PlayerToken is only ever returned to this player themselves (join/create
+	// response) — never included in the room roster shown to other players.
+	PlayerToken uuid.UUID `gorm:"type:uuid;not null;uniqueIndex" json:"-"`
+	Seat        int       `gorm:"not null" json:"seat"`
+	IsHost      bool      `gorm:"not null;default:false" json:"is_host"`
+
+	CreatedAt time.Time `json:"created_at"`
+}
+
 type Player struct {
 	ID uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
 

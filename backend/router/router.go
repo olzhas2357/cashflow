@@ -83,6 +83,23 @@ func NewServer(cfg ServerConfig) *gin.Engine {
 	engine.POST("/api/join", h.Lobby.Join)
 	engine.GET("/ws/negotiation", h.Realtime.NegotiationWS)
 
+	// Stage-1 room/host test flow (design/Task-Testing.md) — a separate
+	// auth+lobby system from the game_sessions/players one above, see
+	// handlers/room_auth.go and handlers/rooms.go for why.
+	authRateLimiter := middleware.NewIPRateLimiter(10, time.Hour)
+	engine.POST("/api/auth/register", authRateLimiter.Middleware(), h.RoomAuth.Register)
+	engine.POST("/api/auth/login", h.RoomAuth.Login)
+	engine.GET("/api/rooms/:code", h.Rooms.GetRoomState)
+	engine.POST("/api/rooms/:code/join", h.Rooms.JoinRoom)
+
+	roomAuth := engine.Group("/api")
+	roomAuth.Use(middleware.RoomAuthRequired(middleware.AuthConfig{
+		JWTSecret: cfg.Config.JWTSecret,
+		JWTIssuer: cfg.Config.JWTIssuer,
+	}))
+	roomAuth.GET("/auth/me", h.RoomAuth.Me)
+	roomAuth.POST("/rooms", authRateLimiter.Middleware(), h.Rooms.CreateRoom)
+
 	// Auth routes
 	auth := engine.Group("/api")
 	auth.Use(middleware.AuthRequired(middleware.AuthConfig{

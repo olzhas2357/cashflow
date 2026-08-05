@@ -15,11 +15,14 @@ type Handlers struct {
 	Lobby    *LobbyHandler
 	Turn     *TurnHandler
 	Chat     *ChatHandler
+	RoomAuth *RoomAuthHandler
+	Rooms    *RoomsHandler
 }
 
 func NewHandlers(db *gorm.DB, jwtCfg services.JWTConfig, hub *services.RealtimeHub) *Handlers {
 	// Services that require DB can be re-used by handlers.
 	authSvc := services.NewAuthService(db)
+	roomAuthSvc := services.NewRoomAuthService(db)
 	auditorHandler := &AuditorPanelHandler{db: db, hub: hub}
 	return &Handlers{
 		Auth:     &AuthHandler{auth: authSvc},
@@ -30,6 +33,8 @@ func NewHandlers(db *gorm.DB, jwtCfg services.JWTConfig, hub *services.RealtimeH
 		Lobby:    &LobbyHandler{db: db, hub: hub},
 		Turn:     &TurnHandler{db: db, hub: hub, auditor: auditorHandler},
 		Chat:     &ChatHandler{db: db, hub: hub},
+		RoomAuth: &RoomAuthHandler{db: db, auth: roomAuthSvc},
+		Rooms:    &RoomsHandler{db: db},
 	}
 }
 
