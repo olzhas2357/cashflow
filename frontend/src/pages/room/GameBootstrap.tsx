@@ -12,8 +12,7 @@ import { usePlayStore } from '@/store/usePlayStore'
 export default function GameBootstrap() {
   const { code = '' } = useParams()
   const upperCode = code.toUpperCase()
-  const storedCode = useRoomPlayerStore((s) => s.code)
-  const playerToken = useRoomPlayerStore((s) => s.playerToken)
+  const playerToken = useRoomPlayerStore((s) => s.players[upperCode]?.playerToken ?? null)
   const setToken = useAuthStore((s) => s.setToken)
   const setGameId = usePlayStore((s) => s.setGameId)
 
@@ -21,7 +20,7 @@ export default function GameBootstrap() {
   const [err, setErr] = useState<string | null>(null)
 
   useEffect(() => {
-    if (storedCode !== upperCode || !playerToken) {
+    if (!playerToken) {
       setStatus('error')
       setErr('no_identity')
       return
@@ -42,7 +41,7 @@ export default function GameBootstrap() {
     return () => {
       cancelled = true
     }
-  }, [upperCode, storedCode, playerToken, setToken, setGameId])
+  }, [upperCode, playerToken, setToken, setGameId])
 
   if (status === 'done') {
     return <Navigate to="/play/board" replace />

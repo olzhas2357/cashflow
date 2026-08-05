@@ -68,6 +68,14 @@ export async function listMyRooms(token: string) {
   return res.rooms
 }
 
+// Recovers the host's own player_token if this browser's local copy was
+// lost (e.g. overwritten by creating another room before the per-room fix).
+export async function getMyRoomPlayerToken(code: string, hostToken: string) {
+  return apiFetch<{ player_token: string; seat: number; name: string }>(`/api/rooms/${code}/my-token`, {
+    token: hostToken,
+  })
+}
+
 export async function joinRoom(code: string, name: string, playerToken?: string) {
   return apiFetch<{ player_token: string; room: RoomState }>(`/api/rooms/${code}/join`, {
     method: 'POST',

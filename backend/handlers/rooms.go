@@ -153,6 +153,42 @@ func (h *RoomsHandler) ListMyRooms(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"rooms": rooms})
 }
 
+// MyPlayerToken: GET /api/rooms/:code/my-token — room-auth JWT required.
+// Lets the host recover their own player_token if the browser's local copy
+// was lost (e.g. overwritten by creating another room) — safe because the
+// caller's identity as this room's host_user_id is already proven by the
+// JWT, not by knowledge of the token being recovered.
+func (h *RoomsHandler) MyPlayerToken(c *gin.Context) {
+	hostUserID, ok := middleware.GetRoomUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, typ.ErrorResponse{Error: "unauthorized"})
+		return
+	}
+	code := strings.ToUpper(strings.TrimSpace(c.Param("code")))
+
+	var room models.Room
+	if err := h.db.First(&room, "code = ?", code).Error; err != nil {
+		c.JSON(http.StatusNotFound, typ.ErrorResponse{Error: "room_not_found"})
+		return
+	}
+	if room.HostUserID != hostUserID {
+		c.JSON(http.StatusForbidden, typ.ErrorResponse{Error: "not_host"})
+		return
+	}
+
+	var hostPlayer models.RoomPlayer
+	if err := h.db.First(&hostPlayer, "room_id = ? AND is_host = true", room.ID).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "host_player_not_found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"player_token": hostPlayer.PlayerToken,
+		"seat":         hostPlayer.Seat,
+		"name":         hostPlayer.Name,
+	})
+}
+
 func hostDisplayName(email string) string {
 	if at := strings.Index(email, "@"); at > 0 {
 		return email[:at]

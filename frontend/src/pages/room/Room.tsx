@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Copy, Check, Crown, User, CheckCircle2, Circle } from 'lucide-react'
-import { getRoomState, listProfessions, setRoomProfession, startRoomGame } from '@/api/hostAuth'
+import { getMyRoomPlayerToken, getRoomState, listProfessions, setRoomProfession, startRoomGame } from '@/api/hostAuth'
 import { useHostAuthStore } from '@/store/hostAuthStore'
 import { useRoomPlayerStore } from '@/store/roomPlayerStore'
 import { Button } from '@/components/ui/button'
@@ -16,9 +16,10 @@ export default function Room() {
   const upperCode = code.toUpperCase()
   const hostUserId = useHostAuthStore((s) => s.userId)
   const hostToken = useHostAuthStore((s) => s.token)
-  const myStoredCode = useRoomPlayerStore((s) => s.code)
-  const myGuestSeat = useRoomPlayerStore((s) => (s.code === upperCode ? s.seat : null))
-  const myPlayerToken = useRoomPlayerStore((s) => (s.code === upperCode ? s.playerToken : null))
+  const storedEntry = useRoomPlayerStore((s) => s.players[upperCode] ?? null)
+  const setPlayer = useRoomPlayerStore((s) => s.setPlayer)
+  const myGuestSeat = storedEntry?.seat ?? null
+  const myPlayerToken = storedEntry?.playerToken ?? null
   const [copied, setCopied] = useState(false)
   const [professionId, setProfessionId] = useState('')
   const qc = useQueryClient()
@@ -37,8 +38,22 @@ export default function Room() {
 
   const room = roomQ.data
   const amHost = !!hostUserId && room?.host_user_id === hostUserId
-  const iAmIdentified = amHost || (myStoredCode === upperCode && myGuestSeat != null)
+  const iAmIdentified = amHost || myGuestSeat != null
   const me = room?.players.find((p) => (amHost ? p.is_host : p.seat === myGuestSeat))
+
+  // Self-heal: a host revisiting a room whose player_token this browser
+  // never stored (or lost — e.g. overwritten before the per-room-code fix)
+  // can always recover it, since their identity is already proven by the
+  // room JWT matching this room's host_user_id.
+  useEffect(() => {
+    if (amHost && !storedEntry && hostToken) {
+      getMyRoomPlayerToken(upperCode, hostToken)
+        .then((res) => setPlayer(upperCode, res.seat, res.name, res.player_token))
+        .catch(() => {
+          // best-effort — the profession picker just stays hidden if this fails
+        })
+    }
+  }, [amHost, storedEntry, hostToken, upperCode, setPlayer])
 
   useEffect(() => {
     if (room?.status === 'IN_PROGRESS') {

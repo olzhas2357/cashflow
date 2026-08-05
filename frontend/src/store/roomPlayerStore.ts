@@ -7,42 +7,45 @@ import { create } from 'zustand'
 // `seat`/`name` are only for UI ("you" highlighting); the server never
 // returns anyone's player_token via GET /api/rooms/:code, so `playerToken`
 // here is this browser's own copy of a secret it was handed directly.
+//
+// Keyed by room code (not a single slot): a host can hold up to 3 active
+// rooms at once (design/Task-Testing.md's MaxActiveRoomsPerHost), so a
+// single-slot store would overwrite room A's token the moment room B is
+// created — the exact bug that made the profession picker vanish for a
+// host revisiting an earlier room from the dashboard list.
+type Entry = { seat: number; name: string; playerToken: string }
+
 type RoomPlayerState = {
-  code: string | null
-  seat: number | null
-  name: string | null
-  playerToken: string | null
+  players: Record<string, Entry>
+  getPlayer: (code: string) => Entry | null
   setPlayer: (code: string, seat: number, name: string, playerToken: string) => void
-  clearPlayer: () => void
+  clearPlayer: (code: string) => void
 }
 
-const STORAGE_KEY = 'cashflow_room_player'
+const STORAGE_KEY = 'cashflow_room_players'
 
-type Stored = { code: string; seat: number; name: string; playerToken: string }
-
-function load(): Stored | null {
+function load(): Record<string, Entry> {
   const raw = localStorage.getItem(STORAGE_KEY)
-  if (!raw) return null
+  if (!raw) return {}
   try {
-    return JSON.parse(raw) as Stored
+    return JSON.parse(raw) as Record<string, Entry>
   } catch {
-    return null
+    return {}
   }
 }
 
-const initial = load()
-
-export const useRoomPlayerStore = create<RoomPlayerState>((set) => ({
-  code: initial?.code ?? null,
-  seat: initial?.seat ?? null,
-  name: initial?.name ?? null,
-  playerToken: initial?.playerToken ?? null,
+export const useRoomPlayerStore = create<RoomPlayerState>((set, get) => ({
+  players: load(),
+  getPlayer: (code) => get().players[code] ?? null,
   setPlayer: (code, seat, name, playerToken) => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ code, seat, name, playerToken }))
-    set({ code, seat, name, playerToken })
+    const players = { ...get().players, [code]: { seat, name, playerToken } }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(players))
+    set({ players })
   },
-  clearPlayer: () => {
-    localStorage.removeItem(STORAGE_KEY)
-    set({ code: null, seat: null, name: null, playerToken: null })
+  clearPlayer: (code) => {
+    const players = { ...get().players }
+    delete players[code]
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(players))
+    set({ players })
   },
 }))

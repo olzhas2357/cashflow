@@ -108,6 +108,7 @@ func NewServer(cfg ServerConfig) *gin.Engine {
 	roomAuth.GET("/auth/me", h.RoomAuth.Me)
 	roomAuth.POST("/rooms", authRateLimiter.Middleware(), h.Rooms.CreateRoom)
 	roomAuth.POST("/rooms/:code/start", h.Rooms.StartRoomGame)
+	roomAuth.GET("/rooms/:code/my-token", h.Rooms.MyPlayerToken)
 	roomAuth.GET("/rooms", h.Rooms.ListMyRooms)
 
 	// Auth routes
