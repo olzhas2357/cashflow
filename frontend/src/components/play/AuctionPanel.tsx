@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { listAuctionOffers, bidOnAuction } from '@/api/play'
 import type { MarketOfferAuction } from '@/api/auditorPanel'
 import { useAuthStore } from '@/store/authStore'
@@ -21,6 +22,7 @@ function useCountdown(expiresAt?: string | null) {
 }
 
 function AuctionCard({ offer }: { offer: MarketOfferAuction }) {
+  const { t } = useTranslation()
   const token = useAuthStore((s) => s.token)
   const myPlayerId = useAuthStore((s) => s.user?.player_id)
   const gameId = usePlayStore((s) => s.gameId)
@@ -43,20 +45,20 @@ function AuctionCard({ offer }: { offer: MarketOfferAuction }) {
   return (
     <div className="space-y-2 rounded-lg border border-border px-3 py-2 text-sm">
       <div className="flex items-center justify-between">
-        <div className="font-medium">{offer.asset?.name ?? 'Asset'}</div>
+        <div className="font-medium">{offer.asset?.name ?? t('game.auction.assetFallback')}</div>
         <div className="flex items-center gap-1 text-xs text-muted-foreground">
           <Gavel className="h-3 w-3" />
-          {expired ? 'Ended' : `${secondsLeft}s left`}
+          {expired ? t('game.auction.ended') : t('game.auction.secondsLeft', { n: secondsLeft })}
         </div>
       </div>
-      <div className="text-muted-foreground">Seller: {offer.seller?.name ?? '—'}</div>
+      <div className="text-muted-foreground">{t('game.auction.seller', { name: offer.seller?.name ?? '—' })}</div>
       <div className="flex justify-between">
-        <span className="text-muted-foreground">Starting price</span>
+        <span className="text-muted-foreground">{t('game.auction.startingPrice')}</span>
         <span>${offer.price.toLocaleString()}</span>
       </div>
       <div className="flex justify-between font-medium">
-        <span className="text-muted-foreground">Highest bid</span>
-        <span>{topBid ? `$${topBid.offer_price.toLocaleString()}` : 'No bids yet'}</span>
+        <span className="text-muted-foreground">{t('game.auction.highestBid')}</span>
+        <span>{topBid ? `$${topBid.offer_price.toLocaleString()}` : t('game.auction.noBids')}</span>
       </div>
 
       {!expired && !isSeller && (
@@ -67,7 +69,7 @@ function AuctionCard({ offer }: { offer: MarketOfferAuction }) {
             value={bidPrice}
             onChange={(e) => setBidPrice(Number(e.target.value))}
             className="h-8"
-            aria-label="Bid amount"
+            aria-label={t('game.auction.bidAmountAria')}
           />
           <Button
             size="sm"
@@ -75,22 +77,22 @@ function AuctionCard({ offer }: { offer: MarketOfferAuction }) {
             onClick={() => bidMut.mutate(bidPrice)}
             disabled={bidMut.isPending}
           >
-            {myBid ? 'Raise bid' : 'Bid'}
+            {myBid ? t('game.auction.raiseBid') : t('game.auction.bid')}
           </Button>
         </div>
       )}
       {!expired && isSeller && (
-        <p className="text-xs text-muted-foreground">Waiting for the timer to run out…</p>
+        <p className="text-xs text-muted-foreground">{t('game.auction.waitingTimer')}</p>
       )}
 
       {/* The highest bid wins automatically the moment the timer ends — no
           confirmation needed from anyone. This card simply disappears once
           the backend has settled it (it leaves the open-offers list). */}
-      {expired && <p className="text-xs text-muted-foreground">Settling…</p>}
+      {expired && <p className="text-xs text-muted-foreground">{t('game.auction.settling')}</p>}
 
       {bidMut.isError && (
         <p className="text-xs text-destructive">
-          {bidMut.error instanceof Error ? bidMut.error.message : 'Something went wrong.'}
+          {bidMut.error instanceof Error ? bidMut.error.message : t('game.auction.errorDefault')}
         </p>
       )}
     </div>
@@ -103,6 +105,7 @@ function AuctionCard({ offer }: { offer: MarketOfferAuction }) {
 // fresh WS event, and the WS AUCTION_* handlers in Board.tsx also invalidate
 // this query for near-instant updates.
 export function AuctionPanel() {
+  const { t } = useTranslation()
   const token = useAuthStore((s) => s.token)
   const gameId = usePlayStore((s) => s.gameId)
 
@@ -120,7 +123,7 @@ export function AuctionPanel() {
     <div className="space-y-2 rounded-xl border border-border bg-card p-3">
       <div className="flex items-center gap-2 text-sm font-semibold">
         <Gavel className="h-4 w-4" />
-        Player auctions
+        {t('game.auction.title')}
       </div>
       {offers.map((offer) => (
         <AuctionCard key={offer.id} offer={offer} />

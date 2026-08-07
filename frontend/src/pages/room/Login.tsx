@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { loginHost } from '@/api/hostAuth'
 import { useHostAuthStore } from '@/store/hostAuthStore'
 import { Button } from '@/components/ui/button'
@@ -9,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Home } from 'lucide-react'
 
 export default function RoomLogin() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const token = useHostAuthStore((s) => s.token)
   const setSession = useHostAuthStore((s) => s.setSession)
@@ -28,7 +30,7 @@ export default function RoomLogin() {
       setSession(res.token)
       navigate('/host/dashboard', { replace: true })
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Не удалось войти.')
+      setErr(e instanceof Error ? e.message : t('roomAuth.login.errorDefault'))
     } finally {
       setLoading(false)
     }
@@ -42,19 +44,19 @@ export default function RoomLogin() {
         </div>
         <div className="text-left">
           <h1 className="text-xl font-semibold tracking-tight">CashYOU</h1>
-          <p className="text-sm text-muted-foreground">Вход для создателей игр</p>
+          <p className="text-sm text-muted-foreground">{t('roomAuth.login.subtitle')}</p>
         </div>
       </div>
 
       <Card className="w-full max-w-md border-border">
         <CardHeader>
-          <CardTitle>Вход</CardTitle>
-          <CardDescription>Введи email и пароль.</CardDescription>
+          <CardTitle>{t('roomAuth.login.title')}</CardTitle>
+          <CardDescription>{t('roomAuth.login.description')}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t('roomAuth.login.emailLabel')}</Label>
               <Input
                 id="email"
                 type="email"
@@ -65,7 +67,7 @@ export default function RoomLogin() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Пароль</Label>
+              <Label htmlFor="password">{t('roomAuth.login.passwordLabel')}</Label>
               <Input
                 id="password"
                 type="password"
@@ -77,13 +79,13 @@ export default function RoomLogin() {
             </div>
             {err && <p className="text-sm text-destructive">{err}</p>}
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Вход…' : 'Войти'}
+              {loading ? t('roomAuth.login.submitting') : t('roomAuth.login.submit')}
             </Button>
           </form>
           <p className="mt-4 text-center text-sm text-muted-foreground">
-            Нет аккаунта?{' '}
+            {t('roomAuth.login.noAccount')}{' '}
             <Link to="/host/register" className="text-primary underline-offset-4 hover:underline">
-              Зарегистрироваться
+              {t('roomAuth.login.registerLink')}
             </Link>
           </p>
         </CardContent>

@@ -86,7 +86,7 @@ const CONTENT: Record<Lang, Content> = {
   },
   kz: {
     badge: 'Ойын ережелері',
-    title: 'CashFlow 101-ге қош келдіңіз',
+    title: 'CashYou-ге қош келдіңіз',
     subtitle: 'Ақшаның қалай жұмыс істейтінін ойын арқылы үйрен',
     videoLabel: 'Бастамас бұрын қысқа видео көр',
     videoPlaceholder: 'Видео жақында қосылады',

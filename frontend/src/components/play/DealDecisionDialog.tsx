@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { listMyAssets, makeDecision, sellStockToBank } from '@/api/play'
 import { useAuthStore } from '@/store/authStore'
 import { usePlayStore } from '@/store/usePlayStore'
@@ -21,6 +22,7 @@ import { Label } from '@/components/ui/label'
 // game.active_small_deal_id / active_big_deal_id, so this dialog only needs
 // to render what's already attached to the game object.
 export function DealDecisionDialog({ game }: { game: GameSession }) {
+  const { t } = useTranslation()
   const token = useAuthStore((s) => s.token)
   const gameId = usePlayStore((s) => s.gameId)
   const qc = useQueryClient()
@@ -93,13 +95,14 @@ export function DealDecisionDialog({ game }: { game: GameSession }) {
       <DialogContent onInteractOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>
-            {isSmallDeal ? 'Small Deal' : 'Big Deal'}: {deal.name?.trim() || '⚠ Unnamed card'}
+            {isSmallDeal ? t('game.dealDecision.smallDeal') : t('game.dealDecision.bigDeal')}:{' '}
+            {deal.name?.trim() || t('game.common.unnamedCard')}
           </DialogTitle>
           {deal.description?.trim() ? (
             <DialogDescription className="whitespace-pre-line">{deal.description}</DialogDescription>
           ) : (
             <DialogDescription className="text-destructive">
-              ⚠ Card data is missing — description was not generated.
+              {t('game.common.missingDescription')}
             </DialogDescription>
           )}
         </DialogHeader>
@@ -107,33 +110,33 @@ export function DealDecisionDialog({ game }: { game: GameSession }) {
         {isBigDealNews ? (
           <div className="space-y-2 text-sm">
             <div className="flex justify-between font-medium">
-              <span className="text-muted-foreground">Amount due</span>
+              <span className="text-muted-foreground">{t('game.dealDecision.amountDue')}</span>
               <span>${deal.down_payment.toLocaleString()}</span>
             </div>
           </div>
         ) : (
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Price</span>
+              <span className="text-muted-foreground">{t('game.common.price')}</span>
               <span>${deal.price.toLocaleString()}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Down payment</span>
+              <span className="text-muted-foreground">{t('game.common.downPayment')}</span>
               <span>${deal.down_payment.toLocaleString()}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Cashflow / mo</span>
+              <span className="text-muted-foreground">{t('game.common.cashflowPerMo')}</span>
               <span>${deal.cashflow.toLocaleString()}</span>
             </div>
             {!isStock && deal.roi > 0 && (
               <div className="flex justify-between">
-                <span className="text-muted-foreground">ROI</span>
+                <span className="text-muted-foreground">{t('game.common.roi')}</span>
                 <span className="text-emerald-400/90">{deal.roi.toFixed(1)}%/yr</span>
               </div>
             )}
             {isStock && (priceRange?.min != null || priceRange?.max != null) && (
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Typical range</span>
+                <span className="text-muted-foreground">{t('game.common.typicalRange')}</span>
                 <span>
                   ${priceRange?.min?.toLocaleString() ?? '?'} – ${priceRange?.max?.toLocaleString() ?? '?'}
                 </span>
@@ -144,7 +147,7 @@ export function DealDecisionDialog({ game }: { game: GameSession }) {
 
         {isStock && (
           <div className="space-y-2">
-            <Label htmlFor="shares">Shares</Label>
+            <Label htmlFor="shares">{t('game.common.shares')}</Label>
             <Input
               id="shares"
               type="number"
@@ -158,7 +161,7 @@ export function DealDecisionDialog({ game }: { game: GameSession }) {
         {isStock && ownedShares > 0 && (
           <div className="space-y-2 rounded-md border border-border bg-muted/20 p-3">
             <p className="text-sm text-muted-foreground">
-              You already own {ownedShares.toLocaleString()} shares of {symbol}.
+              {t('game.dealDecision.alreadyOwn', { count: ownedShares, symbol })}
             </p>
             <div className="flex items-center gap-2">
               <Input
@@ -176,12 +179,12 @@ export function DealDecisionDialog({ game }: { game: GameSession }) {
                 disabled={sellMut.isPending}
                 onClick={() => sellMut.mutate(sellShares)}
               >
-                Sell @ ${deal.price.toLocaleString()}
+                {t('game.dealDecision.sellAt', { price: `$${deal.price.toLocaleString()}` })}
               </Button>
             </div>
             {sellMut.isError && (
               <p className="text-xs text-destructive">
-                {sellMut.error instanceof Error ? sellMut.error.message : 'Could not sell.'}
+                {sellMut.error instanceof Error ? sellMut.error.message : t('game.common.couldNotSell')}
               </p>
             )}
           </div>
@@ -194,12 +197,12 @@ export function DealDecisionDialog({ game }: { game: GameSession }) {
             onChange={(e) => setAllowLoan(e.target.checked)}
             className="h-4 w-4 rounded border-border"
           />
-          Take a bank loan if I don't have enough cash
+          {t('game.dealDecision.takeLoan')}
         </label>
 
         {canOfferToAll && showOfferInput && (
           <div className="space-y-2 rounded-md border border-border bg-muted/20 p-3">
-            <Label htmlFor="commission">Your commission on top of price</Label>
+            <Label htmlFor="commission">{t('game.dealDecision.yourCommission')}</Label>
             <Input
               id="commission"
               type="number"
@@ -208,22 +211,25 @@ export function DealDecisionDialog({ game }: { game: GameSession }) {
               onChange={(e) => setCommission(Math.max(0, Number(e.target.value)))}
             />
             <p className="text-xs text-muted-foreground">
-              Whoever accepts first pays ${deal.down_payment.toLocaleString()} to the bank +{' '}
-              ${commission.toLocaleString()} to you = ${(deal.down_payment + commission).toLocaleString()} total.
+              {t('game.dealDecision.whoeverAccepts', {
+                price: `$${deal.down_payment.toLocaleString()}`,
+                commission: `$${commission.toLocaleString()}`,
+                total: `$${(deal.down_payment + commission).toLocaleString()}`,
+              })}
             </p>
             <Button
               className="w-full"
               disabled={decisionMut.isPending}
               onClick={() => decisionMut.mutate({ action: 'offer_deal_all', commission })}
             >
-              Send to all players
+              {t('game.dealDecision.sendToAll')}
             </Button>
           </div>
         )}
 
         {decisionMut.isError && (
           <p className="text-sm text-destructive">
-            {decisionMut.error instanceof Error ? decisionMut.error.message : 'Could not process decision.'}
+            {decisionMut.error instanceof Error ? decisionMut.error.message : t('game.common.couldNotProcessDecision')}
           </p>
         )}
 
@@ -234,20 +240,20 @@ export function DealDecisionDialog({ game }: { game: GameSession }) {
               onClick={() => decisionMut.mutate({ action: 'pass' })}
               disabled={decisionMut.isPending}
             >
-              Pass
+              {t('game.common.pass')}
             </Button>
           )}
           {canOfferToAll && !showOfferInput && (
             <Button variant="outline" onClick={() => setShowOfferInput(true)} disabled={decisionMut.isPending}>
-              Offer to all
+              {t('game.dealDecision.offerToAll')}
             </Button>
           )}
           <Button onClick={() => decisionMut.mutate({ action: 'buy' })} disabled={decisionMut.isPending}>
             {decisionMut.isPending
-              ? 'Processing…'
+              ? t('game.common.processing')
               : isBigDealNews
-                ? `Pay $${deal.down_payment.toLocaleString()}`
-                : 'Buy'}
+                ? t('game.dealDecision.payAmount', { amount: `$${deal.down_payment.toLocaleString()}` })
+                : t('game.common.buy')}
           </Button>
         </DialogFooter>
       </DialogContent>

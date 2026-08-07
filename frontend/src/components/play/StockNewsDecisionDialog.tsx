@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { makeDecision } from '@/api/play'
 import type { StockNewsEligiblePlayer } from '@/api/play'
 import { useAuthStore } from '@/store/authStore'
@@ -27,6 +28,7 @@ export function StockNewsDecisionDialog({
   game: GameSession
   eligible: StockNewsEligiblePlayer[]
 }) {
+  const { t } = useTranslation()
   const token = useAuthStore((s) => s.token)
   const myPlayerId = useAuthStore((s) => s.user?.player_id)
   const gameId = usePlayStore((s) => s.gameId)
@@ -48,13 +50,13 @@ export function StockNewsDecisionDialog({
     <Dialog open>
       <DialogContent onInteractOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
         <DialogHeader>
-          <DialogTitle>Stock News: {card.title || card.name}</DialogTitle>
+          <DialogTitle>{t('game.stockNews.titlePrefix')}: {card.title || card.name}</DialogTitle>
           <DialogDescription>{card.description}</DialogDescription>
         </DialogHeader>
 
         {decideMut.isError && (
           <p className="text-sm text-destructive">
-            {decideMut.error instanceof Error ? decideMut.error.message : 'Could not respond.'}
+            {decideMut.error instanceof Error ? decideMut.error.message : t('game.common.couldNotRespond')}
           </p>
         )}
 
@@ -62,21 +64,18 @@ export function StockNewsDecisionDialog({
           <div className="space-y-3">
             <div className="space-y-1 rounded-lg border border-border px-3 py-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Symbol</span>
+                <span className="text-muted-foreground">{t('game.common.symbol')}</span>
                 <span className="font-medium">{mine.symbol}</span>
               </div>
+              <div className="text-muted-foreground">{t('game.stockNews.youHold', { count: mine.shares })}</div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">You hold</span>
-                <span>{mine.shares.toLocaleString()} shares</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">New price / share</span>
+                <span className="text-muted-foreground">{t('game.stockNews.newPrice')}</span>
                 <span>${mine.unit_price.toLocaleString()}</span>
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="stock-news-shares">Shares to sell</Label>
+              <Label htmlFor="stock-news-shares">{t('game.stockNews.sharesToSell')}</Label>
               <Input
                 id="stock-news-shares"
                 type="number"
@@ -86,7 +85,7 @@ export function StockNewsDecisionDialog({
                 onChange={(e) => setShares(Math.max(1, Math.min(mine.shares, Number(e.target.value))))}
               />
               <p className="text-xs text-muted-foreground">
-                Proceeds: ${(shares * mine.unit_price).toLocaleString()}
+                {t('game.stockNews.proceeds', { amount: `$${(shares * mine.unit_price).toLocaleString()}` })}
               </p>
             </div>
 
@@ -95,7 +94,10 @@ export function StockNewsDecisionDialog({
               onClick={() => decideMut.mutate({ action: 'stock_news_sell', shares })}
               disabled={decideMut.isPending}
             >
-              Sell {shares.toLocaleString()} shares for ${(shares * mine.unit_price).toLocaleString()}
+              {t('game.stockNews.sellFor', {
+                count: shares,
+                amount: `$${(shares * mine.unit_price).toLocaleString()}`,
+              })}
             </Button>
             <Button
               variant="outline"
@@ -103,12 +105,12 @@ export function StockNewsDecisionDialog({
               onClick={() => decideMut.mutate({ action: 'stock_news_skip' })}
               disabled={decideMut.isPending}
             >
-              Hold
+              {t('game.stockNews.hold')}
             </Button>
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">
-            You don't hold this symbol — waiting on other players to decide…
+            {t('game.stockNews.notHolding')}
           </p>
         )}
       </DialogContent>

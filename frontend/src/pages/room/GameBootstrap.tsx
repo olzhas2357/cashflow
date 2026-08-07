@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { exchangeSessionToken } from '@/api/hostAuth'
 import { useRoomPlayerStore } from '@/store/roomPlayerStore'
 import { useAuthStore } from '@/store/authStore'
@@ -10,6 +11,7 @@ import { usePlayStore } from '@/store/usePlayStore'
 // /play/* player frontend — see design/Task-Testing.md and
 // handlers/rooms_game.go's ExchangeSessionToken.
 export default function GameBootstrap() {
+  const { t } = useTranslation()
   const { code = '' } = useParams()
   const upperCode = code.toUpperCase()
   const playerToken = useRoomPlayerStore((s) => s.players[upperCode]?.playerToken ?? null)
@@ -35,7 +37,7 @@ export default function GameBootstrap() {
       })
       .catch((e) => {
         if (cancelled) return
-        setErr(e instanceof Error ? e.message : 'Не удалось войти в игру.')
+        setErr(e instanceof Error ? e.message : t('bootstrap.errorDefault'))
         setStatus('error')
       })
     return () => {
@@ -50,9 +52,9 @@ export default function GameBootstrap() {
   if (status === 'error') {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 px-4 text-center">
-        <p className="text-destructive">{err === 'no_identity' ? 'Не удалось опознать тебя в этой комнате.' : err}</p>
+        <p className="text-destructive">{err === 'no_identity' ? t('bootstrap.noIdentity') : err}</p>
         <Link to={`/room/${upperCode}`} className="text-primary underline-offset-4 hover:underline">
-          Вернуться в лобби
+          {t('bootstrap.backToLobby')}
         </Link>
       </div>
     )
@@ -60,7 +62,7 @@ export default function GameBootstrap() {
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
-      <p className="text-muted-foreground">Входим в игру…</p>
+      <p className="text-muted-foreground">{t('bootstrap.entering')}</p>
     </div>
   )
 }

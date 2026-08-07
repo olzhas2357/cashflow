@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import i18n from '../i18n/i18n'
 import { useNotificationsStore } from '../store/notificationsStore'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
@@ -11,61 +12,39 @@ export type GameEvent = {
 
 type Handlers = Partial<Record<string, (payload: Record<string, unknown>) => void>>
 
-const EVENT_LABELS: Record<string, string> = {
-  PLAYER_JOINED: 'A player joined the game',
-  PLAYER_READY: 'A player is ready',
-  GAME_STARTED: 'Game started!',
-  DICE_ROLLED: 'Dice rolled',
-  PAYDAY_RECEIVED: 'Payday collected',
-  DOODAD_PAID: 'Doodad expense paid',
-  BABY_BORN: 'A baby was born',
-  PLAYER_DOWNSIZED: 'A player was downsized',
-  CHARITY_CHOICE_REQUIRED: 'Charity: donate 10% for double dice, or skip',
-  CHARITY_PAID: 'Charity donation made',
-  DEAL_DRAWN: 'A deal card was drawn',
-  DEAL_CHOICE_REQUIRED: 'Choose Small Deal or Big Deal',
-  MARKET_OPEN: 'Market card opened — check if you can sell',
-  MARKET_SKIPPED: 'Market card skipped — nobody owned a matching asset',
-  MARKET_FORCED_APPLIED: 'Market card resolved automatically — check your balance',
-  BIG_DEAL_NEWS_SKIPPED: "Big Deal news skipped — you don't own a matching property",
-  MARKET_DECISION: 'A player answered the Market card',
-  STOCK_NEWS_OPEN: 'Stock News: price changed, sell if you want',
-  STOCK_NEWS_DECISION: 'A player answered the Stock News card',
-  AUCTION_STARTED: 'Player auction started',
-  AUCTION_BID: 'New bid in a player auction',
-  AUCTION_ENDED: 'Player auction settled',
-  STOCK_SOLD: 'A player sold stock to the bank',
-  DECISION_MADE: 'Decision made',
-  TURN_CHANGED: "Next player's turn",
-  PLAYER_WON: 'A player won the game!',
+function eventLabel(type: string): string {
+  return i18n.t(`game.events.${type}`, { defaultValue: type }) as string
 }
 
 // A few events carry enough payload context to name the card/symbol — falls
 // back to the static label above when the field isn't present.
 function describeEvent(type: string, payload: Record<string, unknown>): string {
   const card = payload.card as { name?: string; title?: string; symbol?: string } | undefined
+  const label = eventLabel(type)
   switch (type) {
     case 'MARKET_OPEN':
     case 'MARKET_SKIPPED':
     case 'MARKET_FORCED_APPLIED':
-      return card?.name ? `${EVENT_LABELS[type]}: ${card.name}` : EVENT_LABELS[type]
+      return card?.name ? `${label}: ${card.name}` : label
     case 'BIG_DEAL_NEWS_SKIPPED':
-      return card?.title ? `${EVENT_LABELS[type]}: ${card.title}` : EVENT_LABELS[type]
+      return card?.title ? `${label}: ${card.title}` : label
     case 'STOCK_NEWS_OPEN':
-      return card?.symbol ? `${EVENT_LABELS[type]} (${card.symbol})` : EVENT_LABELS[type]
+      return card?.symbol ? `${label} (${card.symbol})` : label
     case 'AUCTION_ENDED': {
       const assetName = payload.asset_name as string | undefined
       const price = payload.price as number | undefined
       if (payload.sold && assetName) {
-        return `Auction ended: ${assetName} sold${price != null ? ` for $${price.toLocaleString()}` : ''}`
+        return price != null
+          ? i18n.t('game.events.AUCTION_ENDED_SOLD', { asset: assetName, price: `$${price.toLocaleString()}` })
+          : i18n.t('game.events.AUCTION_ENDED_SOLD_NO_PRICE', { asset: assetName })
       }
       if (assetName) {
-        return `Auction ended: ${assetName} — no winning bid`
+        return i18n.t('game.events.AUCTION_ENDED_NO_BID', { asset: assetName })
       }
-      return EVENT_LABELS[type]
+      return label
     }
     default:
-      return EVENT_LABELS[type] ?? type
+      return label
   }
 }
 

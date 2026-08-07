@@ -30,5 +30,328 @@
   "footer": {
     "github": "GitHub",
     "contact": "Бізге жазыңыз"
+  },
+  "roomAuth": {
+    "login": {
+      "subtitle": "Ойын құрушыларға кіру",
+      "title": "Кіру",
+      "description": "Email мен парольді енгіз.",
+      "emailLabel": "Email",
+      "passwordLabel": "Пароль",
+      "submit": "Кіру",
+      "submitting": "Кіру…",
+      "noAccount": "Аккаунтың жоқ па?",
+      "registerLink": "Тіркелу",
+      "errorDefault": "Кіру мүмкін болмады."
+    },
+    "register": {
+      "subtitle": "Достарыңмен ойын құр",
+      "title": "Тіркелу",
+      "description": "Бөлме құру үшін керек. Достарыңа тіркелу қажет емес.",
+      "emailLabel": "Email",
+      "passwordLabel": "Пароль",
+      "passwordHint": "Кемінде 8 таңба.",
+      "submit": "Тіркелу",
+      "submitting": "Тіркелу…",
+      "haveAccount": "Аккаунтың бар ма?",
+      "loginLink": "Кіру",
+      "errorDefault": "Тіркелу мүмкін болмады."
+    },
+    "join": {
+      "roomLabel": "Бөлме {{code}}",
+      "title": "Қосылу",
+      "description": "Тіркелу қажет емес — атыңды енгіз.",
+      "nameLabel": "Атың",
+      "submit": "Ойынға кіру",
+      "submitting": "Кіру…",
+      "errorDefault": "Бөлмеге кіру мүмкін болмады."
+    }
+  },
+  "room": {
+    "notFound": "Бөлме табылмады.",
+    "codeLabel": "Бөлме коды",
+    "copyLink": "Сілтемені көшіру",
+    "copied": "Көшірілді",
+    "spectatorNotice": "Сен бұл бөлмені сырттан қарап отырсың.",
+    "joinAsGuest": "Қонақ ретінде кіру",
+    "playersTitle": "Ойыншылар",
+    "you": "Сен",
+    "host": "Хост",
+    "ready": "Дайын",
+    "choosing": "Таңдап жатыр",
+    "chooseProfessionTitle": "Мамандық таңда",
+    "professionPlaceholder": "Мамандық",
+    "save": "Дайын",
+    "saving": "Сақтау…",
+    "professionErrorDefault": "Мамандықты таңдау мүмкін болмады.",
+    "startGame": "Ойынды бастау",
+    "starting": "Басталуда…",
+    "startHint": "Кемінде 2 ойыншы керек, барлығы мамандық таңдауы тиіс.",
+    "startErrorDefault": "Ойынды бастау мүмкін болмады.",
+    "statusLabel": "Күйі: {{status}}"
+  },
+  "myRooms": {
+    "title": "Менің ойындарым",
+    "subtitle": "Бөлме құрып, сілтемені достарыңа жібер.",
+    "create": "Ойын құру",
+    "creating": "Құрылуда…",
+    "createErrorDefault": "Ойынды құру мүмкін болмады.",
+    "loading": "Жүктелуде…",
+    "openLobby": "Лобби ашу",
+    "copyLinkTitle": "Сілтемені көшіру",
+    "emptyTitle": "Әзірге ойын жоқ",
+    "emptyDescription": "Достарыңа арналған код пен сілтеме алу үшін «Ойын құру» түймесін бас.",
+    "statusWaiting": "Күту",
+    "statusInProgress": "Ойын жүріп жатыр",
+    "statusFinished": "Аяқталды"
+  },
+  "bootstrap": {
+    "entering": "Ойынға кіріп жатырсың…",
+    "noIdentity": "Бұл бөлмеде сені анықтау мүмкін болмады.",
+    "errorDefault": "Ойынға кіру мүмкін болмады.",
+    "backToLobby": "Лоббиге қайту"
+  },
+  "game": {
+    "common": {
+      "skip": "Өткізіп жіберу",
+      "pass": "Өткізіп жіберу",
+      "buy": "Сатып алу",
+      "processing": "Өңделуде…",
+      "price": "Баға",
+      "downPayment": "Бастапқы жарна",
+      "mortgage": "Ипотека",
+      "cashflowPerMo": "Кіріс / ай",
+      "roi": "ROI",
+      "total": "Барлығы",
+      "symbol": "Тикер",
+      "shares": "Акциялар",
+      "typicalRange": "Әдеттегі диапазон",
+      "unnamedCard": "⚠ Атаусыз карта",
+      "missingDescription": "⚠ Карта деректері жоқ — сипаттама жасалмады.",
+      "somethingWrong": "Бірдеңе дұрыс болмады.",
+      "couldNotRespond": "Картаға жауап беру мүмкін болмады.",
+      "couldNotSell": "Сату мүмкін болмады.",
+      "couldNotProcessDecision": "Шешімді өңдеу мүмкін болмады."
+    },
+    "turnStatus": {
+      "WAITING_ROLL": "Лақтыруды күту",
+      "RESOLVING_CELL": "Ұяшық өңделуде",
+      "AWAITING_DECISION": "Шешімді күту",
+      "AWAITING_DEAL_CHOICE": "Мәміле таңдалуда",
+      "AWAITING_CHARITY_DECISION": "Қайырымдылық шешімі",
+      "AWAITING_MARKET_DECISIONS": "Нарық шешімдері",
+      "AWAITING_STOCK_NEWS_DECISIONS": "Акция жаңалықтары шешімдері",
+      "AWAITING_DEAL_OFFER_CLAIM": "Мәміле барлығына ұсынылды",
+      "TURN_COMPLETE": "Кезек аяқталды"
+    },
+    "board": {
+      "title": "Ойын тақтасы",
+      "turn": "{{n}}-кезек",
+      "lastRoll": "Соңғы лақтыру: {{roll}}",
+      "doubleDice_other": "🎲🎲 Қос сүйек: {{count}} кезек қалды",
+      "rollDice": "Сүйек лақтыру",
+      "rolling": "Лақтырылуда…",
+      "awaitingDecision": "Сенің шешіміңді күтудеміз…",
+      "waitingForTurn": "Кезегіңді күту…",
+      "rollError": "Сүйек лақтыру мүмкін болмады.",
+      "ratRace": "Тышқан жарысы"
+    },
+    "finished": {
+      "title": "Ойын аяқталды",
+      "stillInRace": "Тышқан жарысында әлі бар: {{names}}",
+      "place_other": "{{n}}-орын",
+      "turnLabel": "{{n}}-кезек"
+    },
+    "winner": {
+      "place_other": "{{n}}-орын",
+      "escapedTitleMe": "Сен тышқан жарысынан шықтың!",
+      "escapedTitleOther": "{{name}} тышқан жарысынан шықты",
+      "turnLabel": "{{n}}-кезек",
+      "formula": "{{passive}} пассивті кіріс > {{expenses}} шығын",
+      "surplus": "шығыннан асқан профицит",
+      "assetsPurchased": "сатып алынған активтер",
+      "portfolioValue": "портфель құны",
+      "turnsToFinish": "финишке дейінгі кезектер",
+      "bestDeal": "ЕҢ ЖАҚСЫ МӘМІЛЕ",
+      "boughtFor": "{{price}} бағамен алынды",
+      "perMonth": "{{amount}}/ай",
+      "finalResults": "Қорытынды нәтижелер",
+      "watchGame": "Ойынды қарауды жалғастыру",
+      "continuesNote": "Ойын қалған ойыншылар үшін жалғасады"
+    },
+    "financialStatement": {
+      "title": "Қаржылық есеп",
+      "cashOnHand": "Қолма-қол ақша",
+      "income": "Кіріс",
+      "salary": "Жалақы",
+      "passive": "Пассивті",
+      "total": "Барлығы",
+      "expenses": "Шығындар",
+      "base": "Негізгі",
+      "monthlyCashflow": "Ай сайынғы ақша ағыны",
+      "assets": "Активтер",
+      "liabilities": "Міндеттемелер",
+      "child_other": "{{count}} бала"
+    },
+    "loan": {
+      "title": "Банк несиесі",
+      "balance": "Қалдық",
+      "interest": "Пайыз / ай (10%)",
+      "borrow": "Несие алу",
+      "repay": "Өтеу",
+      "errorDefault": "Несие операциясы орындалмады."
+    },
+    "stocks": {
+      "title": "Менің акцияларым",
+      "sellAt": "{{price}} бағамен сату",
+      "noBuyer": "Қазір сәйкес сатып алушы картасы жоқ — осы тикермен акция картасын күт."
+    },
+    "auction": {
+      "title": "Ойыншылар аукциондары",
+      "assetFallback": "Актив",
+      "ended": "Аяқталды",
+      "secondsLeft": "{{n}} с қалды",
+      "seller": "Сатушы: {{name}}",
+      "startingPrice": "Бастапқы баға",
+      "highestBid": "Ең жоғары баға ұсынысы",
+      "noBids": "Әзірге ұсыныс жоқ",
+      "bid": "Баға ұсыну",
+      "raiseBid": "Ұсынысты көтеру",
+      "waitingTimer": "Таймердің аяқталуын күту…",
+      "settling": "Қорытындыланып жатыр…",
+      "errorDefault": "Бірдеңе дұрыс болмады.",
+      "bidAmountAria": "Ұсыныс сомасы",
+      "auctionCta": "Аукцион (2 мин)",
+      "startingPriceAria": "Аукционның бастапқы бағасы"
+    },
+    "activity": {
+      "title": "Менің әрекеттерім",
+      "empty": "Әзірге әрекет жоқ."
+    },
+    "chat": {
+      "title": "Чат",
+      "empty": "Әзірге хабарлама жоқ.",
+      "placeholder": "Хабарлама жазу…"
+    },
+    "dealDecision": {
+      "smallDeal": "Шағын мәміле",
+      "bigDeal": "Ірі мәміле",
+      "amountDue": "Төлеуге тиіс сома",
+      "alreadyOwn": "Сенде {{symbol}} акциясынан {{count}} дана бар.",
+      "sellAt": "{{price}} бағамен сату",
+      "takeLoan": "Қолма-қол ақша жетпесе, банктен несие алу",
+      "yourCommission": "Бағадан үстеме сенің комиссияң",
+      "whoeverAccepts": "Бірінші қабылдаған ойыншы банкке {{price}} + саған {{commission}} = барлығы {{total}} төлейді.",
+      "sendToAll": "Барлық ойыншыға жіберу",
+      "offerToAll": "Барлығына ұсыну",
+      "payAmount": "{{amount}} төлеу"
+    },
+    "dealChoice": {
+      "title": "Мәміле таңда",
+      "subtitle": "Қай колодадан карта тартуды таңда.",
+      "errorDefault": "Таңдау мүмкін болмады."
+    },
+    "dealOffer": {
+      "waitingClaim": "Басқа ойыншының бұл ұсынысты қабылдауын күтудеміз…",
+      "priceToBank": "Баға (банкке)",
+      "commissionToPlayer": "Комиссия (ұсынған ойыншыға)",
+      "cancelOffer": "Ұсынысты болдырмау",
+      "acceptFor": "{{price}} бағамен қабылдау"
+    },
+    "market": {
+      "titlePrefix": "Нарық",
+      "waitingForRoller": "Сүйек лақтырған ойыншының бірінші шешім қабылдауын күтудеміз…",
+      "offerPrice": "Ұсыныс бағасы",
+      "netPayout": "Таза төлем",
+      "sellToBank": "{{price}} бағамен банкке сату",
+      "noMatchingAsset": "Сенде сәйкес актив жоқ — басқа ойыншылардың шешімін күтудеміз…"
+    },
+    "stockNews": {
+      "titlePrefix": "Акция жаңалықтары",
+      "youHold_other": "Сенде {{count}} акция бар",
+      "newPrice": "Жаңа баға / акция",
+      "sharesToSell": "Сатылатын акциялар",
+      "proceeds": "Түсім: {{amount}}",
+      "sellFor": "{{count}} акцияны {{amount}} бағамен сату",
+      "hold": "Сақтап қалу",
+      "notHolding": "Сенде бұл тикер жоқ — басқа ойыншылардың шешімін күтудеміз…"
+    },
+    "charity": {
+      "title": "Қайырымдылық",
+      "description": "Жалпы кірістің (жалақы + пассивті) 10%-ын қайырымдылыққа бер, келесі 3 кезекте 2 сүйек лақтырасың. Немесе өткізіп жіберіп, әдеттегідей 1 сүйек лақтыра бер.",
+      "donate": "10% беру"
+    },
+    "events": {
+      "PLAYER_JOINED": "Ойыншы ойынға қосылды",
+      "PLAYER_READY": "Ойыншы дайын",
+      "GAME_STARTED": "Ойын басталды!",
+      "DICE_ROLLED": "Сүйек лақтырылды",
+      "PAYDAY_RECEIVED": "Жалақы алынды",
+      "DOODAD_PAID": "Күтпеген шығын төленді",
+      "BABY_BORN": "Бала дүниеге келді",
+      "PLAYER_DOWNSIZED": "Ойыншы қысқартылды",
+      "CHARITY_CHOICE_REQUIRED": "Қайырымдылық: қос сүйек үшін 10% бер немесе өткізіп жібер",
+      "CHARITY_PAID": "Қайырымдылық жасалды",
+      "DEAL_DRAWN": "Мәміле картасы тартылды",
+      "DEAL_CHOICE_REQUIRED": "Шағын немесе ірі мәміле таңда",
+      "MARKET_OPEN": "Нарық картасы ашылды — сата алатыныңды тексер",
+      "MARKET_SKIPPED": "Нарық картасы өткізілді — ешкімде сәйкес актив жоқ",
+      "MARKET_FORCED_APPLIED": "Нарық картасы автоматты түрде қолданылды — балансыңды тексер",
+      "BIG_DEAL_NEWS_SKIPPED": "Ірі мәміле жаңалығы өткізілді — сенде сәйкес мүлік жоқ",
+      "MARKET_DECISION": "Ойыншы нарық картасына жауап берді",
+      "STOCK_NEWS_OPEN": "Акция жаңалығы: баға өзгерді, қаласаң сат",
+      "STOCK_NEWS_DECISION": "Ойыншы акция жаңалығы картасына жауап берді",
+      "AUCTION_STARTED": "Ойыншылар аукционы басталды",
+      "AUCTION_BID": "Аукционда жаңа ұсыныс",
+      "AUCTION_ENDED": "Аукцион аяқталды",
+      "AUCTION_ENDED_SOLD": "Аукцион аяқталды: {{asset}} {{price}} бағамен сатылды",
+      "AUCTION_ENDED_SOLD_NO_PRICE": "Аукцион аяқталды: {{asset}} сатылды",
+      "AUCTION_ENDED_NO_BID": "Аукцион аяқталды: {{asset}} — ұсыныс болмады",
+      "STOCK_SOLD": "Ойыншы акцияны банкке сатты",
+      "DECISION_MADE": "Шешім қабылданды",
+      "TURN_CHANGED": "Келесі ойыншының кезегі",
+      "PLAYER_WON": "Ойыншы ойында жеңді!"
+    },
+    "layout": {
+      "navLobby": "Лобби",
+      "navBoard": "Ойын тақтасы",
+      "navAssets": "Менің активтерім",
+      "player": "Ойыншы",
+      "signOut": "Шығу"
+    },
+    "lobby": {
+      "title": "Лобби",
+      "joinCode": "Кіру коды: {{code}}",
+      "playersTitle": "Ойыншылар",
+      "joined": "{{count}} / {{max}} қосылды",
+      "ready": "Дайын",
+      "notReady": "Дайын емес",
+      "chooseProfession": "Мамандық таңда",
+      "selectProfession": "Мамандық таңда",
+      "markingReady": "Дайын деп белгіленуде…",
+      "errorDefault": "Дайын деп белгілеу мүмкін болмады.",
+      "waitingHost": "Жүргізушінің ойынды бастауын күту…"
+    },
+    "joinGame": {
+      "subtitle": "Ойынға кіру",
+      "cardDescription": "Жүргізуші берген кодты және атыңды енгіз.",
+      "joinCodeLabel": "Кіру коды",
+      "nameLabel": "Атың",
+      "joining": "Кіру…",
+      "join": "Кіру",
+      "errorDefault": "Ойынға кіру мүмкін болмады."
+    },
+    "myAssets": {
+      "title": "Менің активтерім",
+      "subtitle": "Тақтада сенің меншігіңдегінің бәрі — жылжымайтын мүлік пен бизнес.",
+      "loading": "Жүктелуде…",
+      "realEstate": "Жылжымайтын мүлік",
+      "business": "Бизнес",
+      "noRealEstate": "Әзірге жылжымайтын мүлік жоқ.",
+      "noBusiness": "Әзірге бизнес жоқ.",
+      "listedForAuction": "Аукционға қойылған",
+      "owned": "Меншігінде",
+      "cashFlow": "Ақша ағыны"
+    }
   }
 }

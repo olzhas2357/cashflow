@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { makeDecision } from '@/api/play'
 import { useAuthStore } from '@/store/authStore'
 import { usePlayStore } from '@/store/usePlayStore'
@@ -17,6 +18,7 @@ import { Building2, Landmark } from 'lucide-react'
 // 'AWAITING_DEAL_CHOICE' — landing on a Deal cell lets the player pick which
 // deck to draw from before the usual buy/pass flow (DealDecisionDialog) begins.
 export function DealChoiceDialog() {
+  const { t } = useTranslation()
   const token = useAuthStore((s) => s.token)
   const gameId = usePlayStore((s) => s.gameId)
   const qc = useQueryClient()
@@ -30,13 +32,13 @@ export function DealChoiceDialog() {
     <Dialog open>
       <DialogContent onInteractOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
         <DialogHeader>
-          <DialogTitle>Choose a deal</DialogTitle>
-          <DialogDescription>Pick which deck to draw a card from.</DialogDescription>
+          <DialogTitle>{t('game.dealChoice.title')}</DialogTitle>
+          <DialogDescription>{t('game.dealChoice.subtitle')}</DialogDescription>
         </DialogHeader>
 
         {choiceMut.isError && (
           <p className="text-sm text-destructive">
-            {choiceMut.error instanceof Error ? choiceMut.error.message : 'Could not choose.'}
+            {choiceMut.error instanceof Error ? choiceMut.error.message : t('game.dealChoice.errorDefault')}
           </p>
         )}
 
@@ -48,11 +50,11 @@ export function DealChoiceDialog() {
             disabled={choiceMut.isPending}
           >
             <Building2 className="h-4 w-4" />
-            Small Deal
+            {t('game.dealDecision.smallDeal')}
           </Button>
           <Button className="flex-1 gap-2" onClick={() => choiceMut.mutate('big')} disabled={choiceMut.isPending}>
             <Landmark className="h-4 w-4" />
-            Big Deal
+            {t('game.dealDecision.bigDeal')}
           </Button>
         </DialogFooter>
       </DialogContent>

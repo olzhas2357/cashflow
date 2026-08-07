@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { Copy, Check, Crown, User, CheckCircle2, Circle } from 'lucide-react'
 import { getMyRoomPlayerToken, getRoomState, listProfessions, setRoomProfession, startRoomGame } from '@/api/hostAuth'
 import { useHostAuthStore } from '@/store/hostAuthStore'
@@ -11,6 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 export default function Room() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { code = '' } = useParams()
   const upperCode = code.toUpperCase()
@@ -86,7 +88,7 @@ export default function Room() {
     return (
       <div className="flex min-h-screen items-center justify-center px-4">
         <p className="text-destructive">
-          {roomQ.error instanceof Error ? roomQ.error.message : 'Комната не найдена.'}
+          {roomQ.error instanceof Error ? roomQ.error.message : t('room.notFound')}
         </p>
       </div>
     )
@@ -97,29 +99,29 @@ export default function Room() {
   return (
     <div className="mx-auto max-w-2xl space-y-6 px-4 py-10">
       <div className="text-center">
-        <p className="text-sm text-muted-foreground">Код комнаты</p>
+        <p className="text-sm text-muted-foreground">{t('room.codeLabel')}</p>
         <div className="font-mono text-5xl font-bold tracking-[0.3em] text-primary">{upperCode}</div>
       </div>
 
       <div className="flex items-center justify-center gap-2">
         <Button variant="outline" className="gap-2" onClick={copyLink}>
           {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
-          {copied ? 'Скопировано' : 'Копировать ссылку'}
+          {copied ? t('room.copied') : t('room.copyLink')}
         </Button>
       </div>
 
       {!iAmIdentified && (
         <p className="text-center text-sm text-muted-foreground">
-          Ты смотришь эту комнату со стороны.{' '}
+          {t('room.spectatorNotice')}{' '}
           <Link to={`/join/${upperCode}`} className="text-primary underline-offset-4 hover:underline">
-            Войти как гость
+            {t('room.joinAsGuest')}
           </Link>
         </p>
       )}
 
       <Card>
         <CardHeader>
-          <CardTitle>Игроки</CardTitle>
+          <CardTitle>{t('room.playersTitle')}</CardTitle>
           <CardDescription>{room?.players.length ?? 0} / 6</CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
@@ -133,17 +135,17 @@ export default function Room() {
                 <span className="flex items-center gap-2">
                   {p.is_host ? <Crown className="h-4 w-4 text-amber-400" /> : <User className="h-4 w-4 text-muted-foreground" />}
                   {p.name}
-                  {isMe && <Badge variant="muted">Ты</Badge>}
+                  {isMe && <Badge variant="muted">{t('room.you')}</Badge>}
                 </span>
                 <span className="flex items-center gap-2">
-                  {p.is_host && <Badge variant="warning">Хост</Badge>}
+                  {p.is_host && <Badge variant="warning">{t('room.host')}</Badge>}
                   {p.profession_id ? (
                     <Badge variant="success" className="gap-1">
-                      <CheckCircle2 className="h-3 w-3" /> Готов
+                      <CheckCircle2 className="h-3 w-3" /> {t('room.ready')}
                     </Badge>
                   ) : (
                     <Badge variant="muted" className="gap-1">
-                      <Circle className="h-3 w-3" /> Выбирает
+                      <Circle className="h-3 w-3" /> {t('room.choosing')}
                     </Badge>
                   )}
                 </span>
@@ -156,12 +158,12 @@ export default function Room() {
       {iAmIdentified && myPlayerToken && !me?.profession_id && (
         <Card>
           <CardHeader>
-            <CardTitle>Выбери профессию</CardTitle>
+            <CardTitle>{t('room.chooseProfessionTitle')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <Select value={professionId} onValueChange={setProfessionId}>
               <SelectTrigger>
-                <SelectValue placeholder="Профессия" />
+                <SelectValue placeholder={t('room.professionPlaceholder')} />
               </SelectTrigger>
               <SelectContent>
                 {professionsQ.data?.map((prof) => (
@@ -176,11 +178,11 @@ export default function Room() {
               disabled={!professionId || professionMut.isPending}
               onClick={() => professionMut.mutate(professionId)}
             >
-              {professionMut.isPending ? 'Сохраняем…' : 'Готово'}
+              {professionMut.isPending ? t('room.saving') : t('room.save')}
             </Button>
             {professionMut.isError && (
               <p className="text-sm text-destructive">
-                {professionMut.error instanceof Error ? professionMut.error.message : 'Не удалось выбрать профессию.'}
+                {professionMut.error instanceof Error ? professionMut.error.message : t('room.professionErrorDefault')}
               </p>
             )}
           </CardContent>
@@ -190,22 +192,24 @@ export default function Room() {
       {amHost && (
         <div className="space-y-2">
           <Button className="w-full" size="lg" disabled={!allReady || startMut.isPending} onClick={() => startMut.mutate()}>
-            {startMut.isPending ? 'Запускаем…' : 'Начать игру'}
+            {startMut.isPending ? t('room.starting') : t('room.startGame')}
           </Button>
           {!allReady && (
             <p className="text-center text-xs text-muted-foreground">
-              Нужно минимум 2 игрока, и все должны выбрать профессию.
+              {t('room.startHint')}
             </p>
           )}
           {startMut.isError && (
             <p className="text-center text-sm text-destructive">
-              {startMut.error instanceof Error ? startMut.error.message : 'Не удалось начать игру.'}
+              {startMut.error instanceof Error ? startMut.error.message : t('room.startErrorDefault')}
             </p>
           )}
         </div>
       )}
 
-      <p className="text-center text-xs text-muted-foreground">Статус: {room?.status ?? '…'}</p>
+      <p className="text-center text-xs text-muted-foreground">
+        {t('room.statusLabel', { status: room?.status ?? '…' })}
+      </p>
     </div>
   )
 }

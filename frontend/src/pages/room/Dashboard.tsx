@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { Copy, Check, Plus, Users } from 'lucide-react'
 import { useHostAuthStore } from '@/store/hostAuthStore'
 import { useRoomPlayerStore } from '@/store/roomPlayerStore'
@@ -9,13 +10,17 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 
-function statusLabel(status: string) {
-  if (status === 'WAITING') return { label: 'Ожидание', variant: 'warning' as const }
-  if (status === 'IN_PROGRESS') return { label: 'Идёт игра', variant: 'success' as const }
-  return { label: 'Завершена', variant: 'muted' as const }
+function useStatusLabel() {
+  const { t } = useTranslation()
+  return (status: string) => {
+    if (status === 'WAITING') return { label: t('myRooms.statusWaiting'), variant: 'warning' as const }
+    if (status === 'IN_PROGRESS') return { label: t('myRooms.statusInProgress'), variant: 'success' as const }
+    return { label: t('myRooms.statusFinished'), variant: 'muted' as const }
+  }
 }
 
 function CopyLinkButton({ code }: { code: string }) {
+  const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
   const copy = async () => {
     try {
@@ -27,13 +32,15 @@ function CopyLinkButton({ code }: { code: string }) {
     }
   }
   return (
-    <Button type="button" size="icon" variant="ghost" onClick={copy} title="Копировать ссылку">
+    <Button type="button" size="icon" variant="ghost" onClick={copy} title={t('myRooms.copyLinkTitle')}>
       {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
     </Button>
   )
 }
 
 export default function RoomDashboard() {
+  const { t } = useTranslation()
+  const statusLabel = useStatusLabel()
   const navigate = useNavigate()
   const token = useHostAuthStore((s) => s.token)
   const setPlayer = useRoomPlayerStore((s) => s.setPlayer)
@@ -62,22 +69,22 @@ export default function RoomDashboard() {
     <div className="mx-auto max-w-2xl space-y-6 px-4 py-10">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Мои игры</h1>
-          <p className="text-sm text-muted-foreground">Создай комнату и пришли ссылку друзьям.</p>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('myRooms.title')}</h1>
+          <p className="text-sm text-muted-foreground">{t('myRooms.subtitle')}</p>
         </div>
         <Button size="lg" className="gap-2" disabled={createMut.isPending} onClick={() => createMut.mutate()}>
           <Plus className="h-5 w-5" />
-          {createMut.isPending ? 'Создаём…' : 'Создать игру'}
+          {createMut.isPending ? t('myRooms.creating') : t('myRooms.create')}
         </Button>
       </div>
 
       {createMut.isError && (
         <p className="text-sm text-destructive">
-          {createMut.error instanceof Error ? createMut.error.message : 'Не удалось создать игру.'}
+          {createMut.error instanceof Error ? createMut.error.message : t('myRooms.createErrorDefault')}
         </p>
       )}
 
-      {roomsQ.isLoading && <p className="text-muted-foreground">Загрузка…</p>}
+      {roomsQ.isLoading && <p className="text-muted-foreground">{t('myRooms.loading')}</p>}
 
       <div className="space-y-3">
         {rooms.map((r) => {
@@ -97,7 +104,7 @@ export default function RoomDashboard() {
                 <Button asChild variant="secondary" size="sm" className="flex-1 gap-2">
                   <Link to={`/room/${r.code}`}>
                     <Users className="h-4 w-4" />
-                    Открыть лобби
+                    {t('myRooms.openLobby')}
                   </Link>
                 </Button>
                 <CopyLinkButton code={r.code} />
@@ -110,8 +117,8 @@ export default function RoomDashboard() {
       {!roomsQ.isLoading && rooms.length === 0 && (
         <Card className="border-dashed">
           <CardHeader>
-            <CardTitle>Пока нет игр</CardTitle>
-            <CardDescription>Нажми «Создать игру», чтобы получить код и ссылку для друзей.</CardDescription>
+            <CardTitle>{t('myRooms.emptyTitle')}</CardTitle>
+            <CardDescription>{t('myRooms.emptyDescription')}</CardDescription>
           </CardHeader>
         </Card>
       )}

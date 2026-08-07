@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/store/authStore'
 import { usePlayStore } from '@/store/usePlayStore'
-import { getLobby, rollDice, type ChatMessage } from '@/api/play'
+import { getLobby, rollDice, listProfessions, type ChatMessage } from '@/api/play'
 import { usePlayGameSocket } from '@/hooks/usePlayGameSocket'
 import { BOARD_SIZE, cellLabelAt, cellColorAt } from '@/lib/board'
 import { boardCellGridPosition, BOARD_GRID_ROWS, BOARD_GRID_COLS } from '@/lib/boardLayout'
@@ -19,12 +20,13 @@ import { ChatPanel } from '@/components/play/ChatPanel'
 import { StockPortfolioPanel } from '@/components/play/StockPortfolioPanel'
 import { LoanPanel } from '@/components/play/LoanPanel'
 import { FinancialStatement } from '@/components/play/FinancialStatement'
-import { MyActivityPanel } from '@/components/play/MyActivityPanel'
 import WinnerModal from '@/components/play/WinnerModal'
+import { GameFinishedBanner } from '@/components/play/GameFinishedBanner'
 import type { PlayerWonPayload } from '@/api/auditorPanel'
 import { Dice5 } from 'lucide-react'
 
 export default function Board() {
+  const { t } = useTranslation()
   const token = useAuthStore((s) => s.token)
   const myPlayerId = useAuthStore((s) => s.user?.player_id)
   const gameId = usePlayStore((s) => s.gameId)
@@ -114,63 +116,77 @@ export default function Board() {
     },
   })
 
+  const professionsQ = useQuery({
+    queryKey: ['play_professions'],
+    queryFn: () => listProfessions(token!),
+    enabled: !!token,
+  })
+
   const game = gameQ.data?.game
   const players = gameQ.data?.players ?? []
   const isMyTurn = game?.current_turn_player_id === myPlayerId
   const canRoll = isMyTurn && game?.turn_status === 'WAITING_ROLL' && game?.status === 'in_progress'
   const me = players.find((p) => p.id === myPlayerId)
+  const myProfessionName = professionsQ.data?.find((p) => p.id === me?.profession_id)?.name
 
   const tokenColors = ['bg-red-500', 'bg-blue-500', 'bg-yellow-400', 'bg-green-500', 'bg-pink-500', 'bg-cyan-400']
   const colorForPlayer = (playerId: string) => {
     const idx = players.findIndex((p) => p.id === playerId)
     return tokenColors[idx % tokenColors.length]
   }
+  const turnStatusLabel = (status?: string) =>
+    status ? (t(`game.turnStatus.${status}`, { defaultValue: status }) as string) : '—'
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 lg:grid lg:grid-cols-[1fr_320px] lg:items-start lg:gap-6 lg:space-y-0">
       <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Board</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('game.board.title')}</h1>
           <p className="text-sm text-muted-foreground">
-            Turn {game?.turn_number ?? 0} &middot; {game?.turn_status ?? '—'}
+            {t('game.board.turn', { n: game?.turn_number ?? 0 })} &middot; {turnStatusLabel(game?.turn_status)}
             {lastRoll != null && (
               <>
                 {' '}
-                &middot; Last roll:{' '}
-                {lastRoll.die2 != null ? `${lastRoll.die1} + ${lastRoll.die2} = ${lastRoll.total}` : lastRoll.total}
+                &middot;{' '}
+                {t('game.board.lastRoll', {
+                  roll:
+                    lastRoll.die2 != null ? `${lastRoll.die1} + ${lastRoll.die2} = ${lastRoll.total}` : lastRoll.total,
+                })}
               </>
             )}
             {me != null && me.charity_turns > 0 && (
-              <> &middot; 🎲🎲 Double dice: {me.charity_turns} turn{me.charity_turns === 1 ? '' : 's'} left</>
+              <> &middot; {t('game.board.doubleDice', { count: me.charity_turns })}</>
             )}
           </p>
         </div>
         {canRoll && (
           <Button onClick={() => rollMut.mutate()} disabled={rollMut.isPending} className="gap-2">
             <Dice5 className="h-4 w-4" />
-            {rollMut.isPending ? 'Rolling…' : 'Roll dice'}
+            {rollMut.isPending ? t('game.board.rolling') : t('game.board.rollDice')}
           </Button>
         )}
         {isMyTurn &&
           (game?.turn_status === 'AWAITING_DECISION' ||
             game?.turn_status === 'AWAITING_DEAL_CHOICE' ||
             game?.turn_status === 'AWAITING_CHARITY_DECISION') && (
-            <p className="text-sm font-medium text-amber-400">Awaiting your decision…</p>
+            <p className="text-sm font-medium text-amber-400">{t('game.board.awaitingDecision')}</p>
           )}
         {!isMyTurn &&
           game?.status === 'in_progress' &&
           game?.turn_status !== 'AWAITING_MARKET_DECISIONS' &&
           game?.turn_status !== 'AWAITING_STOCK_NEWS_DECISIONS' &&
           game?.turn_status !== 'AWAITING_DEAL_OFFER_CLAIM' && (
-            <p className="text-sm text-muted-foreground">Waiting for your turn…</p>
+            <p className="text-sm text-muted-foreground">{t('game.board.waitingForTurn')}</p>
           )}
       </div>
       {rollMut.isError && (
         <p className="text-sm text-destructive">
-          {rollMut.error instanceof Error ? rollMut.error.message : 'Could not roll.'}
+          {rollMut.error instanceof Error ? rollMut.error.message : t('game.board.rollError')}
         </p>
       )}
+
+      {game?.status === 'completed' && <GameFinishedBanner players={players} />}
 
       <div
         className="grid grid-rows-6 grid-cols-8 gap-1 rounded-xl border border-border bg-card p-3"
@@ -216,10 +232,10 @@ export default function Board() {
           style={{ gridRow: '2 / 6', gridColumn: '2 / 8' }}
         >
           <div className="shrink-0 text-center">
-            <div className="text-sm font-semibold text-muted-foreground">Rat Race</div>
-            <div className="text-lg font-bold tracking-tight">{game?.name ?? 'Board'}</div>
+            <div className="text-sm font-semibold text-muted-foreground">{t('game.board.ratRace')}</div>
+            <div className="text-lg font-bold tracking-tight">{game?.name ?? t('game.board.title')}</div>
             <div className="text-xs text-muted-foreground">
-              Turn {game?.turn_number ?? 0} &middot; {game?.turn_status ?? '—'}
+              {t('game.board.turn', { n: game?.turn_number ?? 0 })} &middot; {turnStatusLabel(game?.turn_status)}
             </div>
           </div>
           <div className="flex shrink-0 flex-wrap justify-center gap-2">
@@ -251,11 +267,10 @@ export default function Board() {
       </div>
 
       <div className="space-y-4">
-        {me && <FinancialStatement player={me} />}
+        {me && <FinancialStatement player={me} professionName={myProfessionName} />}
         {me && <LoanPanel player={me} />}
         <StockPortfolioPanel game={game} />
         <AuctionPanel />
-        <MyActivityPanel />
       </div>
 
       {game && isMyTurn && game.turn_status === 'AWAITING_DECISION' && <DealDecisionDialog game={game} />}

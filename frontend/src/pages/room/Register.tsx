@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { registerHost } from '@/api/hostAuth'
 import { useHostAuthStore } from '@/store/hostAuthStore'
 import { Button } from '@/components/ui/button'
@@ -9,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Home } from 'lucide-react'
 
 export default function RoomRegister() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const token = useHostAuthStore((s) => s.token)
   const setSession = useHostAuthStore((s) => s.setSession)
@@ -28,7 +30,7 @@ export default function RoomRegister() {
       setSession(res.token)
       navigate('/host/dashboard', { replace: true })
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Не удалось зарегистрироваться.')
+      setErr(e instanceof Error ? e.message : t('roomAuth.register.errorDefault'))
     } finally {
       setLoading(false)
     }
@@ -42,19 +44,19 @@ export default function RoomRegister() {
         </div>
         <div className="text-left">
           <h1 className="text-xl font-semibold tracking-tight">CashYOU</h1>
-          <p className="text-sm text-muted-foreground">Создать игру с друзьями</p>
+          <p className="text-sm text-muted-foreground">{t('roomAuth.register.subtitle')}</p>
         </div>
       </div>
 
       <Card className="w-full max-w-md border-border">
         <CardHeader>
-          <CardTitle>Регистрация</CardTitle>
-          <CardDescription>Нужна, чтобы создавать комнаты. Друзьям регистрация не понадобится.</CardDescription>
+          <CardTitle>{t('roomAuth.register.title')}</CardTitle>
+          <CardDescription>{t('roomAuth.register.description')}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t('roomAuth.register.emailLabel')}</Label>
               <Input
                 id="email"
                 type="email"
@@ -65,7 +67,7 @@ export default function RoomRegister() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Пароль</Label>
+              <Label htmlFor="password">{t('roomAuth.register.passwordLabel')}</Label>
               <Input
                 id="password"
                 type="password"
@@ -75,17 +77,17 @@ export default function RoomRegister() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
-              <p className="text-xs text-muted-foreground">Минимум 8 символов.</p>
+              <p className="text-xs text-muted-foreground">{t('roomAuth.register.passwordHint')}</p>
             </div>
             {err && <p className="text-sm text-destructive">{err}</p>}
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Регистрация…' : 'Зарегистрироваться'}
+              {loading ? t('roomAuth.register.submitting') : t('roomAuth.register.submit')}
             </Button>
           </form>
           <p className="mt-4 text-center text-sm text-muted-foreground">
-            Уже есть аккаунт?{' '}
+            {t('roomAuth.register.haveAccount')}{' '}
             <Link to="/host/login" className="text-primary underline-offset-4 hover:underline">
-              Войти
+              {t('roomAuth.register.loginLink')}
             </Link>
           </p>
         </CardContent>

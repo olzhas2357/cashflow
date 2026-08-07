@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { makeDecision } from '@/api/play'
 import type { MarketEligiblePlayer, MarketEligibleAsset } from '@/api/play'
 import { useAuthStore } from '@/store/authStore'
@@ -26,6 +27,7 @@ function AssetOfferRow({
   onStartAuction: (askingPrice: number) => void
   disabled: boolean
 }) {
+  const { t } = useTranslation()
   const [askingPrice, setAskingPrice] = useState(asset.net_to_player)
 
   return (
@@ -33,20 +35,20 @@ function AssetOfferRow({
       <div className="font-medium">{asset.name}</div>
       <div className="space-y-1 text-muted-foreground">
         <div className="flex justify-between">
-          <span>Offer price</span>
+          <span>{t('game.market.offerPrice')}</span>
           <span>${asset.offer_price.toLocaleString()}</span>
         </div>
         <div className="flex justify-between">
-          <span>Mortgage</span>
+          <span>{t('game.common.mortgage')}</span>
           <span>−${asset.mortgage.toLocaleString()}</span>
         </div>
         <div className="flex justify-between font-medium text-foreground">
-          <span>Net payout</span>
+          <span>{t('game.market.netPayout')}</span>
           <span>${asset.net_to_player.toLocaleString()}</span>
         </div>
       </div>
       <Button size="sm" className="w-full" onClick={onSell} disabled={disabled}>
-        Sell to bank for ${asset.net_to_player.toLocaleString()}
+        {t('game.market.sellToBank', { price: `$${asset.net_to_player.toLocaleString()}` })}
       </Button>
 
       <div className="flex items-center gap-2 pt-1">
@@ -56,7 +58,7 @@ function AssetOfferRow({
           value={askingPrice}
           onChange={(e) => setAskingPrice(Math.max(0, Number(e.target.value)))}
           className="h-8"
-          aria-label="Starting price for the auction"
+          aria-label={t('game.auction.startingPriceAria')}
         />
         <Button
           size="sm"
@@ -65,7 +67,7 @@ function AssetOfferRow({
           onClick={() => onStartAuction(askingPrice)}
           disabled={disabled}
         >
-          Auction (2 min)
+          {t('game.auction.auctionCta')}
         </Button>
       </div>
     </div>
@@ -86,6 +88,7 @@ export function MarketDecisionDialog({
   game: GameSession
   eligible: MarketEligiblePlayer[]
 }) {
+  const { t } = useTranslation()
   const token = useAuthStore((s) => s.token)
   const myPlayerId = useAuthStore((s) => s.user?.player_id)
   const gameId = usePlayStore((s) => s.gameId)
@@ -120,25 +123,25 @@ export function MarketDecisionDialog({
     <Dialog open>
       <DialogContent onInteractOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
         <DialogHeader>
-          <DialogTitle>Market: {card.name?.trim() || '⚠ Unnamed card'}</DialogTitle>
+          <DialogTitle>{t('game.market.titlePrefix')}: {card.name?.trim() || t('game.common.unnamedCard')}</DialogTitle>
           {card.description?.trim() ? (
             <DialogDescription className="whitespace-pre-line">{card.description}</DialogDescription>
           ) : (
             <DialogDescription className="text-destructive">
-              ⚠ Card data is missing — description was not generated.
+              {t('game.common.missingDescription')}
             </DialogDescription>
           )}
         </DialogHeader>
 
         {decideMut.isError && (
           <p className="text-sm text-destructive">
-            {decideMut.error instanceof Error ? decideMut.error.message : 'Could not respond.'}
+            {decideMut.error instanceof Error ? decideMut.error.message : t('game.common.couldNotRespond')}
           </p>
         )}
 
         {mine && mustWaitForRoller ? (
           <p className="text-sm text-muted-foreground">
-            Waiting for the player who rolled to decide first…
+            {t('game.market.waitingForRoller')}
           </p>
         ) : mine ? (
           <div className="space-y-3">
@@ -163,12 +166,12 @@ export function MarketDecisionDialog({
               onClick={() => decideMut.mutate({ action: 'market_skip' })}
               disabled={decideMut.isPending}
             >
-              Skip
+              {t('game.common.skip')}
             </Button>
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">
-            You have no matching asset — waiting on other players to decide…
+            {t('game.market.noMatchingAsset')}
           </p>
         )}
       </DialogContent>

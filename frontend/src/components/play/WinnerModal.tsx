@@ -1,4 +1,5 @@
 import { Trophy, Medal, Building2, X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import type { WinnerStats } from '@/api/auditorPanel'
 
@@ -13,15 +14,14 @@ type Props = {
   onWatch: () => void // "watch the game" — close the modal, stay a spectator
 }
 
-const PLACE_LABEL: Record<number, string> = {
-  1: '1st place',
-  2: '2nd place',
-  3: '3rd place',
-}
-
 export default function WinnerModal({
   playerName, placement, finishedTurn, stats, isMe, gameOver, onClose, onWatch,
 }: Props) {
+  const { t } = useTranslation()
+  const placeLabel = t(`game.winner.place_${placement}`, {
+    defaultValue: t('game.winner.place_other', { n: placement }),
+    n: placement,
+  })
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
       <div className="w-full max-w-md overflow-hidden rounded-2xl border border-primary/40 bg-card">
@@ -38,13 +38,13 @@ export default function WinnerModal({
           </div>
           <div className="mb-2.5 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-[11px] text-primary ring-1 ring-primary/25">
             <Medal className="h-3 w-3" />
-            {PLACE_LABEL[placement] ?? `${placement}th place`}
+            {placeLabel}
           </div>
           <h2 className="text-lg font-medium">
-            {isMe ? 'You escaped the Rat Race!' : `${playerName} escaped the Rat Race`}
+            {isMe ? t('game.winner.escapedTitleMe') : t('game.winner.escapedTitleOther', { name: playerName })}
           </h2>
           <p className="mt-1 text-[13px] text-muted-foreground">
-            {playerName} &middot; turn {finishedTurn}
+            {playerName} &middot; {t('game.winner.turnLabel', { n: finishedTurn })}
           </p>
         </div>
 
@@ -52,33 +52,38 @@ export default function WinnerModal({
         <div className="px-6 py-5">
           {/* Formula */}
           <div className="mb-4 flex items-center justify-center gap-2.5 rounded-lg border border-primary/20 bg-primary/[0.04] py-3 text-[13px]">
-            <span className="font-medium text-primary">${stats.passive_income.toLocaleString()}</span>
-            <span className="text-muted-foreground/50">passive &gt;</span>
-            <span className="text-muted-foreground">${stats.total_expenses.toLocaleString()} expenses</span>
+            <span className="font-medium text-primary">
+              {t('game.winner.formula', {
+                passive: `$${stats.passive_income.toLocaleString()}`,
+                expenses: `$${stats.total_expenses.toLocaleString()}`,
+              })}
+            </span>
           </div>
 
           {/* Stats grid */}
           <div className="mb-4 grid grid-cols-2 gap-2.5">
-            <Stat value={`+$${stats.surplus.toLocaleString()}`} label="surplus over expenses" green />
-            <Stat value={String(stats.assets_count)} label="assets purchased" />
-            <Stat value={`$${Math.round(stats.portfolio_value / 1000)}K`} label="portfolio value" />
-            <Stat value={String(finishedTurn)} label="turns to finish" />
+            <Stat value={`+$${stats.surplus.toLocaleString()}`} label={t('game.winner.surplus')} green />
+            <Stat value={String(stats.assets_count)} label={t('game.winner.assetsPurchased')} />
+            <Stat value={`$${Math.round(stats.portfolio_value / 1000)}K`} label={t('game.winner.portfolioValue')} />
+            <Stat value={String(finishedTurn)} label={t('game.winner.turnsToFinish')} />
           </div>
 
           {/* Best asset */}
           {stats.best_asset_name && (
             <div className="mb-4 rounded-lg border border-border bg-background/50 p-3.5">
-              <p className="mb-2 text-[10px] tracking-wider text-muted-foreground">BEST DEAL</p>
+              <p className="mb-2 text-[10px] tracking-wider text-muted-foreground">{t('game.winner.bestDeal')}</p>
               <div className="flex items-center gap-2.5">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-500/10 text-sky-400 ring-1 ring-sky-500/25">
                   <Building2 className="h-4 w-4" />
                 </div>
                 <div>
                   <div className="text-[13px] font-medium">{stats.best_asset_name}</div>
-                  <div className="text-[10px] text-muted-foreground">bought for ${stats.best_asset_cost.toLocaleString()}</div>
+                  <div className="text-[10px] text-muted-foreground">
+                    {t('game.winner.boughtFor', { price: `$${stats.best_asset_cost.toLocaleString()}` })}
+                  </div>
                 </div>
                 <div className="ml-auto text-[13px] font-medium text-primary">
-                  +${stats.best_asset_income.toLocaleString()}/mo
+                  {t('game.winner.perMonth', { amount: `+$${stats.best_asset_income.toLocaleString()}` })}
                 </div>
               </div>
             </div>
@@ -87,12 +92,12 @@ export default function WinnerModal({
           {/* Actions */}
           <div className="space-y-2">
             {gameOver ? (
-              <Button className="w-full" onClick={onClose}>Final results</Button>
+              <Button className="w-full" onClick={onClose}>{t('game.winner.finalResults')}</Button>
             ) : (
               <>
-                <Button className="w-full" onClick={onWatch}>Watch the game</Button>
+                <Button className="w-full" onClick={onWatch}>{t('game.winner.watchGame')}</Button>
                 <p className="text-center text-[10px] text-muted-foreground">
-                  The game continues for the remaining players
+                  {t('game.winner.continuesNote')}
                 </p>
               </>
             )}

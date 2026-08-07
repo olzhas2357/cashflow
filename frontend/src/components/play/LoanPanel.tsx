@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { takeBankLoan, repayBankLoan } from '@/api/play'
 import type { LobbyPlayer } from '@/api/play'
 import { useAuthStore } from '@/store/authStore'
@@ -14,6 +15,7 @@ import { Landmark } from 'lucide-react'
 // player take a loan voluntarily, and — the point raised — repay principal
 // early whenever they have spare cash instead of only via the auditor panel.
 export function LoanPanel({ player }: { player: LobbyPlayer }) {
+  const { t } = useTranslation()
   const token = useAuthStore((s) => s.token)
   const gameId = usePlayStore((s) => s.gameId)
   const qc = useQueryClient()
@@ -40,14 +42,14 @@ export function LoanPanel({ player }: { player: LobbyPlayer }) {
     <div className="space-y-2 rounded-xl border border-border bg-card p-3">
       <div className="flex items-center gap-2 text-sm font-semibold">
         <Landmark className="h-4 w-4" />
-        Bank loan
+        {t('game.loan.title')}
       </div>
       <div className="flex justify-between text-sm">
-        <span className="text-muted-foreground">Balance</span>
+        <span className="text-muted-foreground">{t('game.loan.balance')}</span>
         <span>${loanBalance.toLocaleString()}</span>
       </div>
       <div className="flex justify-between text-sm text-muted-foreground">
-        <span>Interest / mo (10%)</span>
+        <span>{t('game.loan.interest')}</span>
         <span>${loanExpense.toLocaleString()}</span>
       </div>
       <div className="flex items-center gap-2 pt-1">
@@ -60,7 +62,7 @@ export function LoanPanel({ player }: { player: LobbyPlayer }) {
           className="h-8"
         />
         <Button size="sm" variant="outline" className="shrink-0" onClick={() => takeMut.mutate(roundedAmount)} disabled={pending}>
-          Borrow
+          {t('game.loan.borrow')}
         </Button>
         <Button
           size="sm"
@@ -68,11 +70,11 @@ export function LoanPanel({ player }: { player: LobbyPlayer }) {
           onClick={() => repayMut.mutate(roundedAmount)}
           disabled={pending || loanBalance <= 0}
         >
-          Repay
+          {t('game.loan.repay')}
         </Button>
       </div>
       {error && (
-        <p className="text-xs text-destructive">{error instanceof Error ? error.message : 'Loan action failed.'}</p>
+        <p className="text-xs text-destructive">{error instanceof Error ? error.message : t('game.loan.errorDefault')}</p>
       )}
     </div>
   )

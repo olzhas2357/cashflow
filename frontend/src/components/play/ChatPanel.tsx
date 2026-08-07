@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { sendChatMessage, type ChatMessage } from '@/api/play'
 import type { UserPlayer } from '@/api/auditorPanel'
 import { cn } from '@/lib/utils'
@@ -28,6 +29,7 @@ type Props = {
 }
 
 export function ChatPanel({ gameId, token, messages, players, embedded, className }: Props) {
+  const { t } = useTranslation()
   const [text, setText] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -62,12 +64,12 @@ export function ChatPanel({ gameId, token, messages, players, embedded, classNam
       {!embedded && (
         <div className="flex items-center gap-2 text-sm font-semibold">
           <MessageCircle className="h-4 w-4" />
-          Chat
+          {t('game.chat.title')}
         </div>
       )}
 
       {messages.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No messages yet.</p>
+        <p className="text-sm text-muted-foreground">{t('game.chat.empty')}</p>
       ) : (
         <div
           ref={scrollRef}
@@ -106,7 +108,7 @@ export function ChatPanel({ gameId, token, messages, players, embedded, classNam
           value={text}
           onChange={(e) => setText(e.target.value)}
           maxLength={300}
-          placeholder="Write a message…"
+          placeholder={t('game.chat.placeholder')}
           className="h-9"
         />
         <Button type="submit" size="icon" className="shrink-0" disabled={!text.trim() || sendMut.isPending}>

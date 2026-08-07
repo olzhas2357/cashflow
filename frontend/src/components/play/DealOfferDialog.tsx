@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { makeDecision } from '@/api/play'
 import { useAuthStore } from '@/store/authStore'
 import { usePlayStore } from '@/store/usePlayStore'
@@ -20,6 +21,7 @@ import { Button } from '@/components/ui/button'
 // first to accept wins, everyone else gets a 409 (offer_already_claimed),
 // rendered inline like AuctionPanel's bid errors.
 export function DealOfferDialog({ game }: { game: GameSession }) {
+  const { t } = useTranslation()
   const token = useAuthStore((s) => s.token)
   const myPlayerId = useAuthStore((s) => s.user?.player_id)
   const gameId = usePlayStore((s) => s.gameId)
@@ -48,26 +50,26 @@ export function DealOfferDialog({ game }: { game: GameSession }) {
     <Dialog open>
       <DialogContent onInteractOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
         <DialogHeader>
-          <DialogTitle>{deal.name?.trim() || '⚠ Unnamed card'}</DialogTitle>
+          <DialogTitle>{deal.name?.trim() || t('game.common.unnamedCard')}</DialogTitle>
           {deal.description?.trim() && (
             <DialogDescription className="whitespace-pre-line">{deal.description}</DialogDescription>
           )}
         </DialogHeader>
 
         {isOpener ? (
-          <p className="text-sm text-muted-foreground">Waiting for another player to claim this offer…</p>
+          <p className="text-sm text-muted-foreground">{t('game.dealOffer.waitingClaim')}</p>
         ) : (
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Price (to the bank)</span>
+              <span className="text-muted-foreground">{t('game.dealOffer.priceToBank')}</span>
               <span>${deal.down_payment.toLocaleString()}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Commission (to the offering player)</span>
+              <span className="text-muted-foreground">{t('game.dealOffer.commissionToPlayer')}</span>
               <span>${commission.toLocaleString()}</span>
             </div>
             <div className="flex justify-between font-medium">
-              <span>Total</span>
+              <span>{t('game.common.total')}</span>
               <span>${total.toLocaleString()}</span>
             </div>
           </div>
@@ -77,22 +79,24 @@ export function DealOfferDialog({ game }: { game: GameSession }) {
           <p className="text-sm text-destructive">
             {(cancelMut.error ?? acceptMut.error) instanceof Error
               ? ((cancelMut.error ?? acceptMut.error) as Error).message
-              : 'Something went wrong.'}
+              : t('game.common.somethingWrong')}
           </p>
         )}
 
         <DialogFooter className="gap-2">
           {isOpener ? (
             <Button variant="outline" onClick={() => cancelMut.mutate()} disabled={cancelMut.isPending}>
-              Cancel offer
+              {t('game.dealOffer.cancelOffer')}
             </Button>
           ) : (
             <>
               <Button variant="outline" onClick={() => setDismissed(true)} disabled={acceptMut.isPending}>
-                Skip
+                {t('game.common.skip')}
               </Button>
               <Button onClick={() => acceptMut.mutate()} disabled={acceptMut.isPending}>
-                {acceptMut.isPending ? 'Processing…' : `Accept for $${total.toLocaleString()}`}
+                {acceptMut.isPending
+                  ? t('game.common.processing')
+                  : t('game.dealOffer.acceptFor', { price: `$${total.toLocaleString()}` })}
               </Button>
             </>
           )}

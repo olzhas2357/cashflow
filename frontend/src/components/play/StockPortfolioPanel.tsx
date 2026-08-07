@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { listMyAssets, sellStockToBank } from '@/api/play'
 import type { GameSession, GameAsset } from '@/api/auditorPanel'
 import { useAuthStore } from '@/store/authStore'
@@ -19,6 +20,7 @@ function StockRow({
   onSell: (shares: number) => void
   disabled: boolean
 }) {
+  const { t } = useTranslation()
   const owned = asset.shares ?? 0
   const [shares, setShares] = useState(owned)
   const priceRange = asset.extra?.price_range as { min?: number; max?: number } | undefined
@@ -27,11 +29,11 @@ function StockRow({
     <div className="space-y-1 rounded-lg border border-border px-3 py-2 text-sm">
       <div className="flex justify-between">
         <span className="font-medium">{asset.symbol}</span>
-        <span className="text-muted-foreground">{owned.toLocaleString()} shares</span>
+        <span className="text-muted-foreground">{t('game.common.shares')}: {owned.toLocaleString()}</span>
       </div>
       {(priceRange?.min != null || priceRange?.max != null) && (
         <p className="text-xs text-muted-foreground">
-          Typical range: ${priceRange?.min?.toLocaleString() ?? '?'} – ${priceRange?.max?.toLocaleString() ?? '?'}
+          {t('game.common.typicalRange')}: ${priceRange?.min?.toLocaleString() ?? '?'} – ${priceRange?.max?.toLocaleString() ?? '?'}
         </p>
       )}
       {sellPrice != null ? (
@@ -45,11 +47,11 @@ function StockRow({
             className="h-8"
           />
           <Button size="sm" className="shrink-0" onClick={() => onSell(shares)} disabled={disabled}>
-            Sell @ ${sellPrice.toLocaleString()}
+            {t('game.stocks.sellAt', { price: `$${sellPrice.toLocaleString()}` })}
           </Button>
         </div>
       ) : (
-        <p className="text-xs text-muted-foreground">No matching buyer card active right now — wait for a stock card with this symbol.</p>
+        <p className="text-xs text-muted-foreground">{t('game.stocks.noBuyer')}</p>
       )}
     </div>
   )
@@ -61,6 +63,7 @@ function StockRow({
 // (not just whoever drew the card) can sell at the card's price. Players had
 // no visibility into their own stock holdings at all before this existed.
 export function StockPortfolioPanel({ game }: { game?: GameSession }) {
+  const { t } = useTranslation()
   const token = useAuthStore((s) => s.token)
   const gameId = usePlayStore((s) => s.gameId)
   const qc = useQueryClient()
@@ -90,7 +93,7 @@ export function StockPortfolioPanel({ game }: { game?: GameSession }) {
     <div className="space-y-2 rounded-xl border border-border bg-card p-3">
       <div className="flex items-center gap-2 text-sm font-semibold">
         <TrendingUp className="h-4 w-4" />
-        My stocks
+        {t('game.stocks.title')}
       </div>
       {stocks.map((s) => {
         const matches = activeCardIsStock && activeCard!.symbol.toUpperCase() === s.symbol!.toUpperCase()
@@ -106,7 +109,7 @@ export function StockPortfolioPanel({ game }: { game?: GameSession }) {
       })}
       {sellMut.isError && (
         <p className="text-xs text-destructive">
-          {sellMut.error instanceof Error ? sellMut.error.message : 'Could not sell.'}
+          {sellMut.error instanceof Error ? sellMut.error.message : t('game.common.couldNotSell')}
         </p>
       )}
     </div>

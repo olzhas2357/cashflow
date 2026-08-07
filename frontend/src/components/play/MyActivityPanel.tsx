@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { listMyLogs } from '@/api/play'
 import { useAuthStore } from '@/store/authStore'
 import { usePlayStore } from '@/store/usePlayStore'
-import { ScrollArea } from '@/components/ui/scroll-area'
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { History } from 'lucide-react'
 
@@ -10,6 +11,7 @@ import { History } from 'lucide-react'
 // player_id (PlayerMyLogs), so unlike the auditor's all-players log view,
 // each player only ever sees their own entries here.
 export function MyActivityPanel() {
+  const { t } = useTranslation()
   const token = useAuthStore((s) => s.token)
   const gameId = usePlayStore((s) => s.gameId)
 
@@ -22,34 +24,47 @@ export function MyActivityPanel() {
 
   const logs = logsQ.data ?? []
 
-  return (
-    <div className="space-y-2 rounded-xl border border-border bg-card p-3">
-      <div className="flex items-center gap-2 text-sm font-semibold">
-        <History className="h-4 w-4" />
-        My activity
-      </div>
-      {logs.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No activity yet.</p>
-      ) : (
-        <ScrollArea className="h-48 pr-2">
-          <ul className="space-y-2">
-            {logs.map((l) => (
-              <li key={l.id} className="flex items-center gap-2 text-sm">
-                <Badge variant="outline" className="shrink-0 text-xs">
-                  {l.type}
-                </Badge>
-                <div className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap text-muted-foreground [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                  {l.description ?? ''}
-                </div>
-                <span className={l.amount < 0 ? 'shrink-0 text-destructive' : 'shrink-0 text-green-600'}>
-                  {l.amount >= 0 ? '+' : ''}
-                  {l.amount.toLocaleString()}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </ScrollArea>
-      )}
+ return (
+  <div className="flex h-full flex-col rounded-xl border p-3">
+    <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
+      <History className="h-4 w-4" />
+      {t("game.activity.title")}
     </div>
-  )
+
+     <ScrollArea className="flex-1 min-h">
+      <ScrollBar orientation="vertical" />
+      <ScrollBar orientation="horizontal" />
+      <ul className="space-y-3">
+        {logs.map((l) => (
+          <li
+            key={l.id}
+            className="rounded-lg border border-border p-3"
+          >
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <Badge variant="outline" className="shrink-0">
+                {l.type}
+              </Badge>
+
+              <span
+                className={
+                  l.amount < 0
+                    ? "shrink-0 text-destructive"
+                    : "shrink-0 text-green-600"
+                }
+              >
+                {l.amount >= 0 ? "+" : ""}
+                {l.amount.toLocaleString()}
+              </span>
+            </div>
+
+            <p className="w-full whitespace-pre-wrap break-words text-sm text-muted-foreground">
+              {l.description}
+            </p>
+          </li>
+        ))}
+      </ul>
+    </ScrollArea>
+      
+  </div>
+)
 }

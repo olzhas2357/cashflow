@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { Building2, Briefcase } from 'lucide-react'
 import { listMyAssets, listAuctionOffers } from '@/api/play'
 import type { GameAsset } from '@/api/auditorPanel'
@@ -23,6 +24,7 @@ function AssetCard({
   listed: boolean
   showDescription: boolean
 }) {
+  const { t } = useTranslation()
   const description = showDescription
     ? (extraText(asset.extra, 'description') ?? extraText(asset.extra, 'notes'))
     : undefined
@@ -32,31 +34,33 @@ function AssetCard({
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
           <CardTitle className="text-base leading-tight">{asset.name}</CardTitle>
-          <Badge variant={listed ? 'warning' : 'success'}>{listed ? 'Listed for auction' : 'Owned'}</Badge>
+          <Badge variant={listed ? 'warning' : 'success'}>
+            {listed ? t('game.myAssets.listedForAuction') : t('game.myAssets.owned')}
+          </Badge>
         </div>
       </CardHeader>
       <CardContent className="space-y-1 text-sm">
         <div className="flex justify-between">
-          <span className="text-muted-foreground">Price</span>
+          <span className="text-muted-foreground">{t('game.common.price')}</span>
           <span className="font-mono">{money(asset.price)}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-muted-foreground">Down payment</span>
+          <span className="text-muted-foreground">{t('game.common.downPayment')}</span>
           <span className="font-mono">{money(asset.down_payment)}</span>
         </div>
         {asset.mortgage > 0 && (
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Mortgage</span>
+            <span className="text-muted-foreground">{t('game.common.mortgage')}</span>
             <span className="font-mono">{money(asset.mortgage)}</span>
           </div>
         )}
         <div className="flex justify-between">
-          <span className="text-muted-foreground">Cash flow</span>
+          <span className="text-muted-foreground">{t('game.myAssets.cashFlow')}</span>
           <span className="font-mono text-emerald-400/90">{money(asset.income)}/mo</span>
         </div>
         {asset.down_payment > 0 && (
           <div className="flex justify-between">
-            <span className="text-muted-foreground">ROI</span>
+            <span className="text-muted-foreground">{t('game.common.roi')}</span>
             <span className="font-mono text-emerald-400/90">
               {((asset.income * 12 * 100) / asset.down_payment).toFixed(1)}%/yr
             </span>
@@ -108,6 +112,7 @@ function AssetSection({
 // their own sections here. "Status" isn't a stored Asset field, so it's
 // derived by cross-referencing the player's own open auction listings.
 export default function MyAssets() {
+  const { t } = useTranslation()
   const token = useAuthStore((s) => s.token)
   const gameId = usePlayStore((s) => s.gameId)
   const myPlayerId = useAuthStore((s) => s.user?.player_id)
@@ -137,28 +142,28 @@ export default function MyAssets() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">My assets</h1>
-        <p className="text-sm text-muted-foreground">Everything you own on the board — real estate and businesses.</p>
+        <h1 className="text-2xl font-bold tracking-tight">{t('game.myAssets.title')}</h1>
+        <p className="text-sm text-muted-foreground">{t('game.myAssets.subtitle')}</p>
       </div>
 
-      {assetsQ.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+      {assetsQ.isLoading && <p className="text-sm text-muted-foreground">{t('game.myAssets.loading')}</p>}
 
       <AssetSection
-        title="Real estate"
+        title={t('game.myAssets.realEstate')}
         icon={Building2}
         assets={realEstate}
         listedAssetIds={listedAssetIds}
         showDescription={false}
-        emptyText="No real estate yet."
+        emptyText={t('game.myAssets.noRealEstate')}
       />
 
       <AssetSection
-        title="Business"
+        title={t('game.myAssets.business')}
         icon={Briefcase}
         assets={business}
         listedAssetIds={listedAssetIds}
         showDescription
-        emptyText="No businesses yet."
+        emptyText={t('game.myAssets.noBusiness')}
       />
     </div>
   )

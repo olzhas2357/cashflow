@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { joinRoom } from '@/api/hostAuth'
 import { useRoomPlayerStore } from '@/store/roomPlayerStore'
 import { Button } from '@/components/ui/button'
@@ -9,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Users } from 'lucide-react'
 
 export default function RoomJoin() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { code = '' } = useParams()
   const setPlayer = useRoomPlayerStore((s) => s.setPlayer)
@@ -27,7 +29,7 @@ export default function RoomJoin() {
       setPlayer(code.toUpperCase(), me?.seat ?? 0, name.trim(), res.player_token)
       navigate(`/room/${code.toUpperCase()}`, { replace: true })
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Не удалось войти в комнату.')
+      setErr(e instanceof Error ? e.message : t('roomAuth.join.errorDefault'))
     } finally {
       setLoading(false)
     }
@@ -41,24 +43,26 @@ export default function RoomJoin() {
         </div>
         <div className="text-left">
           <h1 className="text-xl font-semibold tracking-tight">Cashflow 101</h1>
-          <p className="text-sm text-muted-foreground">Комната {code.toUpperCase()}</p>
+          <p className="text-sm text-muted-foreground">
+            {t('roomAuth.join.roomLabel', { code: code.toUpperCase() })}
+          </p>
         </div>
       </div>
 
       <Card className="w-full max-w-md border-border">
         <CardHeader>
-          <CardTitle>Присоединиться</CardTitle>
-          <CardDescription>Регистрация не нужна — просто укажи своё имя.</CardDescription>
+          <CardTitle>{t('roomAuth.join.title')}</CardTitle>
+          <CardDescription>{t('roomAuth.join.description')}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Твоё имя</Label>
+              <Label htmlFor="name">{t('roomAuth.join.nameLabel')}</Label>
               <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required autoFocus />
             </div>
             {err && <p className="text-sm text-destructive">{err}</p>}
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Вход…' : 'Войти в игру'}
+              {loading ? t('roomAuth.join.submitting') : t('roomAuth.join.submit')}
             </Button>
           </form>
         </CardContent>
