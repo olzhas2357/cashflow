@@ -32,8 +32,6 @@ export function MyActivityPanel() {
     </div>
 
      <ScrollArea className="flex-1 min-h">
-      <ScrollBar orientation="vertical" />
-      <ScrollBar orientation="horizontal" />
       <ul className="space-y-3">
         {logs.map((l) => (
           <li
@@ -64,7 +62,8 @@ export function MyActivityPanel() {
         ))}
       </ul>
     </ScrollArea>
-      
+      <ScrollBar orientation="vertical" />
+      <ScrollBar orientation="horizontal" />
   </div>
 )
 }
