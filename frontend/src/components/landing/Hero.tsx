@@ -1,16 +1,22 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, KeyRound, Play } from 'lucide-react'
+import { ArrowRight, KeyRound, Play, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { useHostAuthStore } from '@/store/hostAuthStore'
 import GhostCursorBackground from './GhostCursorBackground'
 
 export default function Hero() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const hostToken = useHostAuthStore((s) => s.token)
   const [joinOpen, setJoinOpen] = useState(false)
   const [code, setCode] = useState('')
   const canJoin = code.trim().length >= 4
+
+  function handlePlayWithFriends() {
+    navigate(hostToken ? '/host/dashboard' : '/host/register')
+  }
 
   function handleJoinSubmit(e: FormEvent) {
     e.preventDefault()
@@ -39,10 +45,10 @@ export default function Hero() {
 
         <div className="mt-7">
           {!joinOpen ? (
-            <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
-              <Button size="lg" className="w-full gap-2 sm:w-auto" onClick={() => navigate('/login')}>
-                <Play className="h-4 w-4" />
-                {t('hero.createGame')}
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
+              <Button size="lg" className="w-full gap-2 sm:w-auto" onClick={handlePlayWithFriends}>
+                <Users className="h-4 w-4" />
+                {t('hero.playWithFriends')}
               </Button>
               <Button
                 size="lg"
@@ -52,6 +58,15 @@ export default function Hero() {
               >
                 <KeyRound className="h-4 w-4" />
                 {t('hero.joinByCode')}
+              </Button>
+              <Button
+                size="lg"
+                variant="ghost"
+                className="w-full gap-2 text-muted-foreground sm:w-auto"
+                onClick={() => navigate('/login')}
+              >
+                <Play className="h-4 w-4" />
+                {t('hero.createGame')}
               </Button>
             </div>
           ) : (
