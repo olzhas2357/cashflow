@@ -104,7 +104,8 @@
     "emptyDescription": "Достарыңа арналған код пен сілтеме алу үшін «Ойын құру» түймесін бас.",
     "statusWaiting": "Күту",
     "statusInProgress": "Ойын жүріп жатыр",
-    "statusFinished": "Аяқталды"
+    "statusFinished": "Аяқталды",
+    "logout": "Шығу"
   },
   "bootstrap": {
     "entering": "Ойынға кіріп жатырсың…",

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Copy, Check, Plus, Users } from 'lucide-react'
+import { Copy, Check, Plus, Users, LogOut } from 'lucide-react'
 import { useHostAuthStore } from '@/store/hostAuthStore'
 import { useRoomPlayerStore } from '@/store/roomPlayerStore'
 import { createRoom, listMyRooms } from '@/api/hostAuth'
@@ -43,8 +43,14 @@ export default function RoomDashboard() {
   const statusLabel = useStatusLabel()
   const navigate = useNavigate()
   const token = useHostAuthStore((s) => s.token)
+  const logout = useHostAuthStore((s) => s.logout)
   const setPlayer = useRoomPlayerStore((s) => s.setPlayer)
   const qc = useQueryClient()
+
+  function handleLogout() {
+    logout()
+    navigate('/host/login')
+  }
 
   const roomsQ = useQuery({
     queryKey: ['my_rooms'],
@@ -72,10 +78,16 @@ export default function RoomDashboard() {
           <h1 className="text-2xl font-semibold tracking-tight">{t('myRooms.title')}</h1>
           <p className="text-sm text-muted-foreground">{t('myRooms.subtitle')}</p>
         </div>
-        <Button size="lg" className="gap-2" disabled={createMut.isPending} onClick={() => createMut.mutate()}>
-          <Plus className="h-5 w-5" />
-          {createMut.isPending ? t('myRooms.creating') : t('myRooms.create')}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button size="lg" className="gap-2" disabled={createMut.isPending} onClick={() => createMut.mutate()}>
+            <Plus className="h-5 w-5" />
+            {createMut.isPending ? t('myRooms.creating') : t('myRooms.create')}
+          </Button>
+          <Button size="lg" variant="ghost" className="gap-2 text-muted-foreground" onClick={handleLogout}>
+            <LogOut className="h-4 w-4" />
+            {t('myRooms.logout')}
+          </Button>
+        </div>
       </div>
 
       {createMut.isError && (

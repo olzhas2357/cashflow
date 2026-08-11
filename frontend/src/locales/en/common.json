@@ -104,7 +104,8 @@
     "emptyDescription": "Press \"Create game\" to get a code and link for friends.",
     "statusWaiting": "Waiting",
     "statusInProgress": "In progress",
-    "statusFinished": "Finished"
+    "statusFinished": "Finished",
+    "logout": "Log out"
   },
   "bootstrap": {
     "entering": "Entering the game…",

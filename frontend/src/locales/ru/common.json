@@ -104,7 +104,8 @@
     "emptyDescription": "Нажми «Создать игру», чтобы получить код и ссылку для друзей.",
     "statusWaiting": "Ожидание",
     "statusInProgress": "Идёт игра",
-    "statusFinished": "Завершена"
+    "statusFinished": "Завершена",
+    "logout": "Выйти"
   },
   "bootstrap": {
     "entering": "Входим в игру…",
