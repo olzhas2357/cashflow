@@ -61,9 +61,9 @@ export function MyActivityPanel() {
           </li>
         ))}
       </ul>
-    </ScrollArea>
       <ScrollBar orientation="vertical" />
       <ScrollBar orientation="horizontal" />
+    </ScrollArea>
   </div>
 )
 }
