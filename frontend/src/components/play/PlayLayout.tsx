@@ -5,7 +5,6 @@ import { useAuthStore } from '@/store/authStore'
 import { usePlayStore } from '@/store/usePlayStore'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
-import { GameNoticeToasts, GameNoticeSidebar } from '@/components/play/GameNoticeToasts'
 import { MyActivityPanel } from '@/components/play/MyActivityPanel'
 import { cn } from '@/lib/utils'
 
@@ -86,7 +85,6 @@ export function PlayLayout() {
           <span className="text-sm font-semibold">CashYOU</span>
         </header>
         <main className="flex-1 p-4 pb-24 lg:p-8 lg:pb-8">
-          <GameNoticeToasts />
           <Outlet />
         </main>
       </div>
