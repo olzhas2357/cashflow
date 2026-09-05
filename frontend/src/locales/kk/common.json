@@ -163,7 +163,7 @@
       "hideCellGuide": "Жасыру",
       "cellGuide": {
         "deal": { "name": "Deal", "description": "Қаржылық мүмкіндік. Шарттарды қарап, қабылдау керек пе екенін шешіңіз." },
-        "doodad": { "name": "Doodad", "description": "Сатып алу. Оның сізге қажет екенін және қаражатыңыз жететінін шешіңіз." },
+        "doodad": { "name": "Doodad", "description": "Сатып алу." },
         "charity": { "name": "Charity", "description": "Сіз қайырымдылық жасайсыз." },
         "payday": { "name": "Payday", "description": "Жалақы аласыз және ақша балансын жаңартасыз." },
         "market": { "name": "Market", "description": "Бұл жерде активтерді сатып алуға немесе сатуға болады. Бағаларды бақылаңыз." },
