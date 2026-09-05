@@ -156,7 +156,20 @@
       "awaitingDecision": "Сенің шешіміңді күтудеміз…",
       "waitingForTurn": "Кезегіңді күту…",
       "rollError": "Сүйек лақтыру мүмкін болмады.",
-      "ratRace": "Тышқан жарысы"
+      "ratRace": "Тышқан жарысы",
+      "cellGuideTitle": "Ұяшық нені білдіреді?",
+      "cellGuideSubtitle": "Ойын тақтасындағы оқиғалар туралы қысқаша",
+      "showCellGuide": "Көрсету",
+      "hideCellGuide": "Жасыру",
+      "cellGuide": {
+        "deal": { "name": "Deal", "description": "Қаржылық мүмкіндік. Шарттарды қарап, қабылдау керек пе екенін шешіңіз." },
+        "doodad": { "name": "Doodad", "description": "Сатып алу. Оның сізге қажет екенін және қаражатыңыз жететінін шешіңіз." },
+        "charity": { "name": "Charity", "description": "Сіз қайырымдылық жасайсыз." },
+        "payday": { "name": "Payday", "description": "Жалақы аласыз және ақша балансын жаңартасыз." },
+        "market": { "name": "Market", "description": "Бұл жерде активтерді сатып алуға немесе сатуға болады. Бағаларды бақылаңыз." },
+        "downsized": { "name": "Downsized", "description": "Жұмысыңыз бен жалақыңыздан айырыласыз. Қаржылық салдарларды еңсеру керек." },
+        "baby": { "name": "Baby", "description": "Балаға байланысты жаңа шығын пайда болады." }
+      }
     },
     "finished": {
       "title": "Ойын аяқталды",

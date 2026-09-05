@@ -23,7 +23,7 @@ import { FinancialStatement } from '@/components/play/FinancialStatement'
 import WinnerModal from '@/components/play/WinnerModal'
 import { GameFinishedBanner } from '@/components/play/GameFinishedBanner'
 import type { PlayerWonPayload } from '@/api/auditorPanel'
-import { Dice5 } from 'lucide-react'
+import { ChevronDown, ChevronUp, Dice5, Info } from 'lucide-react'
 
 export default function Board() {
   const { t } = useTranslation()
@@ -34,6 +34,7 @@ export default function Board() {
   const [lastRoll, setLastRoll] = useState<{ die1: number; die2: number | null; total: number } | null>(null)
   const [winnerModal, setWinnerModal] = useState<PlayerWonPayload | null>(null)
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
+  const [isCellGuideOpen, setIsCellGuideOpen] = useState(true)
 
   const gameQ = useQuery({
     queryKey: ['play_lobby', gameId],
@@ -136,6 +137,15 @@ export default function Board() {
   }
   const turnStatusLabel = (status?: string) =>
     status ? (t(`game.turnStatus.${status}`, { defaultValue: status }) as string) : '—'
+  const cellGuideItems = [
+    { key: 'deal', color: 'bg-amber-500/20 border-amber-500 text-amber-300' },
+    { key: 'doodad', color: 'bg-blue-500/20 border-blue-500 text-blue-300' },
+    { key: 'charity', color: 'bg-purple-500/20 border-purple-500 text-purple-300' },
+    { key: 'payday', color: 'bg-teal-500/20 border-teal-500 text-teal-300' },
+    { key: 'market', color: 'bg-emerald-500/20 border-emerald-500 text-emerald-300' },
+    { key: 'downsized', color: 'bg-rose-500/20 border-rose-500 text-rose-300' },
+    { key: 'baby', color: 'bg-slate-500/20 border-slate-500 text-slate-300' },
+  ]
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 lg:grid lg:grid-cols-[1fr_320px] lg:items-start lg:gap-6 lg:space-y-0">
@@ -264,6 +274,46 @@ export default function Board() {
           )}
         </div>
       </div>
+
+      <section className="overflow-hidden rounded-xl border border-border bg-card/80 shadow-sm">
+        <div className="flex items-center justify-between gap-4 px-4 py-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Info className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="font-semibold">{t('game.board.cellGuideTitle')}</h2>
+              <p className="truncate text-sm text-muted-foreground">{t('game.board.cellGuideSubtitle')}</p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsCellGuideOpen((isOpen) => !isOpen)}
+            aria-expanded={isCellGuideOpen}
+            aria-controls="board-cell-guide"
+            className="shrink-0 gap-1.5"
+          >
+            {isCellGuideOpen ? t('game.board.hideCellGuide') : t('game.board.showCellGuide')}
+            {isCellGuideOpen ? <ChevronUp /> : <ChevronDown />}
+          </Button>
+        </div>
+
+        {isCellGuideOpen && (
+          <div id="board-cell-guide" className="grid gap-2 border-t border-border px-4 py-4 sm:grid-cols-2 xl:grid-cols-4">
+            {cellGuideItems.map(({ key, color }) => (
+              <div key={key} className="flex items-start gap-3 rounded-lg border border-border/70 bg-background/40 p-3">
+                <span className={cn('mt-0.5 h-3 w-3 shrink-0 rounded-full border-2', color)} />
+                <div className="min-w-0">
+                  <div className="font-medium">{t(`game.board.cellGuide.${key}.name`)}</div>
+                  <p className="text-sm leading-snug text-muted-foreground">{t(`game.board.cellGuide.${key}.description`)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
       </div>
 
       <div className="space-y-4">

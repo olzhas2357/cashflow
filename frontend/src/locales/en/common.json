@@ -157,7 +157,20 @@
       "awaitingDecision": "Awaiting your decision…",
       "waitingForTurn": "Waiting for your turn…",
       "rollError": "Could not roll.",
-      "ratRace": "Rat Race"
+      "ratRace": "Rat Race",
+      "cellGuideTitle": "What does each cell mean?",
+      "cellGuideSubtitle": "A quick guide to events on the board",
+      "showCellGuide": "Show",
+      "hideCellGuide": "Hide",
+      "cellGuide": {
+        "deal": { "name": "Deal", "description": "A financial opportunity. Review the terms and decide whether to accept it." },
+        "doodad": { "name": "Doodad", "description": "A purchase. Decide whether you need it and can afford it." },
+        "charity": { "name": "Charity", "description": "You make a charitable donation." },
+        "payday": { "name": "Payday", "description": "You receive your salary and update your cash balance." },
+        "market": { "name": "Market", "description": "Buy or sell assets here. Watch prices and make your move." },
+        "downsized": { "name": "Downsized", "description": "You lose your job and salary, then deal with the financial consequences." },
+        "baby": { "name": "Baby", "description": "A new child-related expense is added." }
+      }
     },
     "finished": {
       "title": "Game finished",
