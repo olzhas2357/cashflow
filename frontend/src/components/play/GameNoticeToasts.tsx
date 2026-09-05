@@ -1,20 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNotificationsStore } from '@/store/notificationsStore'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const VISIBLE_MS = 6000
 
-// Surfaces usePlayGameSocket's notification store (every WS event already
-// lands there via EVENT_LABELS, but nothing rendered it before — a player
-// landing on a Market/Stock News card that auto-skips because nobody's
-// eligible saw literally nothing happen). Auto-dismisses after a few
-// seconds; click to dismiss early.
 function useVisibleNotices() {
   const items = useNotificationsStore((s) => s.items)
   const [dismissed, setDismissed] = useState<Set<string>>(new Set())
 
-  const visible = items.filter((n) => !dismissed.has(n.id)).slice(0, 4)
+  const visible = useMemo(() => items.filter((n) => !dismissed.has(n.id)).slice(0, 4), [items, dismissed])
 
   useEffect(() => {
     if (visible.length === 0) return
@@ -22,8 +17,7 @@ function useVisibleNotices() {
       setTimeout(() => setDismissed((prev) => new Set(prev).add(n.id)), VISIBLE_MS),
     )
     return () => timers.forEach(clearTimeout)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible.map((n) => n.id).join(',')])
+  }, [visible])
 
   const dismiss = (id: string) => setDismissed((prev) => new Set(prev).add(id))
 
@@ -54,9 +48,6 @@ function NoticeItem({
   )
 }
 
-// Desktop: rendered inside the sidebar (below the Lobby/Board nav links),
-// in the space that used to sit empty above the Sign out button — instead
-// of floating over the board content near the top of the page.
 export function GameNoticeSidebar() {
   const { visible, dismiss } = useVisibleNotices()
   if (visible.length === 0) return null
@@ -70,7 +61,6 @@ export function GameNoticeSidebar() {
   )
 }
 
-// Mobile fallback — keep notices in the page flow so they do not cover the board.
 export function GameNoticeToasts() {
   const { visible, dismiss } = useVisibleNotices()
   if (visible.length === 0) return null
