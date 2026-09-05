@@ -139,12 +139,12 @@ export default function Board() {
     status ? (t(`game.turnStatus.${status}`, { defaultValue: status }) as string) : '—'
   const cellGuideItems = [
     { key: 'deal', color: 'bg-[#e5dc3f]/20 border-[#e5dc3f] text-[#e5dc3f]' },
-    { key: 'doodad', color: 'bg-[#ef4444]/20 border-[#ef4444] text-[#ef4444]' },
-    { key: 'charity', color: 'bg-[#8b5cf6]/20 border-[#8b5cf6] text-[#8b5cf6]' },
-    { key: 'payday', color: 'bg-[#10b981]/20 border-[#10b981] text-[#10b981]' },
-    { key: 'market', color: 'bg-[#06b6d4]/20 border-[#06b6d4] text-[#06b6d4]' },
-    { key: 'downsized', color: 'bg-[#f97316]/20 border-[#f97316] text-[#f97316]' },
-    { key: 'baby', color: 'bg-[#ec4899]/20 border-[#ec4899] text-[#ec4899]' },
+    { key: 'doodad', color: 'bg-red-500/20 border-red-500 text-red-300' },
+    { key: 'charity', color: 'bg-purple-500/20 border-purple-500 text-purple-300' },
+    { key: 'payday', color: 'bg-emerald-500/20 border-emerald-500 text-emerald-300' },
+    { key: 'market', color: 'bg-cyan-500/20 border-cyan-500 text-cyan-300' },
+    { key: 'downsized', color: 'bg-orange-700/20 border-orange-700 text-orange-300' },
+    { key: 'baby', color: 'bg-pink-500/20 border-pink-500 text-pink-300' },
   ]
 
   return (

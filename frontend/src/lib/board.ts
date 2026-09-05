@@ -54,13 +54,13 @@ export const CELL_LABELS: Record<CellType, string> = {
 }
 
 export const CELL_COLORS: Record<CellType, string> = {
-  PAYDAY:    'bg-teal-500/20 border-teal-500 text-teal-300',
-  DEAL:      'bg-amber-500/20 border-amber-500 text-amber-300',
-  DOODAD:    'bg-blue-500/20 border-blue-500 text-blue-300',
-  MARKET:    'bg-emerald-500/20 border-emerald-500 text-emerald-300',
+  PAYDAY:    'bg-emerald-500/20 border-emerald-500 text-emerald-300',
+  DEAL:      'bg-[#e5dc3f]/20 border-[#e5dc3f] text-[#e5dc3f]',
+  DOODAD:    'bg-red-500/20 border-red-500 text-red-300',
+  MARKET:    'bg-cyan-500/20 border-cyan-500 text-cyan-300',
   CHARITY:   'bg-purple-500/20 border-purple-500 text-purple-300',
-  BABY:      'bg-slate-500/20 border-slate-500 text-slate-300',
-  DOWNSIZED: 'bg-rose-500/20 border-rose-500 text-rose-300',
+  BABY:      'bg-pink-500/20 border-pink-500 text-pink-300',
+  DOWNSIZED: 'bg-orange-700/20 border-orange-700 text-orange-300',
 }
 
 export function cellLabelAt(position: number): string {
