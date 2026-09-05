@@ -70,14 +70,13 @@ export function GameNoticeSidebar() {
   )
 }
 
-// Mobile fallback — the sidebar is hidden below md, so notices float over
-// content there instead.
+// Mobile fallback — keep notices in the page flow so they do not cover the board.
 export function GameNoticeToasts() {
   const { visible, dismiss } = useVisibleNotices()
   if (visible.length === 0) return null
 
   return (
-    <div className="pointer-events-none fixed left-4 top-4 z-50 flex w-80 flex-col gap-2 md:hidden">
+    <div className="pointer-events-none relative z-30 mb-3 flex w-full flex-col gap-2 lg:hidden">
       {visible.map((n) => (
         <NoticeItem
           key={n.id}

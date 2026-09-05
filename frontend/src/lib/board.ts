@@ -53,6 +53,16 @@ export const CELL_LABELS: Record<CellType, string> = {
   DOWNSIZED: 'Downsized',
 }
 
+export const CELL_SHORT_LABELS: Record<CellType, string> = {
+  PAYDAY:    'Payday',
+  DEAL:      'Deal',
+  DOODAD:    'Doodad',
+  MARKET:    'Market',
+  CHARITY:   'Charity',
+  BABY:      'Baby',
+  DOWNSIZED: 'Down',
+}
+
 export const CELL_COLORS: Record<CellType, string> = {
   PAYDAY:    'bg-emerald-500/20 border-emerald-500 text-emerald-300',
   DEAL:      'bg-indigo-500/20 border-indigo-500 text-indigo-300',
@@ -65,6 +75,10 @@ export const CELL_COLORS: Record<CellType, string> = {
 
 export function cellLabelAt(position: number): string {
   return CELL_LABELS[cellTypeAt(position)]
+}
+
+export function cellShortLabelAt(position: number): string {
+  return CELL_SHORT_LABELS[cellTypeAt(position)]
 }
 
 export function cellColorAt(position: number): string {

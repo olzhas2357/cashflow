@@ -5,7 +5,7 @@ import { useAuthStore } from '@/store/authStore'
 import { usePlayStore } from '@/store/usePlayStore'
 import { getLobby, rollDice, listProfessions, type ChatMessage } from '@/api/play'
 import { usePlayGameSocket } from '@/hooks/usePlayGameSocket'
-import { BOARD_SIZE, cellLabelAt, cellColorAt } from '@/lib/board'
+import { BOARD_SIZE, cellLabelAt, cellShortLabelAt, cellColorAt } from '@/lib/board'
 import { boardCellGridPosition, BOARD_GRID_ROWS, BOARD_GRID_COLS } from '@/lib/boardLayout'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -150,10 +150,10 @@ export default function Board() {
   return (
     <div className="mx-auto max-w-7xl space-y-6 lg:grid lg:grid-cols-[1fr_320px] lg:items-start lg:gap-6 lg:space-y-0">
       <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t('game.board.title')}</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{t('game.board.title')}</h1>
+          <p className="max-w-[calc(100vw-2rem)] text-xs text-muted-foreground sm:text-sm">
             {t('game.board.turn', { n: game?.turn_number ?? 0 })} &middot; {turnStatusLabel(game?.turn_status)}
             {lastRoll != null && (
               <>
@@ -171,7 +171,11 @@ export default function Board() {
           </p>
         </div>
         {canRoll && (
-          <Button onClick={() => rollMut.mutate()} disabled={rollMut.isPending} className="gap-2">
+          <Button
+            onClick={() => rollMut.mutate()}
+            disabled={rollMut.isPending}
+            className="z-50 shrink-0 gap-2 shadow-lg max-lg:fixed max-lg:bottom-[5.5rem] max-lg:left-4 max-lg:right-4 max-lg:h-12"
+          >
             <Dice5 className="h-4 w-4" />
             {rollMut.isPending ? t('game.board.rolling') : t('game.board.rollDice')}
           </Button>
@@ -199,7 +203,7 @@ export default function Board() {
       {game?.status === 'completed' && <GameFinishedBanner players={players} />}
 
       <div
-        className="grid grid-rows-6 grid-cols-8 gap-1 rounded-xl border border-border bg-card p-3"
+        className="grid min-w-0 grid-rows-6 grid-cols-8 gap-0.5 rounded-xl border border-border bg-card p-1.5 lg:gap-1 lg:p-3"
         style={{ aspectRatio: `${BOARD_GRID_COLS} / ${BOARD_GRID_ROWS}` }}
       >
         {Array.from({ length: BOARD_SIZE }, (_, position) => {
@@ -217,15 +221,16 @@ export default function Board() {
               style={{ gridRow: row, gridColumn: col }}
               title={cellLabelAt(position)}
             >
-              <span className="text-xs font-semibold leading-tight">{cellLabelAt(position)}</span>
-              <span className="text-[10px] opacity-70">#{position}</span>
+              <span className="hidden max-w-full truncate text-xs font-semibold leading-tight lg:block">{cellLabelAt(position)}</span>
+              <span className="max-w-full truncate text-[9px] font-semibold leading-tight lg:hidden">{cellShortLabelAt(position)}</span>
+              <span className="text-[8px] opacity-70 lg:text-[10px]">#{position}</span>
               {occupants.length > 0 && (
-                <div className="flex flex-wrap justify-center gap-1">
+                <div className="flex max-w-full flex-wrap justify-center gap-0.5 sm:gap-1">
                   {occupants.map((p) => (
                     <span
                       key={p.id}
                       className={cn(
-                        'h-5 w-5 rounded-full border-2 border-background shadow-sm',
+                        'h-3.5 w-3.5 rounded-full border border-background shadow-sm lg:h-5 lg:w-5 lg:border-2',
                         colorForPlayer(p.id),
                       )}
                       title={p.name}
@@ -243,8 +248,8 @@ export default function Board() {
         >
           <div className="shrink-0 text-center">
             <div className="text-sm font-semibold text-muted-foreground">{t('game.board.ratRace')}</div>
-            <div className="text-lg font-bold tracking-tight">{game?.name ?? t('game.board.title')}</div>
-            <div className="text-xs text-muted-foreground">
+            <div className="truncate text-sm font-bold tracking-tight lg:text-lg">{game?.name ?? t('game.board.title')}</div>
+            <div className="truncate text-[10px] text-muted-foreground lg:text-xs">
               {t('game.board.turn', { n: game?.turn_number ?? 0 })} &middot; {turnStatusLabel(game?.turn_status)}
             </div>
           </div>

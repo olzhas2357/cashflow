@@ -4,7 +4,7 @@ import { ArrowRight, KeyRound, Play, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { useHostAuthStore } from '@/store/hostAuthStore'
-import GhostCursorBackground from './GhostCursorBackground'
+import NewDesign from '@/components/landing/NewDesign'
 
 export default function Hero() {
   const { t } = useTranslation()
@@ -26,8 +26,8 @@ export default function Hero() {
 
   return (
     <section className="relative overflow-hidden px-6 pb-10 pt-14 text-center">
-      <GhostCursorBackground />
-
+      {/* <GhostCursorBackground /> */}
+      {/* <NewDesign /> */}
       <div className="relative mx-auto max-w-lg">
         <div className="mb-5 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-[11px] text-primary ring-1 ring-primary/25">
           {t('hero.eyebrow')}
