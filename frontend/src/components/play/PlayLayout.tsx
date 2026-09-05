@@ -23,7 +23,7 @@ export function PlayLayout() {
   function logout() {
     logoutStore()
     clearGameId()
-    navigate('/login', { replace: true })
+    navigate('/', { replace: true })
   }
 
   return (

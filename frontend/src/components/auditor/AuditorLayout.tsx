@@ -28,7 +28,7 @@ export function AuditorLayout() {
 
   function logout() {
     logoutStore()
-    navigate('/login', { replace: true })
+    navigate('/', { replace: true })
   }
 
   return (

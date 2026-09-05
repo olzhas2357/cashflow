@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAuthStore } from '../store/authStore'
 import type React from 'react'
@@ -6,6 +6,12 @@ import type React from 'react'
 export function AppShell({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user)
   const logout = useAuthStore((s) => s.logout)
+  const navigate = useNavigate()
+
+  function handleLogout() {
+    logout()
+    navigate('/', { replace: true })
+  }
 
   return (
     <div className="min-h-screen">
@@ -21,7 +27,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Link to="/auditor">Auditor</Link>
             <Link to="/learn">Learn</Link>
             {user ? (
-              <motion.button whileTap={{ scale: 0.97 }} onClick={logout} className="rounded-lg border px-3 py-1.5">
+              <motion.button whileTap={{ scale: 0.97 }} onClick={handleLogout} className="rounded-lg border px-3 py-1.5">
                 Logout
               </motion.button>
             ) : (

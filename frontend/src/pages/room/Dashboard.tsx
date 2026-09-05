@@ -49,7 +49,7 @@ export default function RoomDashboard() {
 
   function handleLogout() {
     logout()
-    navigate('/host/login')
+    navigate('/', { replace: true })
   }
 
   const roomsQ = useQuery({
