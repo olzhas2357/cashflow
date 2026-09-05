@@ -55,7 +55,7 @@ export const CELL_LABELS: Record<CellType, string> = {
 
 export const CELL_COLORS: Record<CellType, string> = {
   PAYDAY:    'bg-emerald-500/20 border-emerald-500 text-emerald-300',
-  DEAL:      'bg-[#e5dc3f]/20 border-[#e5dc3f] text-[#e5dc3f]',
+  DEAL:      'bg-indigo-500/20 border-indigo-500 text-indigo-300',
   DOODAD:    'bg-red-500/20 border-red-500 text-red-300',
   MARKET:    'bg-cyan-500/20 border-cyan-500 text-cyan-300',
   CHARITY:   'bg-purple-500/20 border-purple-500 text-purple-300',

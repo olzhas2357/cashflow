@@ -138,7 +138,7 @@ export default function Board() {
   const turnStatusLabel = (status?: string) =>
     status ? (t(`game.turnStatus.${status}`, { defaultValue: status }) as string) : '—'
   const cellGuideItems = [
-    { key: 'deal', color: 'bg-[#e5dc3f]/20 border-[#e5dc3f] text-[#e5dc3f]' },
+{ key: 'deal', color: 'bg-indigo-500/20 border-indigo-500 text-indigo-300' },
     { key: 'doodad', color: 'bg-red-500/20 border-red-500 text-red-300' },
     { key: 'charity', color: 'bg-purple-500/20 border-purple-500 text-purple-300' },
     { key: 'payday', color: 'bg-emerald-500/20 border-emerald-500 text-emerald-300' },
