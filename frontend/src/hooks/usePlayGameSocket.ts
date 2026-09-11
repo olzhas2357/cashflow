@@ -43,6 +43,18 @@ function describeEvent(type: string, payload: Record<string, unknown>): string {
       }
       return label
     }
+    case 'PLAYER_SKIPPED': {
+      const name = payload.player_name as string
+      return name ? i18n.t('game.events.PLAYER_SKIPPED', { name }) : label
+    }
+    case 'PLAYER_FAILED': {
+      const name = payload.player_name as string
+      return name ? i18n.t('game.events.PLAYER_FAILED', { name }) : label
+    }
+    case 'PLAYER_LEFT': {
+      const name = payload.player_name as string
+      return name ? i18n.t('game.events.PLAYER_LEFT', { name }) : label
+    }
     default:
       return label
   }

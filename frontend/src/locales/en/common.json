@@ -157,8 +157,9 @@
       "awaitingDecision": "Awaiting your decision…",
       "waitingForTurn": "Waiting for your turn…",
       "rollError": "Could not roll.",
-      "ratRace": "Rat Race",
-      "cellGuideTitle": "What does each cell mean?",
+      "ratRace": "Rat Race",      "leaveGame": "Leave game",
+      "leaveConfirm": "Are you sure you want to leave the game?",
+      "turnTimer": "Turn timer: {{time}}",      "cellGuideTitle": "What does each cell mean?",
       "cellGuideSubtitle": "A quick guide to events on the board",
       "showCellGuide": "Show",
       "hideCellGuide": "Hide",
@@ -334,7 +335,11 @@
       "STOCK_SOLD": "A player sold stock to the bank",
       "DECISION_MADE": "Decision made",
       "TURN_CHANGED": "Next player's turn",
-      "PLAYER_WON": "A player won the game!"
+      "PLAYER_WON": "A player won the game!",
+      "PLAYER_SKIPPED": "Player {{name}} skipped turn (3 min timeout)",
+      "PLAYER_FAILED": "Player {{name}} failed and exited (3 turn timeouts)",
+      "PLAYER_LEFT": "Player {{name}} left the game",
+      "GAME_OVER": "Game over"
     },
     "layout": {
       "navLobby": "Lobby",

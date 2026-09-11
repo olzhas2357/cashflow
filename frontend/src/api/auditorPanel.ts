@@ -33,6 +33,7 @@ export type GameSession = {
   turn_number: number
   last_dice_roll?: number | null
   winners_count?: number
+  turn_updated_at?: string
   created_at?: string
   updated_at?: string
   created_by?: string
@@ -48,6 +49,9 @@ export type UserPlayer = {
   salary: number
   passive_income: number
   expenses: number
+  total_income: number
+  total_expenses: number
+  monthly_cashflow: number
   assets_total: number
   liabilities_total: number
   loan_balance?: number
@@ -55,6 +59,7 @@ export type UserPlayer = {
   children_count: number
   charity_turns: number
   skip_turns: number
+  timeout_skips?: number
   position: number
   placement: number
   finished_turn: number

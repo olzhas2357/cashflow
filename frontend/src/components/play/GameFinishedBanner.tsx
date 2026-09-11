@@ -5,6 +5,7 @@ import type { LobbyPlayer } from '@/api/play'
 export function GameFinishedBanner({ players }: { players: LobbyPlayer[] }) {
   const { t } = useTranslation()
   const finished = players.filter((p) => p.placement > 0).sort((a, b) => a.placement - b.placement)
+  const failed = players.filter((p) => p.placement < 0)
   const stillPlaying = players.filter((p) => p.placement === 0)
 
   const placeLabel = (placement: number) =>
@@ -24,6 +25,13 @@ export function GameFinishedBanner({ players }: { players: LobbyPlayer[] }) {
               {placeLabel(p.placement)} &middot; {p.name}
             </span>
             <span className="text-xs text-muted-foreground">{t('game.finished.turnLabel', { n: p.finished_turn })}</span>
+          </div>
+        ))}
+        {failed.map((p) => (
+          <div key={p.id} className="flex items-center justify-between text-sm text-destructive">
+            <span>
+              ❌ {p.name} ({t('game.finished.failed', { defaultValue: 'Выбыл / Fail' })})
+            </span>
           </div>
         ))}
       </div>

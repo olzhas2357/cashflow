@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/store/authStore'
 import { usePlayStore } from '@/store/usePlayStore'
-import { getLobby, rollDice, listProfessions, type ChatMessage } from '@/api/play'
+import { getLobby, rollDice, leaveGame, listProfessions, type ChatMessage } from '@/api/play'
 import { usePlayGameSocket } from '@/hooks/usePlayGameSocket'
 import { BOARD_SIZE, cellLabelAt, cellShortLabelAt, cellColorAt } from '@/lib/board'
 import { boardCellGridPosition, BOARD_GRID_ROWS, BOARD_GRID_COLS } from '@/lib/boardLayout'
@@ -23,7 +23,7 @@ import { FinancialStatement } from '@/components/play/FinancialStatement'
 import WinnerModal from '@/components/play/WinnerModal'
 import { GameFinishedBanner } from '@/components/play/GameFinishedBanner'
 import type { PlayerWonPayload } from '@/api/auditorPanel'
-import { ChevronDown, ChevronUp, Dice5, Info } from 'lucide-react'
+import { ChevronDown, ChevronUp, Dice5, Info, LogOut, Timer } from 'lucide-react'
 
 export default function Board() {
   const { t } = useTranslation()
@@ -90,6 +90,10 @@ export default function Board() {
     DEAL_OFFERED_ALL: () => qc.invalidateQueries({ queryKey: ['play_lobby', gameId] }),
     OFFER_CLAIMED: () => qc.invalidateQueries({ queryKey: ['play_lobby', gameId] }),
     OFFER_CANCELLED: () => qc.invalidateQueries({ queryKey: ['play_lobby', gameId] }),
+    PLAYER_SKIPPED: () => qc.invalidateQueries({ queryKey: ['play_lobby', gameId] }),
+    PLAYER_FAILED: () => qc.invalidateQueries({ queryKey: ['play_lobby', gameId] }),
+    PLAYER_LEFT: () => qc.invalidateQueries({ queryKey: ['play_lobby', gameId] }),
+    GAME_OVER: () => qc.invalidateQueries({ queryKey: ['play_lobby', gameId] }),
     CHAT_MESSAGE: (payload) => {
       setChatMessages((msgs) =>
         [
@@ -106,15 +110,16 @@ export default function Board() {
       )
     },
     PLAYER_WON: (payload) => {
-      // Only the player who just won gets the personal stats modal — everyone
-      // else just gets the generic toast (handled by usePlayGameSocket's push)
-      // plus the lobby refetch below. Also guards against an older backend
-      // still broadcasting the pre-stats shape ({ player_id } only).
       if (payload.stats && typeof payload.placement === 'number' && payload.player_id === myPlayerId) {
         setWinnerModal(payload as unknown as PlayerWonPayload)
       }
       qc.invalidateQueries({ queryKey: ['play_lobby', gameId] })
     },
+  })
+
+  const leaveMut = useMutation({
+    mutationFn: () => leaveGame(token!, gameId!),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['play_lobby', gameId] }),
   })
 
   const professionsQ = useQuery({
@@ -129,6 +134,31 @@ export default function Board() {
   const canRoll = isMyTurn && game?.turn_status === 'WAITING_ROLL' && game?.status === 'in_progress'
   const me = players.find((p) => p.id === myPlayerId)
   const myProfessionName = professionsQ.data?.find((p) => p.id === me?.profession_id)?.name
+
+  const [now, setNow] = useState(Date.now())
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [])
+
+  const parseTurnStartedAt = (dateStr?: string) => {
+    if (!dateStr || dateStr.startsWith('0001')) return 0
+    const ts = new Date(dateStr).getTime()
+    return isNaN(ts) ? 0 : ts
+  }
+
+  const rawTurnStartedAt = parseTurnStartedAt(game?.turn_updated_at)
+  const fallbackRef = useRef<number>(Date.now())
+  useEffect(() => {
+    if (rawTurnStartedAt > 0) {
+      fallbackRef.current = rawTurnStartedAt
+    }
+  }, [rawTurnStartedAt])
+
+  const turnStartedAt = rawTurnStartedAt > 0 ? rawTurnStartedAt : fallbackRef.current
+  const secondsElapsed = Math.max(0, Math.floor((now - turnStartedAt) / 1000))
+  const secondsLeft = Math.max(0, 180 - secondsElapsed)
+  const timerFormatted = `${Math.floor(secondsLeft / 60)}:${(secondsLeft % 60).toString().padStart(2, '0')}`
 
   const tokenColors = ['bg-red-500', 'bg-blue-500', 'bg-yellow-400', 'bg-green-500', 'bg-pink-500', 'bg-cyan-400']
   const colorForPlayer = (playerId: string) => {
@@ -153,33 +183,56 @@ export default function Board() {
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{t('game.board.title')}</h1>
-          <p className="max-w-[calc(100vw-2rem)] text-xs text-muted-foreground sm:text-sm">
-            {t('game.board.turn', { n: game?.turn_number ?? 0 })} &middot; {turnStatusLabel(game?.turn_status)}
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground sm:text-sm">
+            <span>{t('game.board.turn', { n: game?.turn_number ?? 0 })} &middot; {turnStatusLabel(game?.turn_status)}</span>
+            {game?.status === 'in_progress' && (
+              <span className={cn('inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-mono font-medium', secondsLeft <= 30 ? 'bg-destructive/20 text-destructive' : 'bg-muted text-foreground')}>
+                <Timer className="h-3 w-3" />
+                {timerFormatted}
+              </span>
+            )}
             {lastRoll != null && (
-              <>
-                {' '}
+              <span>
                 &middot;{' '}
                 {t('game.board.lastRoll', {
                   roll:
                     lastRoll.die2 != null ? `${lastRoll.die1} + ${lastRoll.die2} = ${lastRoll.total}` : lastRoll.total,
                 })}
-              </>
+              </span>
             )}
             {me != null && me.charity_turns > 0 && (
-              <> &middot; {t('game.board.doubleDice', { count: me.charity_turns })}</>
+              <span> &middot; {t('game.board.doubleDice', { count: me.charity_turns })}</span>
             )}
-          </p>
+          </div>
         </div>
-        {canRoll && (
-          <Button
-            onClick={() => rollMut.mutate()}
-            disabled={rollMut.isPending}
-            className="z-50 shrink-0 gap-2 shadow-lg max-lg:fixed max-lg:bottom-[5.5rem] max-lg:left-4 max-lg:right-4 max-lg:h-12"
-          >
-            <Dice5 className="h-4 w-4" />
-            {rollMut.isPending ? t('game.board.rolling') : t('game.board.rollDice')}
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {me && me.placement === 0 && game?.status === 'in_progress' && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (window.confirm(t('game.board.leaveConfirm', { defaultValue: 'Покинуть игру?' }))) {
+                  leaveMut.mutate()
+                }
+              }}
+              disabled={leaveMut.isPending}
+              className="gap-1.5 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              {t('game.board.leaveGame', { defaultValue: 'Покинуть игру' })}
+            </Button>
+          )}
+          {canRoll && (
+            <Button
+              onClick={() => rollMut.mutate()}
+              disabled={rollMut.isPending}
+              className="z-50 shrink-0 gap-2 shadow-lg max-lg:fixed max-lg:bottom-[5.5rem] max-lg:left-4 max-lg:right-4 max-lg:h-12"
+            >
+              <Dice5 className="h-4 w-4" />
+              {rollMut.isPending ? t('game.board.rolling') : t('game.board.rollDice')}
+            </Button>
+          )}
+        </div>
         {isMyTurn &&
           (game?.turn_status === 'AWAITING_DECISION' ||
             game?.turn_status === 'AWAITING_DEAL_CHOICE' ||
@@ -260,10 +313,18 @@ export default function Board() {
                 className={cn(
                   'flex items-center gap-1.5 rounded-lg border border-border bg-card px-2 py-1 text-xs',
                   p.id === game?.current_turn_player_id && 'border-primary/60 bg-primary/10',
+                  p.placement < 0 && 'opacity-50 line-through bg-destructive/10 border-destructive/30',
                 )}
               >
                 <span className={cn('h-2 w-2 rounded-full', colorForPlayer(p.id))} />
-                <span className={p.id === game?.current_turn_player_id ? 'font-semibold text-primary' : ''}>{p.name}</span>
+                <span className={p.id === game?.current_turn_player_id ? 'font-semibold text-primary' : ''}>
+                  {p.name}
+                  {p.placement < 0 && <span className="ml-1 text-[10px] text-destructive font-normal">(Выбыл)</span>}
+                  {p.placement > 0 && <span className="ml-1 text-[10px] text-emerald-400 font-normal">({p.placement} место)</span>}
+                  {p.placement === 0 && p.timeout_skips && p.timeout_skips > 0 ? (
+                    <span className="ml-1 text-[10px] text-amber-400 font-normal">({p.timeout_skips}/3)</span>
+                  ) : null}
+                </span>
               </div>
             ))}
           </div>

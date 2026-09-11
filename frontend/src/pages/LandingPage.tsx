@@ -13,9 +13,11 @@ export default function LandingPage() {
       <Hero />
       <HowItWorks />
         {/* <NewDesign /> */}
+
       <div className="mt-auto">
         <Footer />
       </div>
+
     </div>
   )
 }

@@ -110,6 +110,13 @@ export async function makeDecision(token: string, gameId: string, payload: Decis
   })
 }
 
+export async function leaveGame(token: string, gameId: string) {
+  return apiFetch<{ ok: boolean }>(`/api/games/${gameId}/leave`, {
+    token,
+    method: 'POST',
+  })
+}
+
 // Player-facing auction endpoints — identity always comes from the caller's
 // own JWT (see PlayerAuctionOffers/PlayerAuctionBid in
 // backend/handlers/market_auction.go). Starting an auction is not here —

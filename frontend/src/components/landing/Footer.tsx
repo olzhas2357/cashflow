@@ -21,6 +21,14 @@ export default function Footer() {
             {t('footer.github')}
           </a>
           <a
+            href="https://github.com/olzhas2357"
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1.5 transition-colors hover:text-foreground"
+          >
+            Olzhas Koshkarbay
+          </a>
+          <a
             href={`${REPO_URL}/issues`}
             target="_blank"
             rel="noreferrer"
@@ -29,6 +37,7 @@ export default function Footer() {
             <Mail className="h-3.5 w-3.5" />
             {t('footer.contact')}
           </a>
+          
         </div>
       </div>
     </footer>
