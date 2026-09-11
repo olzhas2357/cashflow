@@ -136,12 +136,13 @@ func (h *RoomsHandler) StartRoomGame(c *gin.Context) {
 			return err
 		}
 		game = models.GameSession{
-			ID:         uuid.New(),
-			Name:       "Room " + room.Code,
-			MaxPlayers: maxRoomPlayers,
-			CreatedBy:  room.HostUserID,
-			JoinCode:   gameCode,
-			Status:     "lobby",
+			ID:            uuid.New(),
+			Name:          "Room " + room.Code,
+			MaxPlayers:    maxRoomPlayers,
+			CreatedBy:     room.HostUserID,
+			JoinCode:      gameCode,
+			Status:        "lobby",
+			TurnUpdatedAt: time.Now(),
 		}
 		for attempt := 0; attempt < 5; attempt++ {
 			createErr := tx.Create(&game).Error
@@ -206,6 +207,7 @@ func (h *RoomsHandler) StartRoomGame(c *gin.Context) {
 		game.TurnStatus = "WAITING_ROLL"
 		game.TurnNumber = 1
 		game.CurrentTurnPlayerID = &firstGamePlayerID
+		game.TurnUpdatedAt = time.Now()
 		if err := tx.Save(&game).Error; err != nil {
 			return err
 		}

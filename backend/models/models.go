@@ -95,10 +95,12 @@ type Player struct {
 	LoanExpense      int64 `gorm:"not null;default:0" json:"loan_expense"`
 	FinanciallyFree  bool  `gorm:"not null;default:false" json:"financially_free"`
 
-	// Placement: 0 while still playing; 1/2/3 once financially free (finish order).
+	// Placement: 0 while still playing; 1/2/3 once financially free (finish order); -1 if failed/left.
 	Placement int `gorm:"not null;default:0" json:"placement"`
 	// FinishedTurn: game.TurnNumber at the moment Placement was assigned.
 	FinishedTurn int `gorm:"not null;default:0" json:"finished_turn"`
+	// TimeoutSkips: count of consecutive turn timeouts (auto-skips). 3 skips = fail/exit.
+	TimeoutSkips int `gorm:"not null;default:0" json:"timeout_skips"`
 
 	ChildrenCount int `gorm:"not null;default:0" json:"children_count"`
 	CharityTurns  int `gorm:"not null;default:0" json:"charity_turns"`
@@ -234,9 +236,10 @@ type GameSession struct {
 	// TurnStatus: WAITING_ROLL | RESOLVING_CELL | AWAITING_DECISION | AWAITING_DEAL_CHOICE |
 	// AWAITING_MARKET_DECISIONS | AWAITING_STOCK_NEWS_DECISIONS | AWAITING_CHARITY_DECISION |
 	// AWAITING_DEAL_OFFER_CLAIM | TURN_COMPLETE.
-	TurnStatus   string `gorm:"type:varchar(30);not null;default:'WAITING_ROLL'" json:"turn_status"`
-	TurnNumber   int    `gorm:"not null;default:0" json:"turn_number"`
-	LastDiceRoll *int   `json:"last_dice_roll,omitempty"`
+	TurnStatus    string    `gorm:"type:varchar(30);not null;default:'WAITING_ROLL'" json:"turn_status"`
+	TurnNumber    int       `gorm:"not null;default:0" json:"turn_number"`
+	LastDiceRoll  *int      `json:"last_dice_roll,omitempty"`
+	TurnUpdatedAt time.Time `gorm:"type:timestamptz;not null;default:CURRENT_TIMESTAMP" json:"turn_updated_at"`
 	// WinnersCount: how many players have finished (Placement assigned) so far; game
 	// completes once this reaches 3 or no active (Placement == 0) players remain.
 	WinnersCount int `gorm:"not null;default:0" json:"winners_count"`

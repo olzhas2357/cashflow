@@ -34,6 +34,9 @@ func NewServer(cfg ServerConfig) *gin.Engine {
 	hub := services.NewRealtimeHub()
 	h := handlers.NewHandlers(cfg.DB, jwtCfg, hub)
 
+	// Start background ticker for turn timeouts (3 min) and inactive game cleanup
+	services.StartTurnTimerTicker(cfg.DB, hub, 5*time.Second)
+
 	engine := gin.New()
 	engine.SetTrustedProxies(nil) // исправляет WARNING и безопаснее для Railway
 	engine.Use(gin.Recovery(), gin.Logger())
@@ -183,6 +186,7 @@ func NewServer(cfg ServerConfig) *gin.Engine {
 	auth.GET("/games/:id/my-logs", h.Auditor.PlayerMyLogs)
 	auth.POST("/games/:id/turn/roll", h.Turn.Roll)
 	auth.POST("/games/:id/turn/decision", h.Turn.Decision)
+	auth.POST("/games/:id/leave", h.Turn.Leave)
 	auth.POST("/games/:id/chat", h.Chat.SendMessage)
 
 	auth.GET("/games/:id/market/auction/offers", h.Auditor.PlayerAuctionOffers)

@@ -236,6 +236,11 @@ func (h *LobbyHandler) LobbyState(c *gin.Context) {
 		return
 	}
 
+	if game.Status == "in_progress" && (game.TurnUpdatedAt.IsZero() || game.TurnUpdatedAt.Year() < 2000) {
+		game.TurnUpdatedAt = time.Now()
+		h.db.Model(&models.GameSession{}).Where("id = ?", game.ID).Update("turn_updated_at", game.TurnUpdatedAt)
+	}
+
 	var players []models.Player
 	if err := h.db.Where("game_id = ?", gameID).Order("created_at asc").Find(&players).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "players_failed"})

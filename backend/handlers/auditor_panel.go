@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"cashflow/database"
 	"cashflow/middleware"
@@ -242,11 +243,12 @@ func (h *AuditorPanelHandler) CreateGame(c *gin.Context) {
 	}
 
 	game := models.GameSession{
-		ID:         uuid.New(),
-		Name:       req.Name,
-		MaxPlayers: req.MaxPlayers,
-		CreatedBy:  userID,
-		JoinCode:   joinCode,
+		ID:            uuid.New(),
+		Name:          req.Name,
+		MaxPlayers:    req.MaxPlayers,
+		CreatedBy:     userID,
+		JoinCode:      joinCode,
+		TurnUpdatedAt: time.Now(),
 	}
 	// Retry on the rare join_code collision (unique constraint).
 	for attempt := 0; attempt < 5; attempt++ {
@@ -423,6 +425,7 @@ func (h *AuditorPanelHandler) StartGame(c *gin.Context) {
 	game.TurnStatus = "WAITING_ROLL"
 	game.TurnNumber = 1
 	game.CurrentTurnPlayerID = &firstPlayer.ID
+	game.TurnUpdatedAt = time.Now()
 	if err := h.db.Save(&game).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "start_game_failed"})
 		return

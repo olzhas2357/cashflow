@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"cashflow/middleware"
 	"cashflow/models"
@@ -62,6 +63,10 @@ func (h *TurnHandler) Roll(c *gin.Context) {
 		return
 	}
 
+	// Reset timeout skips and refresh turn timestamp on user action
+	h.db.Model(&models.Player{}).Where("id = ?", callerID).Update("timeout_skips", 0)
+	game.TurnUpdatedAt = time.Now()
+
 	// Charity grants 3 turns of rolling 2 dice (see decideCharity) — consumed
 	// one roll at a time here, not on Payday (a prior version decremented
 	// CharityTurns per Payday landing, which is the wrong cadence: the board
@@ -106,6 +111,7 @@ func (h *TurnHandler) Roll(c *gin.Context) {
 	}
 
 	game.TurnStatus = "RESOLVING_CELL"
+	game.TurnUpdatedAt = time.Now()
 	if err := h.db.Save(&game).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "turn_update_failed"})
 		return
@@ -163,6 +169,7 @@ func (h *TurnHandler) Roll(c *gin.Context) {
 		// Player chooses: donate 10% of total income (get 3 turns of rolling
 		// 2 dice) or skip — see decideCharity, dispatched from Decision().
 		game.TurnStatus = "AWAITING_CHARITY_DECISION"
+		game.TurnUpdatedAt = time.Now()
 		if err := h.db.Save(&game).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "charity_state_save_failed"})
 			return
@@ -201,6 +208,7 @@ func (h *TurnHandler) Roll(c *gin.Context) {
 		// Игрок выбирает: Small Deal или Big Deal
 		// Переводим в состояние ожидания выбора
 		game.TurnStatus = "AWAITING_DEAL_CHOICE"
+		game.TurnUpdatedAt = time.Now()
 		if err := h.db.Save(&game).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "deal_state_save_failed"})
 			return
@@ -300,6 +308,7 @@ func (h *TurnHandler) Roll(c *gin.Context) {
 		game.ActiveMarketEventID = &marketCard.ID
 		game.MarketRespondedPlayerIDs = respondedJSON
 		game.TurnStatus = "AWAITING_MARKET_DECISIONS"
+		game.TurnUpdatedAt = time.Now()
 		if err := h.db.Save(&game).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "market_state_save_failed"})
 			return
@@ -384,6 +393,7 @@ func (h *TurnHandler) finishResolution(c *gin.Context, gameID uuid.UUID, playerI
 			game.Status = "completed"
 			game.TurnStatus = "TURN_COMPLETE"
 		}
+		game.TurnUpdatedAt = time.Now()
 		if err := h.db.Save(&game).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "game_save_failed"})
 			return
@@ -481,6 +491,7 @@ func (h *TurnHandler) advanceToNextActivePlayer(
 			game.CurrentTurnPlayerID = &next.ID
 			game.TurnStatus = "WAITING_ROLL"
 			game.TurnNumber++
+			game.TurnUpdatedAt = time.Now()
 			if err := h.db.Save(game).Error; err != nil {
 				c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "turn_advance_failed"})
 				return
@@ -493,11 +504,15 @@ func (h *TurnHandler) advanceToNextActivePlayer(
 		}
 	}
 
-	// Nobody left active — the gameOver check above should already have
-	// caught this, but end the game defensively rather than looping forever.
+	// Nobody left active — end the game
 	game.Status = "completed"
 	game.TurnStatus = "TURN_COMPLETE"
+	game.TurnUpdatedAt = time.Now()
 	h.db.Save(game)
+	h.db.Model(&models.Room{}).Where("game_session_id = ?", game.ID).Update("status", models.RoomStatusFinished)
+	if h.hub != nil {
+		h.hub.Broadcast(game.ID.String(), "GAME_OVER", gin.H{"game_id": game.ID.String(), "reason": "no_active_players"})
+	}
 	c.JSON(http.StatusOK, gin.H{"ok": true, "game_over": true})
 }
 
@@ -537,6 +552,10 @@ func (h *TurnHandler) Decision(c *gin.Context) {
 		c.JSON(http.StatusNotFound, typ.ErrorResponse{Error: "game_not_found"})
 		return
 	}
+
+	// Refresh turn timestamp and reset timeout skips on decision action
+	h.db.Model(&models.Player{}).Where("id = ?", callerID).Update("timeout_skips", 0)
+	h.db.Model(&models.GameSession{}).Where("id = ?", gameID).Update("turn_updated_at", time.Now())
 
 	switch game.TurnStatus {
 	case "AWAITING_DECISION":
@@ -612,6 +631,7 @@ func (h *TurnHandler) decideBuyOrPass(c *gin.Context, gameID uuid.UUID, callerID
 	game.ActiveSmallDealID = nil
 	game.ActiveSmallDealOpenedBy = nil
 	game.ActiveBigDealID = nil
+	game.TurnUpdatedAt = time.Now()
 	if err := h.db.Save(&game).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "deal_clear_failed"})
 		return
@@ -676,6 +696,7 @@ func (h *TurnHandler) decideOfferDealAll(c *gin.Context, gameID uuid.UUID, calle
 	game.DealOfferCommission = *req.Commission
 	game.DealOfferClaimedBy = nil
 	game.TurnStatus = "AWAITING_DEAL_OFFER_CLAIM"
+	game.TurnUpdatedAt = time.Now()
 	if err := h.db.Save(&game).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "offer_save_failed"})
 		return
@@ -767,6 +788,7 @@ func (h *TurnHandler) decideAcceptOffer(c *gin.Context, gameID uuid.UUID, caller
 		}
 
 		g.DealOfferClaimedBy = &callerID
+		g.TurnUpdatedAt = time.Now()
 		if err := tx.Save(&g).Error; err != nil {
 			return err
 		}
@@ -812,6 +834,7 @@ func (h *TurnHandler) decideAcceptOffer(c *gin.Context, gameID uuid.UUID, caller
 		"deal_offered_by_player_id":   nil,
 		"deal_offer_commission":       0,
 		"deal_offer_claimed_by":       nil,
+		"turn_updated_at":             time.Now(),
 	}).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "offer_clear_failed"})
 		return
@@ -848,6 +871,7 @@ func (h *TurnHandler) decideCancelOffer(c *gin.Context, gameID uuid.UUID, caller
 		g.DealOfferCommission = 0
 		g.DealOfferClaimedBy = nil
 		g.TurnStatus = "AWAITING_DECISION"
+		g.TurnUpdatedAt = time.Now()
 		return tx.Save(&g).Error
 	})
 	if err != nil {
@@ -933,6 +957,7 @@ func (h *TurnHandler) decideDealChoice(c *gin.Context, gameID uuid.UUID, callerI
 			game.ActiveStockNewsDealID = &deal.ID
 			game.StockNewsRespondedPlayerIDs = respondedJSON
 			game.TurnStatus = "AWAITING_STOCK_NEWS_DECISIONS"
+			game.TurnUpdatedAt = time.Now()
 			if err := h.db.Save(&game).Error; err != nil {
 				c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "stock_news_state_save_failed"})
 				return
@@ -956,6 +981,7 @@ func (h *TurnHandler) decideDealChoice(c *gin.Context, gameID uuid.UUID, callerI
 		game.ActiveSmallDealID = &deal.ID
 		game.ActiveSmallDealOpenedBy = &callerID
 		game.TurnStatus = "AWAITING_DECISION"
+		game.TurnUpdatedAt = time.Now()
 		if err := h.db.Save(&game).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "deal_state_save_failed"})
 			return
@@ -1032,6 +1058,7 @@ func (h *TurnHandler) decideDealChoice(c *gin.Context, gameID uuid.UUID, callerI
 
 	game.ActiveBigDealID = &deal.ID
 	game.TurnStatus = "AWAITING_DECISION"
+	game.TurnUpdatedAt = time.Now()
 	if err := h.db.Save(&game).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "deal_state_save_failed"})
 		return
@@ -1185,6 +1212,7 @@ func (h *TurnHandler) decideMarket(c *gin.Context, gameID uuid.UUID, callerID uu
 			}
 			g.MarketRespondedPlayerIDs = respondedJSON
 		}
+		g.TurnUpdatedAt = time.Now()
 		return tx.Save(&g).Error
 	})
 	if err != nil {
@@ -1356,6 +1384,7 @@ func (h *TurnHandler) decideStockNews(c *gin.Context, gameID uuid.UUID, callerID
 			}
 			g.StockNewsRespondedPlayerIDs = respondedJSON
 		}
+		g.TurnUpdatedAt = time.Now()
 		return tx.Save(&g).Error
 	}); err != nil {
 		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "stock_news_response_save_failed"})
@@ -1401,4 +1430,78 @@ func (h *TurnHandler) decideCharity(c *gin.Context, gameID uuid.UUID, callerID u
 	}
 
 	h.finishResolution(c, gameID, callerID)
+}
+
+// Leave lets a player manually forfeit and exit the active game session.
+func (h *TurnHandler) Leave(c *gin.Context) {
+	gameID, ok := parseGameID(c)
+	if !ok {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "invalid_game_id"})
+		return
+	}
+	callerID, ok := middleware.GetPlayerID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, typ.ErrorResponse{Error: "unauthorized"})
+		return
+	}
+
+	var player models.Player
+	if err := h.db.First(&player, "id = ? AND game_id = ?", callerID, gameID).Error; err != nil {
+		c.JSON(http.StatusNotFound, typ.ErrorResponse{Error: "player_not_found"})
+		return
+	}
+
+	if player.Placement != 0 {
+		c.JSON(http.StatusBadRequest, typ.ErrorResponse{Error: "player_already_finished"})
+		return
+	}
+
+	var game models.GameSession
+	if err := h.db.First(&game, "id = ?", gameID).Error; err != nil {
+		c.JSON(http.StatusNotFound, typ.ErrorResponse{Error: "game_not_found"})
+		return
+	}
+
+	player.Placement = -1 // Mark as left / failed
+	if err := h.db.Save(&player).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "player_save_failed"})
+		return
+	}
+
+	if h.hub != nil {
+		h.hub.Broadcast(gameID.String(), "PLAYER_LEFT", gin.H{
+			"player_id":   player.ID.String(),
+			"player_name": player.Name,
+		})
+	}
+
+	var players []models.Player
+	if err := h.db.Where("game_id = ?", gameID).Order("created_at asc").Find(&players).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, typ.ErrorResponse{Error: "players_load_failed"})
+		return
+	}
+
+	// Check remaining active players
+	var activeCount int64
+	h.db.Model(&models.Player{}).Where("game_id = ? AND placement = 0", gameID).Count(&activeCount)
+
+	if activeCount == 0 {
+		game.Status = "completed"
+		game.TurnStatus = "TURN_COMPLETE"
+		game.TurnUpdatedAt = time.Now()
+		h.db.Save(&game)
+		h.db.Model(&models.Room{}).Where("game_session_id = ?", game.ID).Update("status", models.RoomStatusFinished)
+		if h.hub != nil {
+			h.hub.Broadcast(game.ID.String(), "GAME_OVER", gin.H{"game_id": game.ID.String(), "reason": "no_active_players"})
+		}
+		c.JSON(http.StatusOK, gin.H{"ok": true, "left": true, "game_over": true})
+		return
+	}
+
+	if game.CurrentTurnPlayerID != nil && *game.CurrentTurnPlayerID == callerID {
+		h.advanceToNextActivePlayer(c, &game, players, callerID)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"ok": true, "left": true})
 }
