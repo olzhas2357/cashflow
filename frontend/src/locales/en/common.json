@@ -164,13 +164,13 @@
       "showCellGuide": "Show",
       "hideCellGuide": "Hide",
       "cellGuide": {
-        "deal": { "name": "Deal", "description": "A financial opportunity. Review the terms and decide whether to accept it." },
-        "doodad": { "name": "Doodad", "description": "A purchase. ." },
-        "charity": { "name": "Charity", "description": "You make a charitable donation." },
-        "payday": { "name": "Payday", "description": "You receive your salary and update your cash balance." },
-        "market": { "name": "Market", "description": "Buy or sell assets here. Watch prices and make your move." },
-        "downsized": { "name": "Downsized", "description": "You lose your job and salary, then deal with the financial consequences." },
-        "baby": { "name": "Baby", "description": "A new child-related expense is added." }
+        "deal": { "name": "Deal", "description": "A financial opportunity. Review the terms and decide whether to accept it. You can buy stocks, real estate, or other assets." },
+        "doodad": { "name": "Doodad", "description": "A purchase. You can buy an item or service. This is where you spend money on current needs." },
+        "charity": { "name": "Charity", "description": "You make a charitable donation. This helps others and can bring moral satisfaction." },
+        "payday": { "name": "Payday", "description": "You receive your salary and update your cash balance. This is your regular income." },
+        "market": { "name": "Market", "description": "Buy or sell assets here. Watch prices and make your move. You can increase your wealth or incur losses." },
+        "downsized": { "name": "Downsized", "description": "You lose your job and salary, then deal with the financial consequences. This can affect your financial plan." },
+        "baby": { "name": "Baby", "description": "A new child-related expense is added. This affects your budget and financial planning." }
       }
     },
     "finished": {
